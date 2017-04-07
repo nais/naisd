@@ -20,8 +20,6 @@ For local development, use minikube. You can run api.go with -kubeconfig=<path t
 
 ...to fetch dependecies
 
-
-
 To reduce build time, do
 
 ```go build -i api.go```

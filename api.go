@@ -7,6 +7,10 @@ import (
 	"flag"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
+	"github.com/zenazn/goji"
+	"github.com/zenazn/goji/web"
+	"net/http"
+	"io/ioutil"
 )
 
 func main() {
@@ -35,6 +39,20 @@ func main() {
 	for _, pod := range pods.Items {
 		fmt.Println(pod.Name)
 	}
+
+	goji.Post("/deploy", deploy)
+	goji.Serve()
+}
+
+func deploy(c web.C, w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Hello there!")
+	body, err := ioutil.ReadAll(r.Body)
+
+	if err != nil{
+		panic(err)
+	}
+
+	fmt.Println(string(body))
 }
 
 // returns config using kubeconfig if provided, else from cluster context

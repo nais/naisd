@@ -8,7 +8,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	"net/http"
-	_"io/ioutil"
 	"goji.io"
 	"goji.io/pat"
 	"io/ioutil"
@@ -57,6 +56,7 @@ func listpods(w http.ResponseWriter, r *http.Request) {
 	for _, pod := range pods.Items {
 		fmt.Println(pod.Name)
 	}
+
 
 	output,_ := json.Marshal(pods.Items)
 

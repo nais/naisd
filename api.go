@@ -7,9 +7,17 @@ import (
 	"flag"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
+	"net/http"
+	_"io/ioutil"
+	"goji.io"
+	"goji.io/pat"
+	"io/ioutil"
+	"k8s.io/client-go/pkg/util/json"
 )
 
-func main() {
+var clientset = initKubeConfiguration()
+
+func initKubeConfiguration() *kubernetes.Clientset {
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")
 	flag.Parse()
 
@@ -25,6 +33,20 @@ func main() {
 		panic(err.Error())
 	}
 
+	return clientset
+}
+
+func main() {
+	mux := goji.NewMux()
+	mux.HandleFunc(pat.Get("/pods"), listpods)
+	mux.HandleFunc(pat.Post("/echo"), echo)
+
+	serveLocation := "localhost:6969"
+	fmt.Printf("serving @ %s\n", serveLocation)
+	http.ListenAndServe(serveLocation, mux)
+}
+
+func listpods(w http.ResponseWriter, r *http.Request) {
 	pods, err := clientset.CoreV1().Pods("").List(v1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
@@ -35,6 +57,20 @@ func main() {
 	for _, pod := range pods.Items {
 		fmt.Println(pod.Name)
 	}
+
+	output,_ := json.Marshal(pods.Items)
+
+	fmt.Fprint(w, string(output))
+}
+
+func echo(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Fprintf(w, "%s", body)
 }
 
 // returns config using kubeconfig if provided, else from cluster context

@@ -3,3 +3,4 @@ vendor/
 api
 div.yaml
 lock.json
+kubeconfig

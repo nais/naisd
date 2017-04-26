@@ -12,6 +12,8 @@ import (
 	"goji.io/pat"
 	"io/ioutil"
 	"encoding/json"
+
+	"gopkg.in/yaml.v2"
 )
 
 var clientset = initKubeConfiguration()
@@ -37,7 +39,7 @@ func initKubeConfiguration() *kubernetes.Clientset {
 
 func main() {
 	mux := goji.NewMux()
-	mux.HandleFunc(pat.Get("/pods"), listpods)
+	mux.HandleFunc(pat.Get("/pods"), listPods)
 	mux.HandleFunc(pat.Post("/deploy"), deploy)
 
 	serveLocation := "localhost:6969"
@@ -46,7 +48,7 @@ func main() {
 	http.ListenAndServe(serveLocation, mux)
 }
 
-func listpods(w http.ResponseWriter, _ *http.Request) {
+func listPods(w http.ResponseWriter, _ *http.Request) {
 	pods, err := clientset.CoreV1().Pods("").List(v1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
@@ -63,11 +65,27 @@ func listpods(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, string(output))
 }
 
-
 type DeploymentRequest struct {
 	Application string
-	Version string
+	Version     string
 	Environment string
+}
+
+type AppConfig struct {
+	Containers []Container
+}
+
+type Port struct {
+	Name string
+	TargetPort int
+	Port int
+	Protocol string
+}
+
+type Container struct {
+	Name  string
+	Image string
+	Ports []Port
 }
 
 func deploy(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +103,18 @@ func deploy(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
+	body, err = ioutil.ReadFile("./app-config.yaml");
 
+	if err != nil {
+		panic(err)
+	}
+
+	var appConfig AppConfig
+
+	yaml.Unmarshal(body, &appConfig)
+
+	output,_ := yaml.Marshal(appConfig)
+	fmt.Printf("Read app-config.yaml, looks like this:\n%s", string(output))
 
 	w.Write([]byte("ok\n"))
 }

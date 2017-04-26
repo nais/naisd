@@ -11,7 +11,7 @@ import (
 	"goji.io"
 	"goji.io/pat"
 	"io/ioutil"
-	"k8s.io/client-go/pkg/util/json"
+	"encoding/json"
 )
 
 var clientset = initKubeConfiguration()
@@ -38,14 +38,15 @@ func initKubeConfiguration() *kubernetes.Clientset {
 func main() {
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/pods"), listpods)
-	mux.HandleFunc(pat.Post("/echo"), echo)
+	mux.HandleFunc(pat.Post("/deploy"), deploy)
 
 	serveLocation := "localhost:6969"
+
 	fmt.Printf("serving @ %s\n", serveLocation)
 	http.ListenAndServe(serveLocation, mux)
 }
 
-func listpods(w http.ResponseWriter, r *http.Request) {
+func listpods(w http.ResponseWriter, _ *http.Request) {
 	pods, err := clientset.CoreV1().Pods("").List(v1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
@@ -57,20 +58,34 @@ func listpods(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(pod.Name)
 	}
 
-
-	output,_ := json.Marshal(pods.Items)
+	output, _ := json.MarshalIndent(pods.Items, "", "    ")
 
 	fmt.Fprint(w, string(output))
 }
 
-func echo(w http.ResponseWriter, r *http.Request) {
+
+type DeploymentRequest struct {
+	Application string
+	Version string
+	Environment string
+}
+
+func deploy(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Fprintf(w, "%s", body)
+	var deploymentRequest DeploymentRequest
+
+	if err = json.Unmarshal(body, &deploymentRequest); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
+
+	w.Write([]byte("ok\n"))
 }
 
 // returns config using kubeconfig if provided, else from cluster context

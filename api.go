@@ -85,6 +85,8 @@ func deploy(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
+
+
 	w.Write([]byte("ok\n"))
 }
 

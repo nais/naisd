@@ -7,4 +7,3 @@ COPY api .
 COPY app-config.yaml .
 
 CMD ["/app/api"]
-#CMD ["/app/api", "--kubeconfig", "/app/kubeconfig"]

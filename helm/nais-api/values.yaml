@@ -1,0 +1,3 @@
+image:
+  repository: navikt/nais-api
+  tag: latest

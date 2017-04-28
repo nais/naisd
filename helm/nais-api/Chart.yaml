@@ -1,0 +1,4 @@
+apiVersion: v1
+description: NAIS API
+name: nais-api
+version: 1

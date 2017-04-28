@@ -39,6 +39,7 @@ func initKubeConfiguration() *kubernetes.Clientset {
 func main() {
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/pods"), listPods)
+	mux.HandleFunc(pat.Get("/hello"), hello)
 	mux.HandleFunc(pat.Post("/deploy"), deploy)
 
 	serveLocation := ":8081"
@@ -64,6 +65,10 @@ func listPods(w http.ResponseWriter, _ *http.Request) {
 	output, _ := json.MarshalIndent(pods.Items, "", "    ")
 
 	fmt.Fprint(w, string(output))
+}
+
+func hello(w http.ResponseWriter, _ *http.Request) {
+	fmt.Fprint(w, "halla")
 }
 
 type DeploymentRequest struct {

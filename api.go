@@ -12,7 +12,6 @@ import (
 	"goji.io/pat"
 	"io/ioutil"
 	"encoding/json"
-
 	"gopkg.in/yaml.v2"
 )
 
@@ -42,13 +41,15 @@ func main() {
 	mux.HandleFunc(pat.Get("/pods"), listPods)
 	mux.HandleFunc(pat.Post("/deploy"), deploy)
 
-	serveLocation := "localhost:6969"
+	serveLocation := ":8081"
 
 	fmt.Printf("serving @ %s\n", serveLocation)
 	http.ListenAndServe(serveLocation, mux)
 }
 
 func listPods(w http.ResponseWriter, _ *http.Request) {
+
+
 	pods, err := clientset.CoreV1().Pods("").List(v1.ListOptions{})
 	if err != nil {
 		panic(err.Error())

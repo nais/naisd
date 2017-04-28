@@ -1,0 +1,35 @@
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: nais-api
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nais-api
+  template:
+    metadata:
+      labels:
+        app: nais-api
+    spec:
+      containers:
+      - name: nais-api
+        image: navikt/nais-api:latest
+        ports:
+        - containerPort: 8081
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nais-api
+  labels:
+    name: nais-api
+spec:
+  type: NodePort
+  selector:
+    app: nais-api
+  ports:
+    # the port that this service should serve on
+    - port: 8081

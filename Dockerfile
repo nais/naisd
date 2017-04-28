@@ -1,10 +1,10 @@
 FROM alpine:3.5
-MAINTAINER Johnny Horvi <johnny.horvi@gmail.com>
+MAINTAINER Johnny Horvi <johnny.horvi@nav.no>
 
 WORKDIR /app
 
 COPY api .
 COPY app-config.yaml .
-COPY kubeconfig .
 
-CMD ["./api --kubeconfig ./kubeconfig"]
+CMD ["/app/api"]
+#CMD ["/app/api", "--kubeconfig", "/app/kubeconfig"]

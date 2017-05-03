@@ -1,6 +1,5 @@
 vendor/
 .idea/
-api
-div.yaml
-kubeconfig
+/scratch.yaml
 naisd.iml
+/naisd

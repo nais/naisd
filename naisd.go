@@ -6,22 +6,31 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"flag"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 	"net/http"
-	"goji.io"
-	"goji.io/pat"
-	"io/ioutil"
-	"encoding/json"
-	"gopkg.in/yaml.v2"
+
+	"github.com/navikt/naisd/api"
 )
 
-var clientset = initKubeConfiguration()
+const Port string = ":8081"
 
-func initKubeConfiguration() *kubernetes.Clientset {
+func main() {
+	fmt.Printf("serving @ %s\n", Port)
+	http.ListenAndServe(Port, api.Api{*newClientSet()}.NewApi())
+}
+
+// returns config using kubeconfig if provided, else from cluster context
+func newClientSet() *kubernetes.Clientset {
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")
 	flag.Parse()
 
-	config, err := getClientConfig(*kubeconfig)
+	var config *rest.Config
+	var err error
+
+	if *kubeconfig != "" {
+		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	} else {
+		config, err = rest.InClusterConfig()
+	}
 
 	if err != nil {
 		panic(err.Error())
@@ -34,102 +43,4 @@ func initKubeConfiguration() *kubernetes.Clientset {
 	}
 
 	return clientset
-}
-
-func main() {
-	mux := goji.NewMux()
-	mux.HandleFunc(pat.Get("/pods"), listPods)
-	mux.HandleFunc(pat.Get("/hello"), hello)
-	mux.HandleFunc(pat.Post("/deploy"), deploy)
-
-	serveLocation := ":8081"
-
-	fmt.Printf("serving @ %s\n", serveLocation)
-	http.ListenAndServe(serveLocation, mux)
-}
-
-func listPods(w http.ResponseWriter, _ *http.Request) {
-
-
-	pods, err := clientset.CoreV1().Pods("").List(v1.ListOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-
-	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
-
-	for _, pod := range pods.Items {
-		fmt.Println(pod.Name)
-	}
-
-	output, _ := json.MarshalIndent(pods.Items, "", "    ")
-
-	fmt.Fprint(w, string(output))
-}
-
-func hello(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprint(w, "banan")
-}
-
-type DeploymentRequest struct {
-	Application string
-	Version     string
-	Environment string
-}
-
-type AppConfig struct {
-	Containers []Container
-}
-
-type Port struct {
-	Name string
-	TargetPort int
-	Port int
-	Protocol string
-}
-
-type Container struct {
-	Name  string
-	Image string
-	Ports []Port
-}
-
-func deploy(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var deploymentRequest DeploymentRequest
-
-	if err = json.Unmarshal(body, &deploymentRequest); err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
-
-	body, err = ioutil.ReadFile("./app-config.yaml");
-
-	if err != nil {
-		panic(err)
-	}
-
-	var appConfig AppConfig
-
-	yaml.Unmarshal(body, &appConfig)
-
-	output,_ := yaml.Marshal(appConfig)
-	fmt.Printf("Read app-config.yaml, looks like this:\n%s", string(output))
-
-	w.Write([]byte("ok\n"))
-}
-
-// returns config using kubeconfig if provided, else from cluster context
-// useful for testing locally w/minikube
-func getClientConfig(kubeconfig string) (*rest.Config, error) {
-	if kubeconfig != "" {
-		return clientcmd.BuildConfigFromFlags("", kubeconfig)
-	}
-	return rest.InClusterConfig()
 }

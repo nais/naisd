@@ -1,6 +1,6 @@
 SHELL   := bash
 VERSION := $(shell /bin/date +%Y%m%d%H%M%S)-$(shell git rev-parse --short HEAD)
-NAME    := navikt/nais-api
+NAME    := navikt/naisd
 IMAGE   := ${NAME}:${VERSION}
 
 container: linux docker
@@ -13,11 +13,11 @@ build:
 	go build -o api
 
 linux:
-	GOOS=linux CGO_ENABLED=0 go build -v -x -a -installsuffix cgo -ldflags '-s' -o api
+	GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-s' -o naisd
 
 docker:
-	@eval $$(minikube docker-env) ;\ # lets us use local images
+	@eval $$(minikube docker-env) ;\
 	docker image build -t ${IMAGE} -t ${NAME} -f Dockerfile .
 
 deploy:
-	helm upgrade -i nais-api helm/nais-api --set image.tag=${VERSION}
+	helm upgrade -i naisd helm/naisd --set image.tag=${VERSION}

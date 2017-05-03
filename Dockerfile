@@ -3,7 +3,7 @@ MAINTAINER Johnny Horvi <johnny.horvi@nav.no>
 
 WORKDIR /app
 
-COPY api .
+COPY naisd .
 COPY app-config.yaml .
 
-CMD ["/app/api"]
+CMD ["/app/naisd"]

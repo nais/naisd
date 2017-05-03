@@ -68,7 +68,7 @@ func listPods(w http.ResponseWriter, _ *http.Request) {
 }
 
 func hello(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprint(w, "halla")
+	fmt.Fprint(w, "banan")
 }
 
 type DeploymentRequest struct {

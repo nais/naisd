@@ -1,6 +1,6 @@
-# NAIS API
+#  naisd
 
-k8s in-cluster API for performing NAIS-deploys.
+k8s in-cluster daemon with API for performing NAIS-operations
 
 Basic outline
 
@@ -8,11 +8,11 @@ Basic outline
 2. Fetches app-config from internal artifact repository
 3. Extract info from yaml
 4. Get and inject environment specific variables from Fasit
-5. Creates appropriate k8s resources 
+5. Creates appropriate k8s resources
 
 ## dev notes
 
-For local development, use minikube. You can run api.go with -kubeconfig=<path to kube config> for testing without deploying to cluster. 
+For local development, use minikube. You can run naisd.go with -kubeconfig=<path to kube config> for testing without deploying to cluster. 
 
 ```glide install```
 

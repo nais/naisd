@@ -15,11 +15,11 @@ const Port string = ":8081"
 
 func main() {
 	fmt.Printf("serving @ %s\n", Port)
-	http.ListenAndServe(Port, api.Api{*newClientSet()}.NewApi())
+	http.ListenAndServe(Port, api.Api{newClientSet()}.NewApi())
 }
 
 // returns config using kubeconfig if provided, else from cluster context
-func newClientSet() *kubernetes.Clientset {
+func newClientSet() kubernetes.Clientset {
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")
 	flag.Parse()
 
@@ -42,5 +42,5 @@ func newClientSet() *kubernetes.Clientset {
 		panic(err.Error())
 	}
 
-	return clientset
+	return *clientset
 }

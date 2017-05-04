@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"encoding/json"
 	"gopkg.in/yaml.v2"
+	"k8s.io/client-go/pkg/api/errors"
 )
 
 type Api struct {
@@ -100,5 +101,70 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Read app-config.yaml, looks like this:\n%s", string(output))
 
 	w.Write([]byte("ok\n"))
+
+	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
+		fmt.Println(err)
+	}
+
+	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig); err != nil {
+		fmt.Println(err)
+	}
+
+	//if err := api.createDeployment(appConfig); err != nil {
+	//	fmt.Println(err)
+	//}
+}
+
+func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig) error {
+	appName := req.Application
+
+	serviceSpec := ResourceCreator{appConfig, req}.CreateService()
+
+	service := api.Clientset.Core().Services("default")
+
+	svc, err := service.Get(appName)
+
+	switch {
+	case err == nil:
+		serviceSpec.ObjectMeta.ResourceVersion = svc.ObjectMeta.ResourceVersion
+		serviceSpec.Spec.ClusterIP = svc.Spec.ClusterIP
+		_, err = service.Update(serviceSpec)
+		if err != nil {
+			return fmt.Errorf("failed to update service: %s", err)
+		}
+		fmt.Println("service updated")
+	case errors.IsNotFound(err):
+		_, err = service.Create(serviceSpec)
+		if err != nil {
+			return fmt.Errorf("failed to create service: %s", err)
+		}
+		fmt.Println("service created")
+	default:
+		return fmt.Errorf("unexpected error: %s", err)
+	}
+
+	return nil
+}
+
+func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConfig) error {
+	deploymentSpec := ResourceCreator{appConfig, req}.CreateDeployment()
+
+	// Implement deployment update-or-create semantics.
+	deploy := api.Clientset.Extensions().Deployments("default")
+	_, err := deploy.Update(deploymentSpec)
+	switch {
+	case err == nil:
+		fmt.Println("deployment controller updated")
+	case !errors.IsNotFound(err):
+		return fmt.Errorf("could not update deployment controller: %s", err)
+	default:
+		_, err = deploy.Create(deploymentSpec)
+		if err != nil {
+			return fmt.Errorf("could not create deployment controller: %s", err)
+		}
+		fmt.Println("deployment controller created")
+	}
+
+	return nil
 }
 

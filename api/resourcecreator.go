@@ -6,6 +6,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/resource"
+	"fmt"
 )
 
 type ResourceCreator struct {
@@ -16,7 +17,7 @@ type ResourceCreator struct {
 func (r ResourceCreator) CreateService() *v1.Service {
 	appName := r.DeploymentRequest.Application
 
-	serviceSpec := &v1.Service{
+	return &v1.Service{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
@@ -39,14 +40,12 @@ func (r ResourceCreator) CreateService() *v1.Service {
 			},
 		},
 	}
-
-	return serviceSpec
 }
 
 func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 	appName := r.DeploymentRequest.Application
 
-	deploySpec := &v1beta1.Deployment{
+	return &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Deployment",
 			APIVersion: "extensions/v1beta1",
@@ -98,8 +97,40 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 			},
 		},
 	}
+}
 
-	return deploySpec
+func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
+
+	appName := r.DeploymentRequest.Application
+
+	return &v1beta1.Ingress{
+		TypeMeta: unversioned.TypeMeta{
+			Kind: "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name: appName,
+		},
+		Spec: v1beta1.IngressSpec{
+			Rules: []v1beta1.IngressRule{
+				{
+					Host: fmt.Sprintf("%s.nais.devillo.no", appName),
+					IngressRuleValue: v1beta1.IngressRuleValue{
+						HTTP: &v1beta1.HTTPIngressRuleValue{
+							Paths: []v1beta1.HTTPIngressPath{
+								{
+									Backend: v1beta1.IngressBackend{
+										ServiceName: appName,
+										ServicePort: intstr.IntOrString{IntVal: 80},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func int32p(i int32) *int32 {

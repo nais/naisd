@@ -30,6 +30,7 @@ var (
 
 func init() {
 	prometheus.MustRegister(requests)
+	prometheus.MustRegister(deploys)
 }
 
 func (api Api) NewApi() http.Handler {
@@ -130,9 +131,10 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
-	//if err := api.createDeployment(appConfig); err != nil {
-	//	fmt.Println(err)
-	//}
+	if err := api.createOrUpdateIngress(deploymentRequest, appConfig); err != nil {
+		fmt.Println(err)
+	}
+
 	deploys.With(prometheus.Labels{"app":deploymentRequest.Application}).Inc()
 }
 
@@ -184,6 +186,28 @@ func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConf
 			return fmt.Errorf("could not create deployment controller: %s", err)
 		}
 		fmt.Println("deployment controller created")
+	}
+
+	return nil
+}
+
+func (api Api) createOrUpdateIngress(req DeploymentRequest, appConfig AppConfig) error {
+	ingressSpec := ResourceCreator{appConfig, req}.CreateIngress()
+
+	// Implement deployment update-or-create semantics.
+	ingress := api.Clientset.Extensions().Ingresses("default")
+	_, err := ingress.Update(ingressSpec)
+	switch {
+	case err == nil:
+		fmt.Println("ingress updated")
+	case !errors.IsNotFound(err):
+		return fmt.Errorf("could not update ingress: %s", err)
+	default:
+		_, err = ingress.Create(ingressSpec)
+		if err != nil {
+			return fmt.Errorf("could not create ingress: %s", err)
+		}
+		fmt.Println("ingress created")
 	}
 
 	return nil

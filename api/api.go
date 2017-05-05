@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	"net/http"
+	"log"
 )
 
 type Api struct {
@@ -39,6 +40,7 @@ func (api Api) NewApi() http.Handler {
 	mux.HandleFunc(pat.Get("/pods"), api.listPods)
 	mux.HandleFunc(pat.Get("/hello"), api.hello)
 	mux.HandleFunc(pat.Post("/deploy"), api.deploy)
+	mux.HandleFunc(pat.Get("/test"), api.testing)
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 
 	return mux
@@ -70,9 +72,10 @@ func (api Api) hello(w http.ResponseWriter, _ *http.Request) {
 }
 
 type DeploymentRequest struct {
-	Application string
-	Version     string
-	Environment string
+	Application  string
+	Version      string
+	Environment  string
+	AppConfigUrl string
 }
 
 type AppConfig struct {
@@ -92,6 +95,29 @@ type Container struct {
 	Ports []Port
 }
 
+func (api Api) testing(w http.ResponseWriter, r *http.Request) {
+	appConfig, _ := fetchManifest("http://localhost:8080/app-config.yaml")
+	fmt.Println(appConfig.Containers[0].Name)
+}
+
+func fetchManifest(url string) (AppConfig, error) {
+
+	log.Printf("Fetching manifest from URL %s\n", url)
+
+	if response, err := http.Get(url); err != nil {
+		return AppConfig{}, err
+	} else {
+		defer response.Body.Close()
+		var appConfig AppConfig
+		if body, err := ioutil.ReadAll(response.Body); err != nil {
+			return AppConfig{}, err
+		} else {
+			yaml.Unmarshal(body, &appConfig)
+			return appConfig, nil
+		}
+	}
+}
+
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 
@@ -109,19 +135,24 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
-	body, err = ioutil.ReadFile("./app-config.yaml")
-	if err != nil {
-		panic(err)
+	var appConfigUrl string
+
+	if deploymentRequest.AppConfigUrl != "" {
+		appConfigUrl = deploymentRequest.AppConfigUrl
+	} else {
+		appConfigUrl = fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/%s", deploymentRequest.Application, deploymentRequest.Version, fmt.Sprintf("%s-%s.yaml", deploymentRequest.Application, deploymentRequest.Version))
 	}
 
-	var appConfig AppConfig
+	appConfig, err := fetchManifest(appConfigUrl)
 
-	yaml.Unmarshal(body, &appConfig)
+	if err != nil {
+		fmt.Printf("Unable to fetch manifest %s", err)
+		w.WriteHeader(500)
+		w.Write([]byte(":("))
+	}
 
-	output, _ := yaml.Marshal(appConfig)
-	fmt.Printf("Read app-config.yaml, looks like this:\n%s", string(output))
+	fmt.Printf("Read app-config.yaml, looks like this:%s\n", appConfig)
 
-	w.Write([]byte("ok\n"))
 
 	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
 		fmt.Println(err)
@@ -136,6 +167,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	deploys.With(prometheus.Labels{"app":deploymentRequest.Application}).Inc()
+
+	w.Write([]byte("ok\n"))
 }
 
 func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig) error {

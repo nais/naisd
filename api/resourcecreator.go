@@ -31,10 +31,10 @@ func (r ResourceCreator) CreateService() *v1.Service {
 			Ports: []v1.ServicePort{
 				{
 					Protocol: v1.ProtocolTCP,
-					Port:     6969,
+					Port:     80,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: int32(6969),
+						IntVal: int32(r.AppConfig.Containers[0].Ports[0].Port),
 					},
 				},
 			},

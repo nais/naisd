@@ -100,7 +100,6 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 }
 
 func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
-
 	appName := r.DeploymentRequest.Application
 
 	return &v1beta1.Ingress{

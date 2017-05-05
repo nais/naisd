@@ -78,7 +78,7 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 					Containers: []v1.Container{
 						{
 							Name:  r.AppConfig.Containers[0].Name,
-							Image: r.AppConfig.Containers[0].Image,
+							Image: fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version),
 							Ports: []v1.ContainerPort{
 								{ContainerPort: int32(r.AppConfig.Containers[0].Ports[0].Port), Protocol: v1.ProtocolTCP},
 							},
@@ -88,6 +88,10 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 									v1.ResourceMemory: resource.MustParse("256Mi"),
 								},
 							},
+							Env: []v1.EnvVar{{
+								Name: "app_version",
+								Value: r.DeploymentRequest.Version,
+							}},
 							ImagePullPolicy: v1.PullIfNotPresent,
 						},
 					},

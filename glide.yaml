@@ -12,3 +12,6 @@ import:
   - pkg/api/v1
   - rest
   - tools/clientcmd
+- package: github.com/prometheus/client_golang/prometheus
+- package: github.com/prometheus/client_golang/promehttp
+

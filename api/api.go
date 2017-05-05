@@ -1,34 +1,51 @@
 package api
 
 import (
-	"net/http"
-	"goji.io/pat"
-	"goji.io"
-	"fmt"
-	"io/ioutil"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/kubernetes"
 	"encoding/json"
+	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"goji.io"
+	"goji.io/pat"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
+	"k8s.io/client-go/pkg/api/v1"
+	"net/http"
 )
 
 type Api struct {
 	Clientset kubernetes.Clientset
 }
 
-func (api Api) NewApi() (http.Handler) {
+var (
+	requests = prometheus.NewCounterVec(
+		prometheus.CounterOpts{Name: "requests", Help:"requests pr path"}, []string{"path"},
+	)
+	deploys = prometheus.NewCounterVec(
+		prometheus.CounterOpts{Name: "deployment", Help:"deployments done by NaisD"}, []string{"app"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(requests)
+}
+
+func (api Api) NewApi() http.Handler {
 	mux := goji.NewMux()
 
 	mux.HandleFunc(pat.Get("/pods"), api.listPods)
 	mux.HandleFunc(pat.Get("/hello"), api.hello)
 	mux.HandleFunc(pat.Post("/deploy"), api.deploy)
+	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 
 	return mux
 }
 
 func (api Api) listPods(w http.ResponseWriter, _ *http.Request) {
 
+	requests.With(prometheus.Labels{"path": "pods"}).Inc()
 	pods, err := api.Clientset.CoreV1().Pods("").List(v1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
@@ -46,6 +63,8 @@ func (api Api) listPods(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (api Api) hello(w http.ResponseWriter, _ *http.Request) {
+	requests.With(prometheus.Labels{"path": "hello"}).Inc()
+
 	fmt.Fprint(w, "banan")
 }
 
@@ -73,6 +92,8 @@ type Container struct {
 }
 
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
+	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
+
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
@@ -87,8 +108,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
-	body, err = ioutil.ReadFile("./app-config.yaml");
-
+	body, err = ioutil.ReadFile("./app-config.yaml")
 	if err != nil {
 		panic(err)
 	}
@@ -113,6 +133,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	//if err := api.createDeployment(appConfig); err != nil {
 	//	fmt.Println(err)
 	//}
+	deploys.With(prometheus.Labels{"app":deploymentRequest.Application}).Inc()
 }
 
 func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig) error {
@@ -167,4 +188,3 @@ func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConf
 
 	return nil
 }
-

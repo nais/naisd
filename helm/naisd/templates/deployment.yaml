@@ -11,6 +11,8 @@ spec:
       labels:
         app: naisd
         release: "{{ .Release.Name }}"
+      annotations:
+        prometheus.io/scrape="true"
     spec:
       containers:
       - name: naisd

@@ -22,10 +22,10 @@ type Api struct {
 
 var (
 	requests = prometheus.NewCounterVec(
-		prometheus.CounterOpts{Name: "nais.requests", Help:"requests pr path"}, []string{"path"},
+		prometheus.CounterOpts{Name: "requests", Help:"requests pr path"}, []string{"path"},
 	)
 	deploys = prometheus.NewCounterVec(
-		prometheus.CounterOpts{Name: "nais.deployment", Help:"deployments done by NaisD"}, []string{"nais.app"},
+		prometheus.CounterOpts{Name: "deployments", Help:"deployments done by NaisD"}, []string{"nais_app"},
 	)
 )
 
@@ -166,7 +166,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
-	deploys.With(prometheus.Labels{"nais.app":deploymentRequest.Application}).Inc()
+	deploys.With(prometheus.Labels{"nais_app":deploymentRequest.Application}).Inc()
 
 	w.Write([]byte("ok\n"))
 }

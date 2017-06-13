@@ -14,4 +14,5 @@ import:
   - tools/clientcmd
 - package: github.com/prometheus/client_golang/prometheus
 - package: github.com/prometheus/client_golang/promehttp
+- package: github.com/stretchr/testify
 

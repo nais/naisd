@@ -4,7 +4,7 @@ import (
 	"testing"
 	"fmt"
 	"encoding/json"
-	"reflect"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCorrectService(t *testing.T) {
@@ -35,16 +35,48 @@ func TestCorrectService(t *testing.T) {
 	r := ResourceCreator{appConfig, req}
 
 	service := *r.CreateService()
-	j,_ := json.Marshal(service)
+
+	assert.Equal(t, "appname", service.ObjectMeta.Name)
+	assert.Equal(t, int32(123), service.Spec.Ports[0].TargetPort.IntVal)
+	assert.Equal(t, map[string]string{"app": "appname"}, service.Spec.Selector)
+}
+func TestCorrectDeployment(t *testing.T) {
+	appConfig := AppConfig{
+		[]Container{
+			{
+				Name:  "appname",
+				Image: "docker.hub/app",
+				Ports: []Port{
+					{
+						Name:       "portname",
+						Port:       123,
+						Protocol:   "http",
+						TargetPort: 321,
+					},
+				},
+			},
+		},
+	}
+
+	req := DeploymentRequest{
+		Application:  "appname",
+		Version:      "latest",
+		Environment:  "",
+		AppConfigUrl: ""}
+
+	r := ResourceCreator{appConfig, req}
+
+	deployment := *r.CreateDeployment()
+
+	j,_ := json.Marshal(deployment)
 	fmt.Println(string(j))
 
-	if service.ObjectMeta.Name != "appname" {
-		t.Error("Service name does not match application name")
-	}
-	if service.Spec.Ports[0].TargetPort.IntVal != 123 {
-		t.Error("Target Port does not match")
-	}
-	if !reflect.DeepEqual( service.Spec.Selector, map[string]string{"app":"appname"}) {
-		t.Error("selector does not match ")
-	}
+	assert.Equal(t, "appname" ,deployment.Name)
+	assert.Equal(t, "appname" ,deployment.Spec.Template.Name)
+	assert.Equal(t, "appname" ,deployment.Spec.Template.Spec.Containers[0].Name)
+	assert.Equal(t, "docker.hub/app:latest" ,deployment.Spec.Template.Spec.Containers[0].Image)
+	assert.Equal(t, int32(123) ,deployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+	assert.Equal(t, "latest" ,deployment.Spec.Template.Spec.Containers[0].Env[0].Value)
+
+
 }

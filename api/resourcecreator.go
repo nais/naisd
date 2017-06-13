@@ -7,6 +7,7 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/resource"
 	"fmt"
+	//"net/http"
 )
 
 type ResourceCreator struct {
@@ -44,6 +45,7 @@ func (r ResourceCreator) CreateService() *v1.Service {
 
 func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 	appName := r.DeploymentRequest.Application
+	//resp, err := http.Get("")
 
 	return &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{

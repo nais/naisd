@@ -1,0 +1,8 @@
+containers:
+- name: k8s-testapp
+  image: navikt/k8s-testapp:latest
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: http

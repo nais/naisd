@@ -1,5 +1,5 @@
-hash: 8454c2072466e9a66a50bb3f899bb8a7d13d02a0ff25ab148c0ded4f03e54921
-updated: 2017-06-13T23:25:26.653327331+02:00
+hash: b78105a709c1630ba308908dbe1e58d48b91681b10c1e29a0ed21a1e6766a55e
+updated: 2017-06-14T11:14:01.53530219+02:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -172,6 +172,8 @@ imports:
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
+- name: gopkg.in/h2non/gock.v1
+  version: 2897ffde93a71060ce86518f1e7317ec8433d2d6
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2

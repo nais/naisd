@@ -106,6 +106,8 @@ func fetchManifest(url string) (AppConfig, error) {
 
 	if response, err := http.Get(url); err != nil {
 		return AppConfig{}, err
+	}else if response.StatusCode > 299 {
+		return AppConfig{}, fmt.Errorf("could fetching manifests gave status " + string(response.StatusCode))
 	} else {
 		defer response.Body.Close()
 		var appConfig AppConfig
@@ -124,13 +126,19 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
-		panic(err)
+		fmt.Printf("Could not read body %s", err)
+		w.WriteHeader(400)
+		w.Write([]byte("Could not read body "))
+		return
 	}
 
 	var deploymentRequest DeploymentRequest
 
 	if err = json.Unmarshal(body, &deploymentRequest); err != nil {
-		panic(err)
+		fmt.Printf("Could not parse body %s", err)
+		w.WriteHeader(400)
+		w.Write([]byte("Could not parse body "))
+		return
 	}
 
 	fmt.Printf("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
@@ -148,7 +156,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Printf("Unable to fetch manifest %s", err)
 		w.WriteHeader(500)
-		w.Write([]byte(":("))
+		w.Write([]byte("Could not fetch manifest"))
+		return
 	}
 
 	fmt.Printf("Read app-config.yaml, looks like this:%s\n", appConfig)
@@ -156,6 +165,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
 		fmt.Println(err)
+		w.WriteHeader(500)
+		w.Write([]byte("CreateUpdate of Service failed with errror: " + err.Error()))
+		return
 	}
 
 	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig); err != nil {

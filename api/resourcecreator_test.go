@@ -52,6 +52,8 @@ func TestUpdateService(t *testing.T) {
 	appName := "appname"
 	nameSpace := "namesspace"
 	port := 234
+	clusterIp := "11.22.33.44"
+	resourceVersion := "sdfrdd"
 
 	appConfig := AppConfig{
 		[]Container{
@@ -84,17 +86,19 @@ func TestUpdateService(t *testing.T) {
 	ObjectMeta: v1.ObjectMeta{
 		Name: appName,
 		Namespace: nameSpace,
+		ResourceVersion: resourceVersion,
 	},
 		Spec: v1.ServiceSpec{
-		Type:     v1.ServiceTypeClusterIP,
-		Selector: map[string]string{"app": appName},
-		Ports: []v1.ServicePort{
-			{
-				Protocol: v1.ProtocolTCP,
-				Port:     80,
-				TargetPort: intstr.IntOrString{
-					Type:   intstr.Int,
-					IntVal: int32(port),
+			Type:     v1.ServiceTypeClusterIP,
+			ClusterIP: clusterIp,
+			Selector: map[string]string{"app": appName},
+			Ports: []v1.ServicePort{
+				{
+					Protocol: v1.ProtocolTCP,
+					Port:     80,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: int32(port),
 				},
 			},
 		},
@@ -107,6 +111,8 @@ func TestUpdateService(t *testing.T) {
 	service := *r.UpdateService(*svc)
 
 	assert.Equal(t, "appname", service.ObjectMeta.Name)
+	assert.Equal(t, resourceVersion, service.ObjectMeta.ResourceVersion)
+	assert.Equal(t, int32(port), service.Spec.Ports[0].TargetPort.IntVal)
 	assert.Equal(t, int32(port), service.Spec.Ports[0].TargetPort.IntVal)
 	assert.Equal(t, map[string]string{"app": appName}, service.Spec.Selector)
 }

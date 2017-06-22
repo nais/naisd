@@ -185,23 +185,19 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig) error {
 	appName := req.Application
 
-	serviceSpec := ResourceCreator{appConfig, req}.CreateService()
-
 	service := api.Clientset.CoreV1().Services(req.Environment)
 
 	svc, err := service.Get(appName)
 
 	switch {
 	case err == nil:
-		serviceSpec.ObjectMeta.ResourceVersion = svc.ObjectMeta.ResourceVersion
-		serviceSpec.Spec.ClusterIP = svc.Spec.ClusterIP
-		_, err = service.Update(serviceSpec)
+		_, err = service.Update(ResourceCreator{appConfig, req}.UpdateService(*svc))
 		if err != nil {
 			return fmt.Errorf("failed to update service: %s", err)
 		}
 		fmt.Println("service updated")
 	case errors.IsNotFound(err):
-		_, err2 := service.Create(serviceSpec)
+		_, err2 := service.Create(ResourceCreator{appConfig, req}.CreateService())
 
 		if err2 != nil {
 			return fmt.Errorf("failed to create service: %s", err2)

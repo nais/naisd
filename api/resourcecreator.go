@@ -7,12 +7,22 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/resource"
 	"fmt"
-	//"net/http"
+
 )
 
 type ResourceCreator struct {
 	AppConfig         AppConfig
 	DeploymentRequest DeploymentRequest
+}
+
+func (r ResourceCreator) UpdateService(existingService v1.Service ) *v1.Service{
+
+	serviceSpec :=  r.CreateService()
+	serviceSpec.ObjectMeta.ResourceVersion = existingService.ObjectMeta.ResourceVersion
+	serviceSpec.Spec.ClusterIP = existingService.Spec.ClusterIP
+
+	return serviceSpec
+
 }
 
 func (r ResourceCreator) CreateService() *v1.Service {
@@ -36,7 +46,7 @@ func (r ResourceCreator) CreateService() *v1.Service {
 					Port:     80,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: int32(r.AppConfig.Containers[0].Ports[0].Port),
+						IntVal: int32(r.AppConfig.Containers[0].Ports[0].TargetPort),
 					},
 				},
 			},

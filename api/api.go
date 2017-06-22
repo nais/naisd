@@ -191,18 +191,20 @@ func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig)
 
 	switch {
 	case err == nil:
-		_, err = service.Update(ResourceCreator{appConfig, req}.UpdateService(*svc))
+		newService, err := service.Update(ResourceCreator{appConfig, req}.UpdateService(*svc))
 		if err != nil {
 			return fmt.Errorf("failed to update service: %s", err)
 		}
-		fmt.Println("service updated")
+		fmt.Println("service updated: %s", newService)
 	case errors.IsNotFound(err):
-		_, err2 := service.Create(ResourceCreator{appConfig, req}.CreateService())
 
-		if err2 != nil {
+		if newService, err2 :=service.Create(ResourceCreator{AppConfig:appConfig, DeploymentRequest:req}.CreateService()); err2 != nil{
 			return fmt.Errorf("failed to create service: %s", err2)
+		} else {
+			fmt.Println("service created %s", newService)
+
 		}
-		fmt.Println("service created")
+
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
 	}

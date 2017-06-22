@@ -19,7 +19,7 @@ func main() {
 }
 
 // returns config using kubeconfig if provided, else from cluster context
-func newClientSet() kubernetes.Clientset {
+func newClientSet() kubernetes.Interface {
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")
 	flag.Parse()
 
@@ -42,5 +42,5 @@ func newClientSet() kubernetes.Clientset {
 		panic(err.Error())
 	}
 
-	return *clientset
+	return clientset
 }

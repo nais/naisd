@@ -25,6 +25,7 @@ func (r ResourceCreator) CreateService() *v1.Service {
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name: appName,
+			Namespace: r.DeploymentRequest.Environment,
 		},
 		Spec: v1.ServiceSpec{
 			Type:     v1.ServiceTypeClusterIP,

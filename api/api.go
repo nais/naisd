@@ -17,7 +17,7 @@ import (
 )
 
 type Api struct {
-	Clientset kubernetes.Clientset
+	Clientset kubernetes.Interface
 }
 
 var (
@@ -47,7 +47,6 @@ func (api Api) NewApi() http.Handler {
 }
 
 func (api Api) listPods(w http.ResponseWriter, _ *http.Request) {
-
 	requests.With(prometheus.Labels{"path": "pods"}).Inc()
 	pods, err := api.Clientset.CoreV1().Pods("").List(v1.ListOptions{})
 	if err != nil {
@@ -188,7 +187,7 @@ func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig)
 
 	serviceSpec := ResourceCreator{appConfig, req}.CreateService()
 
-	service := api.Clientset.Core().Services("default")
+	service := api.Clientset.CoreV1().Services(req.Environment)
 
 	svc, err := service.Get(appName)
 
@@ -202,9 +201,10 @@ func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig)
 		}
 		fmt.Println("service updated")
 	case errors.IsNotFound(err):
-		_, err = service.Create(serviceSpec)
-		if err != nil {
-			return fmt.Errorf("failed to create service: %s", err)
+		_, err2 := service.Create(serviceSpec)
+
+		if err2 != nil {
+			return fmt.Errorf("failed to create service: %s", err2)
 		}
 		fmt.Println("service created")
 	default:

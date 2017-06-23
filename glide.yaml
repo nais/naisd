@@ -17,3 +17,4 @@ import:
 - package: github.com/stretchr/testify
 - package: gopkg.in/h2non/gock.v1
 - package: github.com/imdario/mergo
+- pacakge: github.com/golang/glog

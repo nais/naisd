@@ -117,7 +117,7 @@ func TestUpdateService(t *testing.T) {
 	assert.Equal(t, map[string]string{"app": appName}, service.Spec.Selector)
 }
 
-func TestCorrectDeployment(t *testing.T) {
+func TestCreateDeployment(t *testing.T) {
 	appName := "appname"
 	nameSpace := "namesspace"
 	port := 234

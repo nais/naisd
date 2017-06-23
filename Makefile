@@ -8,7 +8,7 @@ dockerhub-release: linux docker-build push-dockerhub
 minikube: linux docker-minikube-build deploy
 
 test:
-	go test $(shell glide novendor)
+	go test $(shell glide novendor) --logtostderr=true
 
 build:
 	go build -o api

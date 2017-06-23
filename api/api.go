@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	"net/http"
-	"log"
 )
 
 type Api struct {
@@ -22,10 +22,10 @@ type Api struct {
 
 var (
 	requests = prometheus.NewCounterVec(
-		prometheus.CounterOpts{Name: "requests", Help:"requests pr path"}, []string{"path"},
+		prometheus.CounterOpts{Name: "requests", Help: "requests pr path"}, []string{"path"},
 	)
 	deploys = prometheus.NewCounterVec(
-		prometheus.CounterOpts{Name: "deployments", Help:"deployments done by NaisD"}, []string{"nais_app"},
+		prometheus.CounterOpts{Name: "deployments", Help: "deployments done by NaisD"}, []string{"nais_app"},
 	)
 )
 
@@ -56,7 +56,7 @@ func (api Api) listPods(w http.ResponseWriter, _ *http.Request) {
 	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
 
 	for _, pod := range pods.Items {
-		fmt.Println(pod.Name)
+		glog.Info(pod.Name)
 	}
 
 	output, _ := json.MarshalIndent(pods.Items, "", "    ")
@@ -101,11 +101,11 @@ func (api Api) testing(w http.ResponseWriter, r *http.Request) {
 
 func fetchManifest(url string) (AppConfig, error) {
 
-	log.Printf("Fetching manifest from URL %s\n", url)
+	glog.Info("Fetching manifest from URL %s\n", url)
 
 	if response, err := http.Get(url); err != nil {
 		return AppConfig{}, err
-	}else if response.StatusCode > 299 {
+	} else if response.StatusCode > 299 {
 		return AppConfig{}, fmt.Errorf("could fetching manifests gave status " + string(response.StatusCode))
 	} else {
 		defer response.Body.Close()
@@ -125,7 +125,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
-		fmt.Printf("Could not read body %s", err)
+		glog.Error("Could not read body %s", err)
 		w.WriteHeader(400)
 		w.Write([]byte("Could not read body "))
 		return
@@ -134,13 +134,13 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	var deploymentRequest DeploymentRequest
 
 	if err = json.Unmarshal(body, &deploymentRequest); err != nil {
-		fmt.Printf("Could not parse body %s", err)
+		glog.Error("Could not parse body %s", err)
 		w.WriteHeader(400)
 		w.Write([]byte("Could not parse body "))
 		return
 	}
 
-	fmt.Printf("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
+	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
 	var appConfigUrl string
 
@@ -159,26 +159,32 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Read app-config.yaml, looks like this:%s\n", appConfig)
-
+	glog.Infof("Read app-config.yaml, looks like this:%s\n", appConfig)
 
 	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
-		fmt.Println(err)
+		glog.Error("Failed creating or updring serivce", err)
 		w.WriteHeader(500)
 		w.Write([]byte("CreateUpdate of Service failed with errror: " + err.Error()))
 		return
 	}
 
 	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig); err != nil {
-		fmt.Println(err)
+		glog.Error("failed create or update Deployment", err)
+		w.WriteHeader(400)
+		w.Write([]byte("createOrUpdateDeployment failed with: " + err.Error()))
+		return
 	}
 
 	if err := api.createOrUpdateIngress(deploymentRequest, appConfig); err != nil {
-		fmt.Println(err)
+		glog.Error("failed create or update Ingress", err)
+		w.WriteHeader(400)
+		w.Write([]byte("createOrUpdateIngress failed with: " + err.Error()))
+		return
 	}
 
-	deploys.With(prometheus.Labels{"nais_app":deploymentRequest.Application}).Inc()
+	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
+	w.WriteHeader(200)
 	w.Write([]byte("ok\n"))
 }
 
@@ -195,15 +201,13 @@ func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig)
 		if err != nil {
 			return fmt.Errorf("failed to update service: %s", err)
 		}
-		fmt.Println("service updated: %s", newService)
+		glog.Info("service updated: %s", newService)
 	case errors.IsNotFound(err):
-
-		if newService, err2 :=service.Create(ResourceCreator{AppConfig:appConfig, DeploymentRequest:req}.CreateService()); err2 != nil{
+		newService, err2 := service.Create(ResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateService())
+		if err2 != nil {
 			return fmt.Errorf("failed to create service: %s", err2)
-		} else {
-			fmt.Println("service created %s", newService)
-
 		}
+		glog.Info("service created %s", newService)
 
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
@@ -213,26 +217,35 @@ func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig)
 }
 
 func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConfig) error {
-	deploymentSpec := ResourceCreator{appConfig, req}.CreateDeployment()
 
 	// Implement deployment update-or-create semantics.
-	deploy := api.Clientset.Extensions().Deployments("default")
-	_, err := deploy.Update(deploymentSpec)
+	deploy := api.Clientset.Extensions().Deployments(req.Environment)
+	deployment, err := deploy.Get(req.Application)
+
+
 	switch {
 	case err == nil:
-		fmt.Println("deployment controller updated")
-	case !errors.IsNotFound(err):
-		return fmt.Errorf("could not update deployment controller: %s", err)
-	default:
-		_, err = deploy.Create(deploymentSpec)
-		if err != nil {
-			return fmt.Errorf("could not create deployment controller: %s", err)
+		deploymentSpec := ResourceCreator{appConfig, req}.UpdateDeployment(deployment)
+		deployment, err2 := deploy.Update(deploymentSpec)
+		if err2 != nil {
+			return fmt.Errorf("failed to update deployment", err)
 		}
-		fmt.Println("deployment controller created")
+		glog.Info("deployment updated %s", deployment)
+	case !errors.IsNotFound(err):
+		deploymentSpec := ResourceCreator{appConfig, req}.CreateDeployment()
+		deployment, err2 := deploy.Create(deploymentSpec)
+		if err2 != nil {
+			return fmt.Errorf("could not create deployment %s", err2)
+		}
+		glog.Info("deployment created %s", deployment)
+	default:
+		return fmt.Errorf("unexpected error: %s", err)
+
 	}
 
 	return nil
 }
+
 
 func (api Api) createOrUpdateIngress(req DeploymentRequest, appConfig AppConfig) error {
 	ingressSpec := ResourceCreator{appConfig, req}.CreateIngress()

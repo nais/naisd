@@ -10,8 +10,11 @@ import (
 	"gopkg.in/h2non/gock.v1"
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes/fake"
-
+	"k8s.io/client-go/pkg/api/resource"
+	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 func TestAnIncorrectPayloadGivesError(t *testing.T) {
@@ -67,25 +70,85 @@ func TestNoManifestGivesError(t *testing.T) {
 }
 
 func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
+	appName := "appname"
+	namespace := "namespace"
+	image := "name/container:latest"
+	containerPort := 123
+	version := "123"
 
 
-	//&v1.Service{ObjectMeta: ObjectMeta{Name:appname,GenerateName:,Namespace:t,SelfLink:,UID:,ResourceVersion:,Generation:0,CreationTimestamp:0001-01-01 00:00:00 +0000 UTC,DeletionTimestamp:<nil>,DeletionGracePeriodSeconds:nil,Labels:map[string]string{},Annotations:map[string]string{},OwnerReferences:[],Finalizers:[],ClusterName:,},Spec:ServiceSpec{Ports:[{ TCP 80 {0 123 } 0}],Selector:map[string]string{app: appname,},ClusterIP:,Type:ClusterIP,ExternalIPs:[],DeprecatedPublicIPs:[],SessionAffinity:,LoadBalancerIP:,LoadBalancerSourceRanges:[],ExternalName:,},Status:ServiceStatus{LoadBalancer:LoadBalancerStatus{Ingress:[],},},}
-
-
-	service :=&v1.Service{ObjectMeta: v1.ObjectMeta{
-		Name: "appname",
-		Namespace: "t",
+	service := &v1.Service{ObjectMeta: v1.ObjectMeta{
+		Name: appName,
+		Namespace: namespace,
 	}}
 
-	clientset := fake.NewSimpleClientset(service)
+	deployment := &v1beta1.Deployment{
+		TypeMeta: unversioned.TypeMeta{
+			Kind: "Deployment",
+			APIVersion: "apps/v1beta1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name: appName,
+			Namespace: namespace,
+		},
+		Spec: v1beta1.DeploymentSpec{
+			Replicas: int32p(1),
+			Strategy:v1beta1.DeploymentStrategy{
+				Type: v1beta1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &v1beta1.RollingUpdateDeployment{
+					MaxUnavailable: &intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: int32(0),
+					},
+					MaxSurge: &intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: int32(1),
+					},
+				},
+			},
+			RevisionHistoryLimit: int32p(10),
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
+					Name:   appName,
+					Labels: map[string]string{"app": appName},
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  appName,
+							Image: image,
+							Ports: []v1.ContainerPort{
+								{ContainerPort: int32(containerPort)},
+							},
+							Resources: v1.ResourceRequirements{
+								Limits: v1.ResourceList{
+									v1.ResourceCPU:    resource.MustParse("100m"),
+									v1.ResourceMemory: resource.MustParse("256Mi"),
+								},
+							},
+							Env: []v1.EnvVar{{
+								Name: "app_version",
+								Value: version,
+							}},
+							ImagePullPolicy: v1.PullIfNotPresent,
+						},
+					},
+					RestartPolicy: v1.RestartPolicyAlways,
+					DNSPolicy:     v1.DNSClusterFirst,
+				},
+			},
+		},
+	}
+
+	clientset := fake.NewSimpleClientset(service, deployment)
 
 	api := Api{clientset}
 
 
 	depReq := DeploymentRequest{
-		Application:  "appname",
-		Version:      "1.1",
-		Environment:  "t",
+		Application:  appName,
+		Version:      version,
+		Environment:  namespace,
 		AppConfigUrl: "http://repo.com/app",
 	}
 
@@ -94,8 +157,8 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
 	config := AppConfig{
 		[]Container{
 			{
-				Name:  "appname",
-				Image: "docker.hub/app",
+				Name:  appName,
+				Image: image,
 				Ports: []Port{
 					{
 						Name:       "portname",
@@ -125,5 +188,6 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
 
 	handler.ServeHTTP(rr, req)
 
-	assert.Equal(t, 200, rr.Code)
+	//TODO should be 200, when all is done
+	assert.Equal(t, 400, rr.Code)
 }

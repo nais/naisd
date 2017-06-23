@@ -56,15 +56,16 @@ func (r ResourceCreator) CreateService() *v1.Service {
 
 func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 	appName := r.DeploymentRequest.Application
-	//resp, err := http.Get("")
+	namespace := r.DeploymentRequest.Environment
 
 	return &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Deployment",
-			APIVersion: "extensions/v1beta1",
+			APIVersion: "apps/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name: appName,
+			Namespace: namespace,
 		},
 		Spec: v1beta1.DeploymentSpec{
 			Replicas: int32p(1),
@@ -114,6 +115,12 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 			},
 		},
 	}
+}
+
+func (r ResourceCreator) UpdateDeployment(deployment *v1beta1.Deployment) *v1beta1.Deployment {
+	deploymentSpec := r.CreateDeployment()
+	deploymentSpec.Spec.Template.Spec.Containers[0].Image = r.AppConfig.Containers[0].Image
+	return deploymentSpec
 }
 
 func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {

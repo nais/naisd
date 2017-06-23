@@ -1,13 +1,12 @@
 package api
 
 import (
+	"fmt"
+	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/api/resource"
-	"fmt"
-
+	"k8s.io/client-go/pkg/util/intstr"
 )
 
 type ResourceCreator struct {
@@ -15,9 +14,9 @@ type ResourceCreator struct {
 	DeploymentRequest DeploymentRequest
 }
 
-func (r ResourceCreator) UpdateService(existingService v1.Service ) *v1.Service{
+func (r ResourceCreator) UpdateService(existingService v1.Service) *v1.Service {
 
-	serviceSpec :=  r.CreateService()
+	serviceSpec := r.CreateService()
 	serviceSpec.ObjectMeta.ResourceVersion = existingService.ObjectMeta.ResourceVersion
 	serviceSpec.Spec.ClusterIP = existingService.Spec.ClusterIP
 
@@ -34,7 +33,7 @@ func (r ResourceCreator) CreateService() *v1.Service {
 			APIVersion: "v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name: appName,
+			Name:      appName,
 			Namespace: r.DeploymentRequest.Environment,
 		},
 		Spec: v1.ServiceSpec{
@@ -64,7 +63,7 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 			APIVersion: "apps/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name: appName,
+			Name:      appName,
 			Namespace: namespace,
 		},
 		Spec: v1beta1.DeploymentSpec{
@@ -103,7 +102,7 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 								},
 							},
 							Env: []v1.EnvVar{{
-								Name: "app_version",
+								Name:  "app_version",
 								Value: r.DeploymentRequest.Version,
 							}},
 							ImagePullPolicy: v1.PullIfNotPresent,
@@ -119,7 +118,9 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 
 func (r ResourceCreator) UpdateDeployment(deployment *v1beta1.Deployment) *v1beta1.Deployment {
 	deploymentSpec := r.CreateDeployment()
-	deploymentSpec.Spec.Template.Spec.Containers[0].Image = r.AppConfig.Containers[0].Image
+	deploymentSpec.ObjectMeta.ResourceVersion = deployment.ObjectMeta.ResourceVersion
+	deploymentSpec.Spec.Template.Spec.Containers[0].Image =  fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version)
+
 	return deploymentSpec
 }
 
@@ -128,7 +129,7 @@ func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
 
 	return &v1beta1.Ingress{
 		TypeMeta: unversioned.TypeMeta{
-			Kind: "Ingress",
+			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{

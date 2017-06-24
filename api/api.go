@@ -248,22 +248,27 @@ func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConf
 
 
 func (api Api) createOrUpdateIngress(req DeploymentRequest, appConfig AppConfig) error {
-	ingressSpec := ResourceCreator{appConfig, req}.CreateIngress()
 
 	// Implement deployment update-or-create semantics.
-	ingress := api.Clientset.Extensions().Ingresses("default")
-	_, err := ingress.Update(ingressSpec)
+	ingress:= api.Clientset.Extensions().Ingresses("default")
+	ingr, err := ingress.Get(req.Application)
 	switch {
 	case err == nil:
-		fmt.Println("ingress updated")
-	case !errors.IsNotFound(err):
-		return fmt.Errorf("could not update ingress: %s", err)
-	default:
-		_, err = ingress.Create(ingressSpec)
+		ingressSpec := ResourceCreator{appConfig, req}.updateIngress(ingr)
+		ingr, err := ingress.Update(ingressSpec)
 		if err != nil {
-			return fmt.Errorf("could not create ingress: %s", err)
+			return fmt.Errorf("failed to update ingress", ingr)
 		}
-		fmt.Println("ingress created")
+		glog.Info("ingress updated %s", ingr)
+	case !errors.IsNotFound(err):
+		ingressSpec := ResourceCreator{appConfig, req}.CreateIngress()
+		ingr, err := ingress.Create(ingressSpec)
+		if err != nil {
+			return fmt.Errorf("failed to create ingress", ingr)
+		}
+		glog.Info("ingress created %s", ingr)
+	default:
+		return fmt.Errorf("unexpected error: %s", err)
 	}
 
 	return nil

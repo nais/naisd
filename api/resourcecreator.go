@@ -157,6 +157,14 @@ func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
 	}
 }
 
+func (r ResourceCreator) updateIngress(ingress *v1beta1.Ingress) *v1beta1.Ingress {
+	ingressSpec := r.CreateIngress()
+	ingressSpec.ObjectMeta.ResourceVersion = ingress.ObjectMeta.ResourceVersion
+
+	return ingress
+}
+
+
 func int32p(i int32) *int32 {
 	return &i
 }

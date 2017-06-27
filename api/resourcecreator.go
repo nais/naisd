@@ -25,7 +25,6 @@ func (r ResourceCreator) UpdateService(existingService v1.Service) *v1.Service {
 }
 
 func (r ResourceCreator) CreateService() *v1.Service {
-	appName := r.DeploymentRequest.Application
 
 	return &v1.Service{
 		TypeMeta: unversioned.TypeMeta{
@@ -33,12 +32,12 @@ func (r ResourceCreator) CreateService() *v1.Service {
 			APIVersion: "v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      appName,
+			Name:      r.DeploymentRequest.Application,
 			Namespace: r.DeploymentRequest.Environment,
 		},
 		Spec: v1.ServiceSpec{
 			Type:     v1.ServiceTypeClusterIP,
-			Selector: map[string]string{"app": appName},
+			Selector: map[string]string{"app": r.DeploymentRequest.Application},
 			Ports: []v1.ServicePort{
 				{
 					Protocol: v1.ProtocolTCP,

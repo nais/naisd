@@ -10,9 +10,6 @@ import (
 	"testing"
 )
 
-
-
-
 func TestService(t *testing.T) {
 
 	appName := "appname"
@@ -25,8 +22,7 @@ func TestService(t *testing.T) {
 	version := "13"
 	newVersion := "14"
 
-
-	appConfig :=  defaaultAppConfig(appName, image, port, targetPort)
+	appConfig := defaaultAppConfig(appName, image, port, targetPort)
 
 	req := DeploymentRequest{
 		Application:  appName,
@@ -67,7 +63,7 @@ func TestService(t *testing.T) {
 		assert.Equal(t, version, deployment.Spec.Template.Spec.Containers[0].Env[0].Value)
 	})
 
-	t.Run("AValidDeploymentCanBeUpdated", func(t *testing.T){
+	t.Run("AValidDeploymentCanBeUpdated", func(t *testing.T) {
 		r.DeploymentRequest.Version = newVersion
 
 		updatedDeployment := *r.UpdateDeployment(deployment)
@@ -79,7 +75,7 @@ func TestService(t *testing.T) {
 		assert.Equal(t, int32(port), updatedDeployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 		assert.Equal(t, newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Env[0].Value)
 	})
-	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewIngress", func(t *testing.T){
+	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewIngress", func(t *testing.T) {
 		ingress := ResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateIngress()
 
 		assert.Equal(t, appName, ingress.ObjectMeta.Name)
@@ -88,7 +84,7 @@ func TestService(t *testing.T) {
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
 	})
 
-	t.Run("AValidIngressCanBeUpdated", func(t *testing.T){
+	t.Run("AValidIngressCanBeUpdated", func(t *testing.T) {
 		updatedIngress := ResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.updateIngress(ingress)
 
 		assert.Equal(t, appName, updatedIngress.ObjectMeta.Name)

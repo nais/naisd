@@ -151,7 +151,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appConfig, err := fetchManifest(appConfigUrl)
-
 	if err != nil {
 		fmt.Printf("Unable to fetch manifest %s", err)
 		w.WriteHeader(500)
@@ -170,14 +169,14 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig); err != nil {
 		glog.Error("failed create or update Deployment", err)
-		w.WriteHeader(400)
+		w.WriteHeader(500)
 		w.Write([]byte("createOrUpdateDeployment failed with: " + err.Error()))
 		return
 	}
 
 	if err := api.createOrUpdateIngress(deploymentRequest, appConfig); err != nil {
 		glog.Error("failed create or update Ingress", err)
-		w.WriteHeader(400)
+		w.WriteHeader(500)
 		w.Write([]byte("createOrUpdateIngress failed with: " + err.Error()))
 		return
 	}
@@ -189,57 +188,50 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig) error {
-	appName := req.Application
 
-	service := api.Clientset.CoreV1().Services(req.Environment)
-
-	svc, err := service.Get(appName)
+	serviceClient := api.Clientset.CoreV1().Services(req.Environment)
+	svc, err := serviceClient.Get(req.Application)
 
 	switch {
 	case err == nil:
-		newService, err := service.Update(ResourceCreator{appConfig, req}.UpdateService(*svc))
+		newService, err := serviceClient.Update(ResourceCreator{appConfig, req}.UpdateService(*svc))
 		if err != nil {
 			return fmt.Errorf("failed to update service: %s", err)
 		}
-		glog.Info("service updated: %s", newService)
+		glog.Info("serviceClient updated: %s", newService)
 	case errors.IsNotFound(err):
-		newService, err2 := service.Create(ResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateService())
-		if err2 != nil {
-			return fmt.Errorf("failed to create service: %s", err2)
+		newService, err := serviceClient.Create(ResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateService())
+		if err != nil {
+			return fmt.Errorf("failed to create service: %s", err)
 		}
 		glog.Info("service created %s", newService)
 
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
 	}
-
 	return nil
 }
 
 func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConfig) error {
 
-	// Implement deployment update-or-create semantics.
-	deploy := api.Clientset.Extensions().Deployments(req.Environment)
-	deployment, err := deploy.Get(req.Application)
+	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(req.Environment)
+	deployment, err := deploymentClient.Get(req.Application)
 
 	switch {
 	case err == nil:
-		deploymentSpec := ResourceCreator{appConfig, req}.UpdateDeployment(deployment)
-		deployment, err2 := deploy.Update(deploymentSpec)
-		if err2 != nil {
+		updatedDeployment, err := deploymentClient.Update(ResourceCreator{appConfig, req}.UpdateDeployment(deployment))
+		if err != nil {
 			return fmt.Errorf("failed to update deployment", err)
 		}
-		glog.Info("deployment updated %s", deployment)
+		glog.Info("deployment updated %s", updatedDeployment)
 	case !errors.IsNotFound(err):
-		deploymentSpec := ResourceCreator{appConfig, req}.CreateDeployment()
-		deployment, err2 := deploy.Create(deploymentSpec)
-		if err2 != nil {
-			return fmt.Errorf("could not create deployment %s", err2)
+		newDeployment, err := deploymentClient.Create(ResourceCreator{appConfig, req}.CreateDeployment())
+		if err != nil {
+			return fmt.Errorf("could not create deployment %s", err)
 		}
-		glog.Info("deployment created %s", deployment)
+		glog.Info("deployment created %s", newDeployment)
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
-
 	}
 
 	return nil
@@ -247,24 +239,21 @@ func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConf
 
 func (api Api) createOrUpdateIngress(req DeploymentRequest, appConfig AppConfig) error {
 
-	// Implement deployment update-or-create semantics.
-	ingress := api.Clientset.Extensions().Ingresses(req.Environment)
-	ingr, err := ingress.Get(req.Application)
+	ingressClient := api.Clientset.Extensions().Ingresses(req.Environment)
+	existingIngress, err := ingressClient.Get(req.Application)
 	switch {
 	case err == nil:
-		ingressSpec := ResourceCreator{appConfig, req}.updateIngress(ingr)
-		ingr, err := ingress.Update(ingressSpec)
+		updatedIngress, err := ingressClient.Update(ResourceCreator{appConfig, req}.updateIngress(existingIngress))
 		if err != nil {
-			return fmt.Errorf("failed to update ingress", ingr)
+			return fmt.Errorf("failed to update ingress", updatedIngress)
 		}
-		glog.Info("ingress updated %s", ingr)
+		glog.Info("ingressClient updated %s", updatedIngress)
 	case !errors.IsNotFound(err):
-		ingressSpec := ResourceCreator{appConfig, req}.CreateIngress()
-		ingr, err := ingress.Create(ingressSpec)
+		newIngress, err := ingressClient.Create(ResourceCreator{appConfig, req}.CreateIngress())
 		if err != nil {
-			return fmt.Errorf("failed to create ingress", ingr)
+			return fmt.Errorf("failed to create ingress", newIngress)
 		}
-		glog.Info("ingress created %s", ingr)
+		glog.Info("ingressClient created %s", newIngress)
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
 	}

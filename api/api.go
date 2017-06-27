@@ -222,7 +222,6 @@ func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConf
 	deploy := api.Clientset.Extensions().Deployments(req.Environment)
 	deployment, err := deploy.Get(req.Application)
 
-
 	switch {
 	case err == nil:
 		deploymentSpec := ResourceCreator{appConfig, req}.UpdateDeployment(deployment)

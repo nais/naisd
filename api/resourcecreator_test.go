@@ -299,3 +299,73 @@ func TestCreateIngress(t *testing.T){
 	assert.Equal(t, appName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 	assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
 }
+
+func TestUpdateIngress(t * testing.T){
+
+
+	appName := "appname"
+	nameSpace := "namespace"
+	port := 234
+	image := "docker.hub/app"
+	version := "latest"
+
+	appConfig := AppConfig{
+		[]Container{
+			{
+				Name:  appName,
+				Image: image,
+				Ports: []Port{
+					{
+						Name:       "portname",
+						Port:       port,
+						Protocol:   "http",
+						TargetPort: 123,
+					},
+				},
+			},
+		},
+	}
+
+	req := DeploymentRequest{
+		Application:  appName,
+		Version:      version,
+		Environment:  nameSpace,
+		AppConfigUrl: ""}
+
+	ingress := &v1beta1.Ingress{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name: appName,
+		},
+		Spec: v1beta1.IngressSpec{
+			Rules: []v1beta1.IngressRule{
+				{
+					Host: appName + ".nais.devillo.no",
+					IngressRuleValue: v1beta1.IngressRuleValue{
+						HTTP: &v1beta1.HTTPIngressRuleValue{
+							Paths: []v1beta1.HTTPIngressPath{
+								{
+									Backend: v1beta1.IngressBackend{
+										ServiceName: appName,
+										ServicePort: intstr.IntOrString{IntVal: 80},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	newIngress := ResourceCreator{AppConfig:appConfig, DeploymentRequest:req}.updateIngress(ingress);
+
+	assert.Equal(t, appName, ingress.ObjectMeta.Name)
+	assert.Equal(t, appName+".nais.devillo.no", newIngress.Spec.Rules[0].Host)
+	assert.Equal(t, appName, newIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
+	assert.Equal(t, intstr.FromInt(80), newIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
+
+}

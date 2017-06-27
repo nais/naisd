@@ -53,6 +53,14 @@ func (r ResourceCreator) CreateService() *v1.Service {
 	}
 }
 
+func (r ResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
+	deploymentSpec := r.CreateDeployment()
+	deploymentSpec.ObjectMeta.ResourceVersion = exisitingDeployment.ObjectMeta.ResourceVersion
+	deploymentSpec.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version)
+
+	return deploymentSpec
+}
+
 func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 	appName := r.DeploymentRequest.Application
 	namespace := r.DeploymentRequest.Environment
@@ -116,14 +124,6 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 	}
 }
 
-func (r ResourceCreator) UpdateDeployment(deployment *v1beta1.Deployment) *v1beta1.Deployment {
-	deploymentSpec := r.CreateDeployment()
-	deploymentSpec.ObjectMeta.ResourceVersion = deployment.ObjectMeta.ResourceVersion
-	deploymentSpec.Spec.Template.Spec.Containers[0].Image =  fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version)
-
-	return deploymentSpec
-}
-
 func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
 	appName := r.DeploymentRequest.Application
 
@@ -133,8 +133,8 @@ func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
 			APIVersion: "extensions/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name: appName,
-			Namespace:r.DeploymentRequest.Environment,
+			Name:      appName,
+			Namespace: r.DeploymentRequest.Environment,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -158,13 +158,12 @@ func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
 	}
 }
 
-func (r ResourceCreator) updateIngress(ingress *v1beta1.Ingress) *v1beta1.Ingress {
+func (r ResourceCreator) updateIngress(existingIngress *v1beta1.Ingress) *v1beta1.Ingress {
 	ingressSpec := r.CreateIngress()
-	ingressSpec.ObjectMeta.ResourceVersion = ingress.ObjectMeta.ResourceVersion
+	ingressSpec.ObjectMeta.ResourceVersion = existingIngress.ObjectMeta.ResourceVersion
 
-	return ingress
+	return existingIngress
 }
-
 
 func int32p(i int32) *int32 {
 	return &i

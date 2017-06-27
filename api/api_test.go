@@ -1,20 +1,20 @@
 package api
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/resource"
-	"k8s.io/client-go/pkg/util/intstr"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/pkg/util/intstr"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
 )
 
 func TestAnIncorrectPayloadGivesError(t *testing.T) {
@@ -69,31 +69,30 @@ func TestNoManifestGivesError(t *testing.T) {
 	assert.Equal(t, 500, rr.Code)
 }
 
-func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
+func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
 	image := "name/container:latest"
 	containerPort := 123
 	version := "123"
 
-
 	service := &v1.Service{ObjectMeta: v1.ObjectMeta{
-		Name: appName,
+		Name:      appName,
 		Namespace: namespace,
 	}}
 
 	deployment := &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{
-			Kind: "Deployment",
+			Kind:       "Deployment",
 			APIVersion: "apps/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name: appName,
+			Name:      appName,
 			Namespace: namespace,
 		},
 		Spec: v1beta1.DeploymentSpec{
 			Replicas: int32p(1),
-			Strategy:v1beta1.DeploymentStrategy{
+			Strategy: v1beta1.DeploymentStrategy{
 				Type: v1beta1.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &v1beta1.RollingUpdateDeployment{
 					MaxUnavailable: &intstr.IntOrString{
@@ -127,7 +126,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
 								},
 							},
 							Env: []v1.EnvVar{{
-								Name: "app_version",
+								Name:  "app_version",
 								Value: version,
 							}},
 							ImagePullPolicy: v1.PullIfNotPresent,
@@ -146,7 +145,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
 			APIVersion: "extensions/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name: appName,
+			Name:      appName,
 			Namespace: namespace,
 		},
 		Spec: v1beta1.IngressSpec{
@@ -174,7 +173,6 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
 
 	api := Api{clientset}
 
-
 	depReq := DeploymentRequest{
 		Application:  appName,
 		Version:      version,
@@ -200,14 +198,14 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
 			},
 		},
 	}
-	data,_ := yaml.Marshal(config)
+	data, _ := yaml.Marshal(config)
 
 	gock.New("http://repo.com").
 		Get("/app").
 		Reply(200).
 		BodyString(string(data))
 
-	json,_ := json.Marshal(depReq)
+	json, _ := json.Marshal(depReq)
 
 	body := strings.NewReader(string(json))
 

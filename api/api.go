@@ -245,11 +245,10 @@ func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConf
 	return nil
 }
 
-
 func (api Api) createOrUpdateIngress(req DeploymentRequest, appConfig AppConfig) error {
 
 	// Implement deployment update-or-create semantics.
-	ingress:= api.Clientset.Extensions().Ingresses(req.Environment)
+	ingress := api.Clientset.Extensions().Ingresses(req.Environment)
 	ingr, err := ingress.Get(req.Application)
 	switch {
 	case err == nil:

@@ -260,3 +260,42 @@ func TestUpdateDeployment(t *testing.T) {
 	assert.Equal(t, newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Env[0].Value)
 
 }
+
+func TestCreateIngress(t *testing.T){
+	appName := "appname"
+	nameSpace := "namespace"
+	port := 234
+	image := "docker.hub/app"
+	version := "latest"
+
+	appConfig := AppConfig{
+		[]Container{
+			{
+				Name:  appName,
+				Image: image,
+				Ports: []Port{
+					{
+						Name:       "portname",
+						Port:       port,
+						Protocol:   "http",
+						TargetPort: 123,
+					},
+				},
+			},
+		},
+	}
+
+	req := DeploymentRequest{
+		Application:  appName,
+		Version:      version,
+		Environment:  nameSpace,
+		AppConfigUrl: ""}
+
+
+	ingress := ResourceCreator{AppConfig:appConfig, DeploymentRequest:req}.CreateIngress()
+
+	assert.Equal(t, appName, ingress.ObjectMeta.Name)
+	assert.Equal(t, appName+".nais.devillo.no", ingress.Spec.Rules[0].Host)
+	assert.Equal(t, appName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
+	assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
+}

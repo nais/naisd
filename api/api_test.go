@@ -140,7 +140,37 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
 		},
 	}
 
-	clientset := fake.NewSimpleClientset(service, deployment)
+	ingress := &v1beta1.Ingress{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name: appName,
+			Namespace: namespace,
+		},
+		Spec: v1beta1.IngressSpec{
+			Rules: []v1beta1.IngressRule{
+				{
+					Host: appName + ".nais.devillo.no",
+					IngressRuleValue: v1beta1.IngressRuleValue{
+						HTTP: &v1beta1.HTTPIngressRuleValue{
+							Paths: []v1beta1.HTTPIngressPath{
+								{
+									Backend: v1beta1.IngressBackend{
+										ServiceName: appName,
+										ServicePort: intstr.IntOrString{IntVal: 80},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	clientset := fake.NewSimpleClientset(service, deployment, ingress)
 
 	api := Api{clientset}
 
@@ -189,5 +219,5 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T){
 	handler.ServeHTTP(rr, req)
 
 	//TODO should be 200, when all is done
-	assert.Equal(t, 400, rr.Code)
+	assert.Equal(t, 200, rr.Code)
 }

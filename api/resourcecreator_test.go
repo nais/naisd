@@ -268,6 +268,7 @@ func TestCreateIngress(t *testing.T){
 	image := "docker.hub/app"
 	version := "latest"
 
+
 	appConfig := AppConfig{
 		[]Container{
 			{
@@ -339,6 +340,7 @@ func TestUpdateIngress(t * testing.T){
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name: appName,
+			Namespace: nameSpace,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{

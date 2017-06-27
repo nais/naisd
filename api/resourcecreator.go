@@ -134,6 +134,7 @@ func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name: appName,
+			Namespace:r.DeploymentRequest.Environment,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{

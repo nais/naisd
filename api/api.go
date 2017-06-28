@@ -18,6 +18,7 @@ import (
 
 type Api struct {
 	Clientset kubernetes.Interface
+	Fasit Fasit
 }
 
 var (

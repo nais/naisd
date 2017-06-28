@@ -15,7 +15,7 @@ const Port string = ":8081"
 
 func main() {
 	fmt.Printf("serving @ %s\n", Port)
-	http.ListenAndServe(Port, api.Api{newClientSet()}.NewApi())
+	http.ListenAndServe(Port, api.Api{newClientSet(), fasit()}.NewApi())
 }
 
 // returns config using kubeconfig if provided, else from cluster context
@@ -43,4 +43,8 @@ func newClientSet() kubernetes.Interface {
 	}
 
 	return clientset
+}
+
+func fasit() api.Fasit{
+	return api.FasitAdapter{"www"}
 }

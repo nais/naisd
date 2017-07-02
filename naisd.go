@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
 
-	"github.com/navikt/naisd/api"
+	"github.com/nais/naisd/api"
 )
 
 const Port string = ":8081"

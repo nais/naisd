@@ -11,7 +11,8 @@ import (
 
 var httpReqs = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "fasit_http_requests_total",
+		Subsystem: "fasit",
+		Name: "http_requests_total",
 		Help: "How many HTTP requests processed, partitioned by status code and HTTP method.",
 	},
 	[]string{"code", "method"},

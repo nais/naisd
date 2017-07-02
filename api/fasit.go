@@ -11,12 +11,27 @@ import (
 
 var httpReqs = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Subsystem: "fasit",
+		Subsystem: "fasitAdapter",
 		Name: "http_requests_total",
 		Help: "How many HTTP requests processed, partitioned by status code and HTTP method.",
 	},
-	[]string{"code", "method"},
-)
+	[]string{"code", "method"})
+
+var reqs = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Subsystem: "fasit",
+		Name: "requests",
+		Help: "Incoming requests to fasitadapter",
+	},
+	[]string{})
+
+var errors = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Subsystem: "fasit",
+		Name: "errors",
+		Help: "Errors occured in fasitadapter",
+	},
+	[]string{"type"}, )
 
 func init() {
 	prometheus.MustRegister(httpReqs)
@@ -52,19 +67,22 @@ type FasitAdapter struct {
 }
 
 func (fasit FasitAdapter) getResource(alias string, resourceType string, environment string, application string, zone string) (resource FasitResource, err error) {
-
+	reqs.With(nil).Inc()
 	req, err := buildRequest(err, fasit, alias, resourceType, environment, application, zone)
 	if err != nil {
+		errors.WithLabelValues("create_request").Inc()
 		return FasitResource{}, fmt.Errorf("could not create request: ", err)
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		errors.WithLabelValues("contact_fasit").Inc()
 		return FasitResource{}, fmt.Errorf("error contacting fasit: ", err)
 	}
 	httpReqs.WithLabelValues(string(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
+		errors.WithLabelValues("error_fasit").Inc()
 		return FasitResource{}, fmt.Errorf("Fasit gave errormessage: " + strconv.Itoa(resp.StatusCode))
 	}
 
@@ -72,11 +90,13 @@ func (fasit FasitAdapter) getResource(alias string, resourceType string, environ
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		errors.WithLabelValues("read_bpdy").Inc()
 		return FasitResource{}, fmt.Errorf("Could not read body: ", err)
 	}
 
 	err = json.Unmarshal(body, &resource)
 	if err != nil {
+		errors.WithLabelValues("unmarshal_bpdy").Inc()
 		return FasitResource{}, fmt.Errorf("Could not unmarshal body: ", err)
 	}
 	return resource, nil

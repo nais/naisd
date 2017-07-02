@@ -1,0 +1,32 @@
+{
+  "type": "datasource",
+  "alias": "bastaDB",
+  "scope": {
+    "environmentclass": "p",
+    "application": "appName"
+  },
+  "properties": {
+    "url": "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta",
+    "username": "basta"
+  },
+  "secrets": {
+    "password": {
+      "ref": "https://fasit.adeo.no/api/v2/secrets/2586446"
+    }
+  },
+  "files": {},
+  "dodgy": false,
+  "id": 848186,
+  "revision": 2586447,
+  "created": "2015-03-24T08:43:30.942",
+  "updated": "2015-03-24T08:43:30.942",
+  "lifecycle": {},
+  "accesscontrol": {
+    "environmentclass": "p",
+    "adgroups": []
+  },
+  "links": {
+    "self": "https://fasit.adeo.no/api/v2/resources/848186",
+    "revisions": "https://fasit.adeo.no/api/v2/resources/848186/revisions"
+  }
+}

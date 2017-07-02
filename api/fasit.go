@@ -25,7 +25,7 @@ var reqs = prometheus.NewCounterVec(
 	},
 	[]string{})
 
-var errors = prometheus.NewCounterVec(
+var errs = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Subsystem: "fasit",
 		Name: "errors",
@@ -70,19 +70,19 @@ func (fasit FasitAdapter) getResource(alias string, resourceType string, environ
 	reqs.With(nil).Inc()
 	req, err := buildRequest(err, fasit, alias, resourceType, environment, application, zone)
 	if err != nil {
-		errors.WithLabelValues("create_request").Inc()
+		errs.WithLabelValues("create_request").Inc()
 		return FasitResource{}, fmt.Errorf("could not create request: ", err)
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		errors.WithLabelValues("contact_fasit").Inc()
+		errs.WithLabelValues("contact_fasit").Inc()
 		return FasitResource{}, fmt.Errorf("error contacting fasit: ", err)
 	}
 	httpReqs.WithLabelValues(string(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
-		errors.WithLabelValues("error_fasit").Inc()
+		errs.WithLabelValues("error_fasit").Inc()
 		return FasitResource{}, fmt.Errorf("Fasit gave errormessage: " + strconv.Itoa(resp.StatusCode))
 	}
 
@@ -90,13 +90,13 @@ func (fasit FasitAdapter) getResource(alias string, resourceType string, environ
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		errors.WithLabelValues("read_bpdy").Inc()
+		errs.WithLabelValues("read_bpdy").Inc()
 		return FasitResource{}, fmt.Errorf("Could not read body: ", err)
 	}
 
 	err = json.Unmarshal(body, &resource)
 	if err != nil {
-		errors.WithLabelValues("unmarshal_bpdy").Inc()
+		errs.WithLabelValues("unmarshal_bpdy").Inc()
 		return FasitResource{}, fmt.Errorf("Could not unmarshal body: ", err)
 	}
 	return resource, nil

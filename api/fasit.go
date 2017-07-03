@@ -79,7 +79,7 @@ func (fasit FasitAdapter) getResources(resourcesSpec []FasitResource, environmen
 
 func (fasit FasitAdapter) getResource(alias string, resourceType string, environment string, application string, zone string) (resource FasitResource, err error) {
 	reqs.With(nil).Inc()
-	req, err := buildRequest(err, fasit, alias, resourceType, environment, application, zone)
+	req, err := buildRequest(fasit.FasitUrl, alias, resourceType, environment, application, zone)
 	if err != nil {
 		errs.WithLabelValues("create_request").Inc()
 		return FasitResource{}, fmt.Errorf("could not create request: ", err)
@@ -112,8 +112,8 @@ func (fasit FasitAdapter) getResource(alias string, resourceType string, environ
 	}
 	return resource, nil
 }
-func buildRequest(err error, fasit FasitAdapter, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/scopedresource", nil)
+func buildRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
+	req, err := http.NewRequest("GET", fasit+"/api/v2/scopedresource", nil)
 	q := req.URL.Query()
 	q.Add("alias", alias)
 	q.Add("type", resourceType)

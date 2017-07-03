@@ -1,6 +1,6 @@
 {
   "type": "datasource",
-  "alias": "alias1",
+  "alias": "alias2",
   "scope": {
     "environmentclass": "p",
     "application": "appName"

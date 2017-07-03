@@ -198,6 +198,8 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 				},
 			},
 		},
+		[]Resource{},
+
 	}
 	data, _ := yaml.Marshal(config)
 

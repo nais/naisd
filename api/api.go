@@ -18,7 +18,7 @@ import (
 
 type Api struct {
 	Clientset kubernetes.Interface
-	Fasit Fasit
+	Fasit     Fasit
 }
 
 var (
@@ -78,8 +78,16 @@ type DeploymentRequest struct {
 	AppConfigUrl string
 }
 
+
+
 type AppConfig struct {
 	Containers []Container
+	Resources  []Resource
+}
+
+type Resource struct {
+	ResourceType string
+	ResourceName string
 }
 
 type Port struct {
@@ -159,6 +167,24 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var resourceRequests []NaisResourceRequest
+
+	for _, fasitRes := range appConfig.Resources {
+		resourceRequests = append(resourceRequests, NaisResourceRequest{fasitRes.ResourceName, fasitRes.ResourceType})
+	}
+
+	var resources []NaisResource
+
+	if len(resourceRequests)>0 {
+		resources, err = api.Fasit.getResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, "zone")
+	}
+	if err != nil {
+		glog.Error("Error getting fasit resources", err)
+		w.WriteHeader(500)
+		w.Write([]byte("Error getting fasit resources: " + err.Error()))
+		return
+	}
+
 	glog.Infof("Read app-config.yaml, looks like this:%s\n", appConfig)
 
 	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
@@ -168,7 +194,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig); err != nil {
+	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig, resources); err != nil {
 		glog.Error("failed create or update Deployment", err)
 		w.WriteHeader(500)
 		w.Write([]byte("createOrUpdateDeployment failed with: " + err.Error()))
@@ -213,20 +239,20 @@ func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig)
 	return nil
 }
 
-func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConfig) error {
+func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConfig, resource []NaisResource) error {
 
 	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(req.Environment)
 	deployment, err := deploymentClient.Get(req.Application)
 
 	switch {
 	case err == nil:
-		updatedDeployment, err := deploymentClient.Update(ResourceCreator{appConfig, req}.UpdateDeployment(deployment))
+		updatedDeployment, err := deploymentClient.Update(ResourceCreator{appConfig, req}.UpdateDeployment(deployment, resource))
 		if err != nil {
 			return fmt.Errorf("failed to update deployment", err)
 		}
 		glog.Info("deployment updated %s", updatedDeployment)
 	case !errors.IsNotFound(err):
-		newDeployment, err := deploymentClient.Create(ResourceCreator{appConfig, req}.CreateDeployment())
+		newDeployment, err := deploymentClient.Create(ResourceCreator{appConfig, req}.CreateDeployment(resource))
 		if err != nil {
 			return fmt.Errorf("could not create deployment %s", err)
 		}

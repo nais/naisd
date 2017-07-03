@@ -53,7 +53,7 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewDeployment", func(t *testing.T) {
-		deployment := *r.CreateDeployment()
+		deployment := *r.CreateDeployment([]NaisResource{})
 
 		assert.Equal(t, appName, deployment.Name)
 		assert.Equal(t, appName, deployment.Spec.Template.Name)
@@ -66,7 +66,7 @@ func TestService(t *testing.T) {
 	t.Run("AValidDeploymentCanBeUpdated", func(t *testing.T) {
 		r.DeploymentRequest.Version = newVersion
 
-		updatedDeployment := *r.UpdateDeployment(deployment)
+		updatedDeployment := *r.UpdateDeployment(deployment, []NaisResource{})
 
 		assert.Equal(t, appName, updatedDeployment.Name)
 		assert.Equal(t, appName, updatedDeployment.Spec.Template.Name)
@@ -109,7 +109,7 @@ func defaaultAppConfig(appName string, image string, port int, targetPort int) A
 					},
 				},
 			},
-		},
+		},[]Resource{},
 	}
 }
 func defaultService(appName string, nameSpace string, resourceVersion string, clusterIp string, port int) *v1.Service {

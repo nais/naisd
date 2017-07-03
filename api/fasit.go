@@ -29,7 +29,7 @@ var errs = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Subsystem: "fasit",
 		Name:      "errors",
-		Help:      "Errors occured in fasitadapter",
+		Help:      "Errors occurred in fasitadapter",
 	},
 	[]string{"type"}, )
 
@@ -37,7 +37,7 @@ func init() {
 	prometheus.MustRegister(httpReqs)
 }
 
-type Properties struct {
+type Properties struct{
 	Url      string
 	Username string
 }
@@ -57,44 +57,57 @@ type FasitResource struct {
 	Secrets      Secrets
 }
 
+type NaisResourceRequest struct{
+	name string
+	resourceType string
+}
+
+type NaisResource struct {
+	name string
+	resourceType string
+	properties map[string]string
+	secret string
+}
+
+
 type Fasit interface {
-	getResource(alias string, resourceType string, environment string, application string, zone string) (resource FasitResource, err error)
-	getResources(resourcesSpec []FasitResource, environment string, application string, zone string) (resources []FasitResource, err error)
+	getResource(alias string, resourceType string, environment string, application string, zone string) (resource NaisResource, err error)
+	getResources(resourcesSpec []NaisResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error)
 }
 
 type FasitAdapter struct {
 	FasitUrl string
 }
 
-func (fasit FasitAdapter) getResources(resourcesSpec []FasitResource, environment string, application string, zone string) (resources []FasitResource, err error) {
+func (fasit FasitAdapter) getResources(resourcesSpec []NaisResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, res := range resourcesSpec {
-		resource, err := fasit.getResource(res.Alias, res.ResourceType, environment, application, zone)
+		resource, err := fasit.getResource(res.name, res.resourceType, environment, application, zone)
 		if err != nil {
-			return []FasitResource{}, fmt.Errorf("failed to get resource for "+res.Alias, err)
+			return []NaisResource{}, fmt.Errorf("failed to get resource for "+res.name, err)
 		}
 		resources = append(resources, resource)
 	}
 	return resources, nil
 }
 
-func (fasit FasitAdapter) getResource(alias string, resourceType string, environment string, application string, zone string) (resource FasitResource, err error) {
+func (fasit FasitAdapter) getResource(alias string, resourceType string, environment string, application string, zone string) (resource NaisResource, err error) {
 	reqs.With(nil).Inc()
 	req, err := buildRequest(fasit.FasitUrl, alias, resourceType, environment, application, zone)
 	if err != nil {
 		errs.WithLabelValues("create_request").Inc()
-		return FasitResource{}, fmt.Errorf("could not create request: ", err)
+		return NaisResource{}, fmt.Errorf("could not create request: ", err)
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		errs.WithLabelValues("contact_fasit").Inc()
-		return FasitResource{}, fmt.Errorf("error contacting fasit: ", err)
+		return NaisResource{}, fmt.Errorf("error contacting fasit: ", err)
 	}
 	httpReqs.WithLabelValues(string(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errs.WithLabelValues("error_fasit").Inc()
-		return FasitResource{}, fmt.Errorf("Fasit gave errormessage: " + strconv.Itoa(resp.StatusCode))
+		return NaisResource{}, fmt.Errorf("Fasit gave errormessage: " + strconv.Itoa(resp.StatusCode))
 	}
 
 	defer resp.Body.Close()
@@ -102,16 +115,31 @@ func (fasit FasitAdapter) getResource(alias string, resourceType string, environ
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		errs.WithLabelValues("read_body").Inc()
-		return FasitResource{}, fmt.Errorf("Could not read body: ", err)
+		return NaisResource{}, fmt.Errorf("Could not read body: ", err)
 	}
+	var fasitResource FasitResource
 
-	err = json.Unmarshal(body, &resource)
+	err = json.Unmarshal(body, &fasitResource)
 	if err != nil {
 		errs.WithLabelValues("unmarshal_bpdy").Inc()
-		return FasitResource{}, fmt.Errorf("Could not unmarshal body: ", err)
+		return NaisResource{}, fmt.Errorf("Could not unmarshal body: ", err)
 	}
+
+	resource = mapToNaisResource(fasitResource)
+
 	return resource, nil
 }
+
+func mapToNaisResource(fasitResource FasitResource) (resource NaisResource ){
+	resource.name = fasitResource.Alias
+	resource.resourceType = fasitResource.ResourceType
+	resource.properties = make(map[string]string)
+	resource.properties["url"] = fasitResource.Properties.Url
+	resource.properties["username"] = fasitResource.Properties.Username
+	resource.secret = fasitResource.Secrets.Password.Ref
+	return
+}
+
 func buildRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", fasit+"/api/v2/scopedresource", nil)
 	q := req.URL.Query()

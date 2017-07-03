@@ -52,19 +52,19 @@ func (r ResourceCreator) CreateService() *v1.Service {
 	}
 }
 
-func (r ResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
-	deploymentSpec := r.CreateDeployment()
+func (r ResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deployment, naisResource []NaisResource) *v1beta1.Deployment {
+	deploymentSpec := r.CreateDeployment(naisResource)
 	deploymentSpec.ObjectMeta.ResourceVersion = exisitingDeployment.ObjectMeta.ResourceVersion
 	deploymentSpec.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version)
 
 	return deploymentSpec
 }
 
-func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
+func (r ResourceCreator) CreateDeployment(naisResource []NaisResource) *v1beta1.Deployment {
 	appName := r.DeploymentRequest.Application
 	namespace := r.DeploymentRequest.Environment
 
-	return &v1beta1.Deployment{
+	deployment := &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Deployment",
 			APIVersion: "apps/v1beta1",
@@ -121,6 +121,15 @@ func (r ResourceCreator) CreateDeployment() *v1beta1.Deployment {
 			},
 		},
 	}
+
+	for _,res := range naisResource  {
+		for k,v := range res.properties{
+			envVar := v1.EnvVar{k, v, nil}
+			deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, envVar)
+		}
+	}
+
+	return deployment
 }
 
 func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {

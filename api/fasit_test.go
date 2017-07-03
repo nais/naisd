@@ -30,11 +30,11 @@ func TestGettingResource(t *testing.T) {
 	resource, err := fasit.getResource(alias, resourceType, environment, application, zone)
 
 	assert.NoError(t, err)
-	assert.Equal(t, alias, resource.Alias)
-	assert.Equal(t, resourceType, resource.ResourceType)
-	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.Properties.Url)
-	assert.Equal(t, "basta", resource.Properties.Username)
-	assert.Equal(t, "https://fasit.adeo.no/api/v2/secrets/2586446", resource.Secrets.Password.Ref)
+	assert.Equal(t, alias, resource.name)
+	assert.Equal(t, resourceType, resource.resourceType)
+	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
+	assert.Equal(t, "basta", resource.properties["username"])
+	assert.Equal(t, "https://fasit.adeo.no/api/v2/secrets/2586446", resource.secret)
 
 }
 
@@ -81,18 +81,18 @@ func TestGettingListOfResources(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse3.json")
 
-	resources := []FasitResource{}
-	resources = append(resources, FasitResource{Alias:alias, ResourceType:resourceType})
-	resources = append(resources, FasitResource{Alias:alias2, ResourceType:resourceType})
-	resources = append(resources, FasitResource{Alias:alias3, ResourceType:resourceType})
+	resources := []NaisResourceRequest{}
+	resources = append(resources, NaisResourceRequest{alias, resourceType})
+	resources = append(resources, NaisResourceRequest{alias2, resourceType})
+	resources = append(resources, NaisResourceRequest{alias3, resourceType})
 
 	resourcesReplies, err  := fasit.getResources(resources, environment, application, zone)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(resourcesReplies))
-	assert.Equal(t, alias, resourcesReplies[0].Alias)
-	assert.Equal(t, alias2, resourcesReplies[1].Alias)
-	assert.Equal(t, alias3, resourcesReplies[2].Alias)
+	assert.Equal(t, alias, resourcesReplies[0].name)
+	assert.Equal(t, alias2, resourcesReplies[1].name)
+	assert.Equal(t, alias3, resourcesReplies[2].name)
 
 
 }

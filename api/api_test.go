@@ -38,7 +38,7 @@ func TestAnIncorrectPayloadGivesError(t *testing.T) {
 func TestNoManifestGivesError(t *testing.T) {
 	api := Api{}
 
-	depReq := DeploymentRequest{
+	depReq := NaisDeploymentRequest{
 		Application:  "appname",
 		Version:      "",
 		Environment:  "",
@@ -72,7 +72,7 @@ func TestNoManifestGivesError(t *testing.T) {
 func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
-	image := "name/container:latest"
+	image := "name/Container:latest"
 	containerPort := 123
 	version := "123"
 	resourceAlias := "alias1"
@@ -176,14 +176,14 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	api := Api{clientset, FasitAdapter{"https://fasit.basta.no"}}
 
-	depReq := DeploymentRequest{
+	depReq := NaisDeploymentRequest{
 		Application:  appName,
 		Version:      version,
 		Environment:  namespace,
 		AppConfigUrl: "http://repo.com/app",
 	}
 
-	config := AppConfig{
+	config := NaisAppConfig{
 		[]Container{
 			{
 				Name:  appName,
@@ -198,7 +198,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 				},
 			},
 		},
-		[]Resource{{resourceType, resourceAlias}},
+		[]NaisResource{{resourceType, resourceAlias}},
 	}
 	data, _ := yaml.Marshal(config)
 

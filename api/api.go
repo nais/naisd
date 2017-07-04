@@ -54,7 +54,7 @@ func (api Api) listPods(w http.ResponseWriter, _ *http.Request) {
 		panic(err.Error())
 	}
 
-	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
+	glog.Info("There are %d pods in the cluster\n", len(pods.Items))
 
 	for _, pod := range pods.Items {
 		glog.Info(pod.Name)
@@ -62,7 +62,7 @@ func (api Api) listPods(w http.ResponseWriter, _ *http.Request) {
 
 	output, _ := json.MarshalIndent(pods.Items, "", "    ")
 
-	fmt.Fprint(w, string(output))
+	glog.Info(w, string(output))
 }
 
 func (api Api) hello(w http.ResponseWriter, _ *http.Request) {
@@ -71,23 +71,22 @@ func (api Api) hello(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, "banan")
 }
 
-type DeploymentRequest struct {
+type NaisDeploymentRequest struct {
 	Application  string
 	Version      string
 	Environment  string
 	AppConfigUrl string
 }
 
-
-
-type AppConfig struct {
+type NaisAppConfig struct {
 	Containers []Container
-	Resources  []Resource
+	Resources  []NaisResource
 }
 
-type Resource struct {
-	ResourceType string
-	ResourceName string
+type Container struct {
+	Name  string
+	Image string
+	Ports []Port
 }
 
 type Port struct {
@@ -97,10 +96,9 @@ type Port struct {
 	Protocol   string
 }
 
-type Container struct {
-	Name  string
-	Image string
-	Ports []Port
+type NaisResource struct {
+	ResourceType string
+	ResourceName string
 }
 
 func (api Api) testing(w http.ResponseWriter, r *http.Request) {
@@ -108,31 +106,32 @@ func (api Api) testing(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(appConfig.Containers[0].Name)
 }
 
-func fetchManifest(url string) (AppConfig, error) {
+func fetchManifest(url string) (NaisAppConfig, error) {
 
 	glog.Info("Fetching manifest from URL %s\n", url)
-
-	if response, err := http.Get(url); err != nil {
-		return AppConfig{}, err
-	} else if response.StatusCode > 299 {
-		return AppConfig{}, fmt.Errorf("could fetching manifests gave status " + string(response.StatusCode))
-	} else {
-		defer response.Body.Close()
-		var appConfig AppConfig
-		if body, err := ioutil.ReadAll(response.Body); err != nil {
-			return AppConfig{}, err
-		} else {
-			yaml.Unmarshal(body, &appConfig)
-			return appConfig, nil
-		}
+	response, err := http.Get(url)
+	if err != nil {
+		return NaisAppConfig{}, err
 	}
+	if response.StatusCode > 299 {
+		return NaisAppConfig{}, fmt.Errorf("could fetching manifests gave status " + string(response.StatusCode))
+	}
+	defer response.Body.Close()
+	var appConfig NaisAppConfig
+	if body, err := ioutil.ReadAll(response.Body); err != nil {
+		return NaisAppConfig{}, err
+	} else {
+		yaml.Unmarshal(body, &appConfig)
+		return appConfig, nil
+	}
+
 }
 
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
+
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 
 	body, err := ioutil.ReadAll(r.Body)
-
 	if err != nil {
 		glog.Error("Could not read body %s", err)
 		w.WriteHeader(400)
@@ -140,8 +139,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var deploymentRequest DeploymentRequest
-
+	var deploymentRequest NaisDeploymentRequest
 	if err = json.Unmarshal(body, &deploymentRequest); err != nil {
 		glog.Error("Could not parse body %s", err)
 		w.WriteHeader(400)
@@ -152,7 +150,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
 	var appConfigUrl string
-
 	if deploymentRequest.AppConfigUrl != "" {
 		appConfigUrl = deploymentRequest.AppConfigUrl
 	} else {
@@ -167,15 +164,13 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resourceRequests []NaisResourceRequest
-
+	var resourceRequests []ResourceRequest
 	for _, resource := range appConfig.Resources {
-		resourceRequests = append(resourceRequests, NaisResourceRequest{resource.ResourceName, resource.ResourceType})
+		resourceRequests = append(resourceRequests, ResourceRequest{resource.ResourceName, resource.ResourceType})
 	}
 
-	var resources []NaisResource
-
-	if len(resourceRequests)>0 {
+	var resources []Resource
+	if len(resourceRequests) > 0 {
 		resources, err = api.Fasit.getResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, "zone")
 	}
 	if err != nil {
@@ -186,7 +181,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	glog.Infof("Read app-config.yaml, looks like this:%s\n", appConfig)
-
 	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
 		glog.Error("Failed creating or updring serivce", err)
 		w.WriteHeader(500)
@@ -214,20 +208,20 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok\n"))
 }
 
-func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig) error {
+func (api Api) createOrUpdateService(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
 
 	serviceClient := api.Clientset.CoreV1().Services(req.Environment)
-	svc, err := serviceClient.Get(req.Application)
+	existingService, err := serviceClient.Get(req.Application)
 
 	switch {
 	case err == nil:
-		newService, err := serviceClient.Update(ResourceCreator{appConfig, req}.UpdateService(*svc))
+		updatedService, err := serviceClient.Update(K8sResourceCreator{appConfig, req}.UpdateService(*existingService))
 		if err != nil {
 			return fmt.Errorf("failed to update service: %s", err)
 		}
-		glog.Info("serviceClient updated: %s", newService)
+		glog.Info("serviceClient updated: %s", updatedService)
 	case errors.IsNotFound(err):
-		newService, err := serviceClient.Create(ResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateService())
+		newService, err := serviceClient.Create(K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateService())
 		if err != nil {
 			return fmt.Errorf("failed to create service: %s", err)
 		}
@@ -239,20 +233,20 @@ func (api Api) createOrUpdateService(req DeploymentRequest, appConfig AppConfig)
 	return nil
 }
 
-func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConfig, resource []NaisResource) error {
+func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig NaisAppConfig, resource []Resource) error {
 
 	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(req.Environment)
 	deployment, err := deploymentClient.Get(req.Application)
 
 	switch {
 	case err == nil:
-		updatedDeployment, err := deploymentClient.Update(ResourceCreator{appConfig, req}.UpdateDeployment(deployment, resource))
+		updatedDeployment, err := deploymentClient.Update(K8sResourceCreator{appConfig, req}.UpdateDeployment(deployment, resource))
 		if err != nil {
 			return fmt.Errorf("failed to update deployment", err)
 		}
 		glog.Info("deployment updated %s", updatedDeployment)
 	case !errors.IsNotFound(err):
-		newDeployment, err := deploymentClient.Create(ResourceCreator{appConfig, req}.CreateDeployment(resource))
+		newDeployment, err := deploymentClient.Create(K8sResourceCreator{appConfig, req}.CreateDeployment(resource))
 		if err != nil {
 			return fmt.Errorf("could not create deployment %s", err)
 		}
@@ -264,19 +258,19 @@ func (api Api) createOrUpdateDeployment(req DeploymentRequest, appConfig AppConf
 	return nil
 }
 
-func (api Api) createOrUpdateIngress(req DeploymentRequest, appConfig AppConfig) error {
+func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
 
 	ingressClient := api.Clientset.Extensions().Ingresses(req.Environment)
 	existingIngress, err := ingressClient.Get(req.Application)
 	switch {
 	case err == nil:
-		updatedIngress, err := ingressClient.Update(ResourceCreator{appConfig, req}.updateIngress(existingIngress))
+		updatedIngress, err := ingressClient.Update(K8sResourceCreator{appConfig, req}.updateIngress(existingIngress))
 		if err != nil {
 			return fmt.Errorf("failed to update ingress", updatedIngress)
 		}
 		glog.Info("ingressClient updated %s", updatedIngress)
 	case !errors.IsNotFound(err):
-		newIngress, err := ingressClient.Create(ResourceCreator{appConfig, req}.CreateIngress())
+		newIngress, err := ingressClient.Create(K8sResourceCreator{appConfig, req}.CreateIngress())
 		if err != nil {
 			return fmt.Errorf("failed to create ingress", newIngress)
 		}

@@ -2,19 +2,19 @@ package api
 
 import (
 	"fmt"
-	"k8s.io/client-go/pkg/api/resource"
+	k8sresource "k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
 )
 
-type ResourceCreator struct {
-	AppConfig         AppConfig
-	DeploymentRequest DeploymentRequest
+type K8sResourceCreator struct {
+	AppConfig         NaisAppConfig
+	DeploymentRequest NaisDeploymentRequest
 }
 
-func (r ResourceCreator) UpdateService(existingService v1.Service) *v1.Service {
+func (r K8sResourceCreator) UpdateService(existingService v1.Service) *v1.Service {
 
 	serviceSpec := r.CreateService()
 	serviceSpec.ObjectMeta.ResourceVersion = existingService.ObjectMeta.ResourceVersion
@@ -24,7 +24,7 @@ func (r ResourceCreator) UpdateService(existingService v1.Service) *v1.Service {
 
 }
 
-func (r ResourceCreator) CreateService() *v1.Service {
+func (r K8sResourceCreator) CreateService() *v1.Service {
 
 	return &v1.Service{
 		TypeMeta: unversioned.TypeMeta{
@@ -52,15 +52,15 @@ func (r ResourceCreator) CreateService() *v1.Service {
 	}
 }
 
-func (r ResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deployment, naisResource []NaisResource) *v1beta1.Deployment {
-	deploymentSpec := r.CreateDeployment(naisResource)
+func (r K8sResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deployment, resource []Resource) *v1beta1.Deployment {
+	deploymentSpec := r.CreateDeployment(resource)
 	deploymentSpec.ObjectMeta.ResourceVersion = exisitingDeployment.ObjectMeta.ResourceVersion
 	deploymentSpec.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version)
 
 	return deploymentSpec
 }
 
-func (r ResourceCreator) CreateDeployment(naisResource []NaisResource) *v1beta1.Deployment {
+func (r K8sResourceCreator) CreateDeployment(resource []Resource) *v1beta1.Deployment {
 	appName := r.DeploymentRequest.Application
 	namespace := r.DeploymentRequest.Environment
 
@@ -104,8 +104,8 @@ func (r ResourceCreator) CreateDeployment(naisResource []NaisResource) *v1beta1.
 							},
 							Resources: v1.ResourceRequirements{
 								Limits: v1.ResourceList{
-									v1.ResourceCPU:    resource.MustParse("100m"),
-									v1.ResourceMemory: resource.MustParse("256Mi"),
+									v1.ResourceCPU:    k8sresource.MustParse("100m"),
+									v1.ResourceMemory: k8sresource.MustParse("256Mi"),
 								},
 							},
 							Env: []v1.EnvVar{{
@@ -122,7 +122,7 @@ func (r ResourceCreator) CreateDeployment(naisResource []NaisResource) *v1beta1.
 		},
 	}
 
-	for _,res := range naisResource  {
+	for _,res := range resource  {
 		for k,v := range res.properties{
 			envVar := v1.EnvVar{res.name+"_"+k, v, nil}
 			deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, envVar)
@@ -132,7 +132,7 @@ func (r ResourceCreator) CreateDeployment(naisResource []NaisResource) *v1beta1.
 	return deployment
 }
 
-func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
+func (r K8sResourceCreator) CreateIngress() *v1beta1.Ingress {
 	appName := r.DeploymentRequest.Application
 
 	return &v1beta1.Ingress{
@@ -166,7 +166,7 @@ func (r ResourceCreator) CreateIngress() *v1beta1.Ingress {
 	}
 }
 
-func (r ResourceCreator) updateIngress(existingIngress *v1beta1.Ingress) *v1beta1.Ingress {
+func (r K8sResourceCreator) updateIngress(existingIngress *v1beta1.Ingress) *v1beta1.Ingress {
 	ingressSpec := r.CreateIngress()
 	ingressSpec.ObjectMeta.ResourceVersion = existingIngress.ObjectMeta.ResourceVersion
 

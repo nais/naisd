@@ -27,7 +27,7 @@ func TestGettingResource(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
-	resource, err := fasit.getResource(alias, resourceType, environment, application, zone)
+	resource, err := fasit.getResource(ResourceRequest{alias, resourceType}, environment, application, zone)
 
 	assert.NoError(t, err)
 	assert.Equal(t, alias, resource.name)
@@ -81,10 +81,10 @@ func TestGettingListOfResources(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse3.json")
 
-	resources := []NaisResourceRequest{}
-	resources = append(resources, NaisResourceRequest{alias, resourceType})
-	resources = append(resources, NaisResourceRequest{alias2, resourceType})
-	resources = append(resources, NaisResourceRequest{alias3, resourceType})
+	resources := []ResourceRequest{}
+	resources = append(resources, ResourceRequest{alias, resourceType})
+	resources = append(resources, ResourceRequest{alias2, resourceType})
+	resources = append(resources, ResourceRequest{alias3, resourceType})
 
 	resourcesReplies, err  := fasit.getResources(resources, environment, application, zone)
 

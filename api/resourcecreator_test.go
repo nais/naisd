@@ -32,7 +32,7 @@ func TestService(t *testing.T) {
 
 	appConfig := defaultAppConfig(appName, image, port, targetPort)
 
-	req := DeploymentRequest{
+	req := NaisDeploymentRequest{
 		Application:  appName,
 		Version:      version,
 		Environment:  nameSpace,
@@ -42,7 +42,7 @@ func TestService(t *testing.T) {
 	deployment := defaultDeployment(appName, nameSpace, image, port, version)
 	ingress := createDefaultIngress(appName, nameSpace)
 
-	r := ResourceCreator{appConfig, req}
+	r := K8sResourceCreator{appConfig, req}
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewService", func(t *testing.T) {
 		service := *r.CreateService()
@@ -61,7 +61,7 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewDeployment", func(t *testing.T) {
-		naisResources := []NaisResource{
+		naisResources := []Resource{
 			{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, "secret"},
 			{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, "secret"}}
 
@@ -83,7 +83,7 @@ func TestService(t *testing.T) {
 	t.Run("AValidDeploymentCanBeUpdated", func(t *testing.T) {
 		r.DeploymentRequest.Version = newVersion
 
-		updatedDeployment := *r.UpdateDeployment(deployment, []NaisResource{})
+		updatedDeployment := *r.UpdateDeployment(deployment, []Resource{})
 
 		assert.Equal(t, appName, updatedDeployment.Name)
 		assert.Equal(t, appName, updatedDeployment.Spec.Template.Name)
@@ -93,7 +93,7 @@ func TestService(t *testing.T) {
 		assert.Equal(t, newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Env[0].Value)
 	})
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewIngress", func(t *testing.T) {
-		ingress := ResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateIngress()
+		ingress := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateIngress()
 
 		assert.Equal(t, appName, ingress.ObjectMeta.Name)
 		assert.Equal(t, appName+".nais.devillo.no", ingress.Spec.Rules[0].Host)
@@ -102,7 +102,7 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("AValidIngressCanBeUpdated", func(t *testing.T) {
-		updatedIngress := ResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.updateIngress(ingress)
+		updatedIngress := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.updateIngress(ingress)
 
 		assert.Equal(t, appName, updatedIngress.ObjectMeta.Name)
 		assert.Equal(t, appName+".nais.devillo.no", updatedIngress.Spec.Rules[0].Host)
@@ -111,8 +111,8 @@ func TestService(t *testing.T) {
 	})
 
 }
-func defaultAppConfig(appName string, image string, port int, targetPort int) AppConfig {
-	return AppConfig{
+func defaultAppConfig(appName string, image string, port int, targetPort int) NaisAppConfig {
+	return NaisAppConfig{
 		[]Container{
 			{
 				Name:  appName,
@@ -126,7 +126,7 @@ func defaultAppConfig(appName string, image string, port int, targetPort int) Ap
 					},
 				},
 			},
-		}, []Resource{{"db", "db1"}, {"db", "db2"}},
+		}, []NaisResource{{"db", "db1"}, {"db", "db2"}},
 	}
 }
 func defaultService(appName string, nameSpace string, resourceVersion string, clusterIp string, port int) *v1.Service {

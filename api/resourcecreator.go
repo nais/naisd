@@ -124,7 +124,7 @@ func (r ResourceCreator) CreateDeployment(naisResource []NaisResource) *v1beta1.
 
 	for _,res := range naisResource  {
 		for k,v := range res.properties{
-			envVar := v1.EnvVar{k, v, nil}
+			envVar := v1.EnvVar{res.name+"_"+k, v, nil}
 			deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, envVar)
 		}
 	}

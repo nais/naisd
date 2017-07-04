@@ -169,8 +169,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	var resourceRequests []NaisResourceRequest
 
-	for _, fasitRes := range appConfig.Resources {
-		resourceRequests = append(resourceRequests, NaisResourceRequest{fasitRes.ResourceName, fasitRes.ResourceType})
+	for _, resource := range appConfig.Resources {
+		resourceRequests = append(resourceRequests, NaisResourceRequest{resource.ResourceName, resource.ResourceType})
 	}
 
 	var resources []NaisResource

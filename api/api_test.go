@@ -75,6 +75,8 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	image := "name/container:latest"
 	containerPort := 123
 	version := "123"
+	resourceAlias := "alias1"
+	resourceType := "db"
 
 	service := &v1.Service{ObjectMeta: v1.ObjectMeta{
 		Name:      appName,
@@ -172,7 +174,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset(service, deployment, ingress)
 
 
-	api := Api{clientset, FasitAdapter{"fd"}}
+	api := Api{clientset, FasitAdapter{"https://fasit.basta.no"}}
 
 	depReq := DeploymentRequest{
 		Application:  appName,
@@ -180,8 +182,6 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Environment:  namespace,
 		AppConfigUrl: "http://repo.com/app",
 	}
-
-	defer gock.Off()
 
 	config := AppConfig{
 		[]Container{
@@ -198,15 +198,27 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 				},
 			},
 		},
-		[]Resource{},
-
+		[]Resource{{resourceType, resourceAlias}},
 	}
 	data, _ := yaml.Marshal(config)
+
+	defer gock.Off()
 
 	gock.New("http://repo.com").
 		Get("/app").
 		Reply(200).
 		BodyString(string(data))
+
+
+	gock.New("https://fasit.basta.no").
+		Get("/api/v2/scopedresource").
+		MatchParam("alias", resourceAlias).
+		MatchParam("type", resourceType).
+		MatchParam("environment", namespace).
+		MatchParam("application", appName).
+		MatchParam("zone", "zone").
+		Reply(200).File("testdata/fasitResponse.json")
+
 
 	json, _ := json.Marshal(depReq)
 
@@ -219,6 +231,6 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	handler.ServeHTTP(rr, req)
 
-	//TODO should be 200, when all is done
 	assert.Equal(t, 200, rr.Code)
+	assert.True(t, gock.IsDone())
 }

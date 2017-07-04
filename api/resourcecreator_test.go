@@ -21,8 +21,16 @@ func TestService(t *testing.T) {
 	image := "docker.hub/app"
 	version := "13"
 	newVersion := "14"
+	resource1Name := "r1"
+	resource1Type := "db"
+	resource1Key := "key1"
+	resource1Value := "value1"
+	resource2Name := "r2"
+	resource2Type := "db"
+	resource2Key := "key2"
+	resource2Value := "value2"
 
-	appConfig := defaaultAppConfig(appName, image, port, targetPort)
+	appConfig := defaultAppConfig(appName, image, port, targetPort)
 
 	req := DeploymentRequest{
 		Application:  appName,
@@ -53,14 +61,23 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewDeployment", func(t *testing.T) {
-		deployment := *r.CreateDeployment([]NaisResource{})
+		naisResources := []NaisResource{
+			{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, "secret"},
+			{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, "secret"}}
+
+		deployment := *r.CreateDeployment(naisResources)
 
 		assert.Equal(t, appName, deployment.Name)
 		assert.Equal(t, appName, deployment.Spec.Template.Name)
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Containers[0].Name)
 		assert.Equal(t, image+":"+version, deployment.Spec.Template.Spec.Containers[0].Image)
 		assert.Equal(t, int32(port), deployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+		assert.Equal(t, 3, len(deployment.Spec.Template.Spec.Containers[0].Env))
 		assert.Equal(t, version, deployment.Spec.Template.Spec.Containers[0].Env[0].Value)
+		assert.Equal(t, resource1Name+"_"+resource1Key, deployment.Spec.Template.Spec.Containers[0].Env[1].Name)
+		assert.Equal(t, "value1", deployment.Spec.Template.Spec.Containers[0].Env[1].Value)
+		assert.Equal(t, resource2Name+"_"+resource2Key, deployment.Spec.Template.Spec.Containers[0].Env[2].Name)
+		assert.Equal(t, "value2", deployment.Spec.Template.Spec.Containers[0].Env[2].Value)
 	})
 
 	t.Run("AValidDeploymentCanBeUpdated", func(t *testing.T) {
@@ -94,7 +111,7 @@ func TestService(t *testing.T) {
 	})
 
 }
-func defaaultAppConfig(appName string, image string, port int, targetPort int) AppConfig {
+func defaultAppConfig(appName string, image string, port int, targetPort int) AppConfig {
 	return AppConfig{
 		[]Container{
 			{
@@ -109,7 +126,7 @@ func defaaultAppConfig(appName string, image string, port int, targetPort int) A
 					},
 				},
 			},
-		},[]Resource{},
+		}, []Resource{{"db", "db1"}, {"db", "db2"}},
 	}
 }
 func defaultService(appName string, nameSpace string, resourceVersion string, clusterIp string, port int) *v1.Service {

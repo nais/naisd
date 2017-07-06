@@ -22,5 +22,5 @@ To reduce build time, do
 
 ```go build -i .```
 
-initially.
+initially. 
 

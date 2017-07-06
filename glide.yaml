@@ -1,4 +1,4 @@
-package: github.com/navikt/naisd
+package: github.com/nais/naisd
 import:
 - package: goji.io
   version: ^2.0.0

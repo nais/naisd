@@ -2,19 +2,26 @@ SHELL   := bash
 VERSION := $(shell /bin/date +%Y%m%d%H%M%S)-$(shell git rev-parse --short HEAD)
 NAME    := navikt/naisd
 IMAGE   := "docker.adeo.no:5000/"${NAME}:${VERSION}
-LATEST   := ${NAME}:latest
+LATEST  := ${NAME}:latest
+GLIDE   := docker run --rm -it -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd instrumentisto/glide
+GO      := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 go
 
-dockerhub-release: linux docker-build push-dockerhub
+
+dockerhub-release: install linux docker-build push-dockerhub
 minikube: linux docker-minikube-build deploy
 
+
+install:
+	 ${GLIDE} install --strip-vendor
+
 test:
-	go test $(shell glide novendor) --logtostderr=true
+	${GO} test $(shell glide novendor) --logtostderr=true
 
 build:
-	go build -o api
+	${GO} build -o api
 
 linux:
-	GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-s' -o naisd
+	GOOS=linux CGO_ENABLED=0 ${GO} build -a -installsuffix cgo -ldflags '-s' -o naisd
 
 docker-minikube-build:
 	@eval $$(minikube docker-env) ;\

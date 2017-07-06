@@ -3,8 +3,8 @@ VERSION := $(shell /bin/date +%Y%m%d%H%M%S)-$(shell git rev-parse --short HEAD)
 NAME    := navikt/naisd
 IMAGE   := "docker.adeo.no:5000/"${NAME}:${VERSION}
 LATEST  := ${NAME}:latest
-GLIDE   := docker run --rm -i -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd instrumentisto/glide
-GO      := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 go
+GLIDE   := sudo docker run --rm -i -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd instrumentisto/glide
+GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 go
 
 
 dockerhub-release: install linux docker-build push-dockerhub

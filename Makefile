@@ -1,7 +1,7 @@
 SHELL   := bash
 VERSION := $(shell /bin/date +%Y%m%d%H%M%S)-$(shell git rev-parse --short HEAD)
 NAME    := navikt/naisd
-IMAGE   := ${NAME}:${VERSION}
+IMAGE   := "docker.adeo.no:5000/"${NAME}:${VERSION}
 LATEST   := ${NAME}:latest
 
 dockerhub-release: linux docker-build push-dockerhub
@@ -24,7 +24,7 @@ docker-build:
 	docker image build -t ${IMAGE} -t ${NAME} -t ${LATEST} -f Dockerfile .
 
 push-dockerhub:
-	docker image push ${LATEST}
+	docker image push ${IMAGE}
 
 deploy:
 	helm upgrade -i naisd helm/naisd --set image.tag=${VERSION}

@@ -1,5 +1,10 @@
 node{
   try{
+
+    stage("checkout") {
+        git url: "https://github.com/nais/naisd.git"
+    }
+    
     stage("test"){
         sh("make test")
     }

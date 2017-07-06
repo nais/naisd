@@ -5,6 +5,10 @@ node{
         git url: "https://github.com/nais/naisd.git"
     }
 
+    stage("install"){
+     sh("make install")
+    }
+
     stage("test"){
         sh("make test")
     }

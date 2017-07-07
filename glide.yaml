@@ -2,6 +2,7 @@ package: github.com/nais/naisd
 import:
 - package: goji.io
   version: ^2.0.0
+  vcs: git
   subpackages:
   - pat
 - package: gopkg.in/yaml.v2
@@ -16,5 +17,4 @@ import:
 - package: github.com/prometheus/client_golang/promehttp
 - package: github.com/stretchr/testify
 - package: gopkg.in/h2non/gock.v1
-- package: github.com/imdario/mergo
 - pacakge: github.com/golang/glog

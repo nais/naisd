@@ -12,6 +12,7 @@ minikube: linux docker-minikube-build deploy
 
 
 install:
+	 ${GLIDE} glide update ;\
 	 ${GLIDE} glide install --strip-vendor
 
 test:

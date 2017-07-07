@@ -3,3 +3,4 @@ vendor/
 /scratch.yaml
 naisd.iml
 /naisd
+.glide/

@@ -15,7 +15,7 @@ install:
 	 ${GLIDE} glide install --strip-vendor
 
 test:
-	${GO} test $(shell glide novendor) --logtostderr=true
+	${GO} test $(shell ${GLIDE} novendor) --logtostderr=true
 
 build:
 	${GO} build -o api

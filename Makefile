@@ -1,7 +1,7 @@
 SHELL   := bash
 VERSION := $(shell /bin/date +%Y%m%d%H%M%S)-$(shell git rev-parse --short HEAD)
 NAME    := navikt/naisd
-IMAGE   := "docker.adeo.no:5000/"${NAME}:${VERSION}
+IMAGE   := ${NAME}:${VERSION}
 LATEST  := ${NAME}:latest
 GLIDE   := sudo docker run --rm -i -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd navikt/glide
 GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 go

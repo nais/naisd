@@ -1,5 +1,5 @@
 SHELL   := bash
-VERSION := $(shell /bin/date +%Y%m%d%H%M%S)-$(shell git rev-parse --short HEAD)
+VERSION := $(shell /bin/cat ./version)
 NAME    := navikt/naisd
 IMAGE   := ${NAME}:${VERSION}
 LATEST  := ${NAME}:latest
@@ -8,6 +8,9 @@ GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/s
 
 dockerhub-release: install test linux docker-build push-dockerhub
 minikube: linux docker-minikube-build deploy
+
+bump:
+	/bin/bash bump.sh 
 
 install:
 	${GLIDE} install --strip-vendor

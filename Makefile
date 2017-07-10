@@ -4,7 +4,7 @@ LATEST  := ${NAME}:latest
 GLIDE   := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd navikt/glide glide
 GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 go
 
-dockerhub-release: install test linux docker-build push-dockerhub
+dockerhub-release: install test linux bump docker-build push-dockerhub
 minikube: linux docker-minikube-build deploy
 
 bump:

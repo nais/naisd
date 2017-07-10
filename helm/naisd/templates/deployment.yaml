@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: naisd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: naisd
+  template:
+    metadata:
+      labels:
+        app: naisd
+      annotations:
+        prometheus.io/scrape: "true"
+    spec:
+      containers:
+      - name: naisd
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        ports:
+        - containerPort: 8081
+          protocol: TCP

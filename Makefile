@@ -15,10 +15,10 @@ install:
 	 ${GLIDE} glide install --strip-vendor
 
 test:
-	"${GO} test ./api/... . --logtostderr=true"
+	"${GO} test ./api/"
 
 build:
-	${GO} build -o api
+	${GO} build -o naisd
 
 linux:
 	GOOS=linux CGO_ENABLED=0 ${GO} build -a -installsuffix cgo -ldflags '-s' -o naisd

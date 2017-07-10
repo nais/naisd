@@ -5,9 +5,9 @@ IMAGE   := ${NAME}:${VERSION}
 LATEST  := ${NAME}:latest
 GLIDE   := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd navikt/glide glide
 GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 go
-DEBUG   := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 pwd; ls
+DEBUG   := ls -l; sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 ls -l
 
-travis-debug: debug
+travis-debug: install debug test
 dockerhub-release: install test linux docker-build push-dockerhub
 minikube: linux docker-minikube-build deploy
 

@@ -3,23 +3,22 @@ VERSION := $(shell /bin/date +%Y%m%d%H%M%S)-$(shell git rev-parse --short HEAD)
 NAME    := navikt/naisd
 IMAGE   := ${NAME}:${VERSION}
 LATEST  := ${NAME}:latest
-GLIDE   := sudo docker run --rm -i -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd navikt/glide
+GLIDE   := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd navikt/glide glide
 GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 go
+DEBUG   := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd golang:1.8 pwd; ls
 
-
-travis-dockerhub-release: install travis-test linux docker-build push-dockerhub
+travis-debug: debug
 dockerhub-release: install test linux docker-build push-dockerhub
 minikube: linux docker-minikube-build deploy
 
-
 install:
-	 ${GLIDE} glide install --strip-vendor
+	${GLIDE} install --strip-vendor
 
 test:
-	"${GO} test ./api/"
+	${GO} test ./api/
 
-travis-test:
-	"${GO} test ./nais/naisd/api/"
+debug:
+	${DEBUG}
 
 build:
 	${GO} build -o naisd

@@ -1,4 +1,4 @@
-#  naisd
+# naisd
 
 k8s in-cluster daemon with API for performing NAIS-operations
 

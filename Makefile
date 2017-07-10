@@ -18,9 +18,6 @@ install:
 test:
 	${GO} test ./api/
 
-debug:
-	${DEBUG}
-
 build:
 	${GO} build -o naisd
 
@@ -29,13 +26,13 @@ linux:
 
 docker-minikube-build:
 	@eval $$(minikube docker-env) ;\
-	docker image build -t ${IMAGE} -t ${NAME} -t ${LATEST} -f Dockerfile .
+	docker image build -t ${NAME}:$(/bin/cat ./version) -t ${NAME} -t ${LATEST} -f Dockerfile .
 
 docker-build:
-	docker image build -t ${IMAGE} -t ${NAME} -t ${LATEST} -f Dockerfile .
+	docker image build -t ${NAME}:$(/bin/cat ./version) -t ${NAME} -t ${LATEST} -f Dockerfile .
 
 push-dockerhub:
 	docker image push ${IMAGE}
 
 deploy:
-	helm upgrade -i naisd helm/naisd --set image.tag=${VERSION}
+	helm upgrade -i naisd helm/naisd --set image.tag=${LATEST}

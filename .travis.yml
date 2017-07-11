@@ -10,7 +10,7 @@ script:
 - /bin/bash bump.sh $GH_TOKEN
 - git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags https://$GH_TOKEN@github.com/nais/naisd
 - make docker-build push-dockerhub
-- docker run -v `pwd`:/helm navikt/helm registry login quay.io -u nais+travis -p $QUAY_TOKEN && helm registry push --namespace nais --channel stable quay.io
+- docker run --entrypoint=/bin/bash -w /helm -v `pwd`:/helm navikt/helm -c "/bin/helm registry login quay.io -u nais+travis -p $QUAY_TOKEN && /bin/helm registry push --namespace nais --channel stable quay.io"
 branches:
   only:
   - master

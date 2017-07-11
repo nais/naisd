@@ -8,8 +8,8 @@ script:
 - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
 - make install test linux
 - "/bin/bash bump.sh $GH_TOKEN"
-- git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push
-  --tags https://$GH_TOKEN@github.com/nais/naisd
+- git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags https://$GH_TOKEN@github.com/nais/naisd
+- make docker-build push-dockerhub
 branches:
   only:
   - master

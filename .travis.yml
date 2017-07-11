@@ -1,9 +1,10 @@
 sudo: required
 services:
 - docker
-before_install:
+before_script:
 - docker pull navikt/glide
 - docker pull golang:1.8
+- docker pull navikt/helm
 - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
 script:
 - make install test linux

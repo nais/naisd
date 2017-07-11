@@ -11,5 +11,3 @@ grep -v "version: " $CHART > temp && mv temp $CHART && rm -f temp && echo "versi
 git add version $CHART
 git commit -am "increased version number to $NEW [skip ci]"
 git push origin master
-git tag $NEW -m "$NEW"
-git push --tags

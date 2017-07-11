@@ -8,7 +8,7 @@ dockerhub-release: install test linux bump tag docker-build push-dockerhub
 minikube: linux docker-minikube-build deploy
 
 bump:
-	/bin/bash bump.sh 
+	/bin/bash bump.sh
 
 tag:
 	git tag -a $(shell /bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags

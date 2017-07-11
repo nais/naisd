@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# bump version number by one
+# uses first arg as token for github push, else use local default
+
+TOKEN=${1}
 CHART="./helm/naisd/Chart.yaml"
 
 OLD=$(cat ./version | cut -d'.' -f1)
@@ -10,5 +14,11 @@ grep -v "version: " $CHART > temp && mv temp $CHART && rm -f temp && echo "versi
 
 git add version $CHART
 git commit -am "increased version number to $NEW [skip ci]"
-git push origin master
+
+if [[ -n ${TOKEN} ]]; 
+    git push https://${TOKEN}@github.com/nais/naisd HEAD:master
+else
+    git push origin master
+fi
+
 echo $NEW

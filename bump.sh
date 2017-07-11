@@ -15,7 +15,7 @@ grep -v "version: " $CHART > temp && mv temp $CHART && rm -f temp && echo "versi
 git add version $CHART
 git commit -am "increased version number to $NEW [skip ci]"
 
-if [[ -n ${TOKEN} ]]; 
+if [[ -n ${TOKEN} ]]; then
     git push https://${TOKEN}@github.com/nais/naisd HEAD:master
 else
     git push origin master

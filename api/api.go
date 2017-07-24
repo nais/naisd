@@ -41,7 +41,6 @@ func (api Api) NewApi() http.Handler {
 	mux.HandleFunc(pat.Get("/pods"), api.listPods)
 	mux.HandleFunc(pat.Get("/hello"), api.hello)
 	mux.HandleFunc(pat.Post("/deploy"), api.deploy)
-	mux.HandleFunc(pat.Get("/test"), api.testing)
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 
 	return mux
@@ -101,30 +100,28 @@ type NaisResource struct {
 	ResourceName string
 }
 
-func (api Api) testing(w http.ResponseWriter, r *http.Request) {
-	appConfig, _ := fetchManifest("http://localhost:8080/app-config.yaml")
-	fmt.Println(appConfig.Containers[0].Name)
-}
-
 func fetchManifest(url string) (NaisAppConfig, error) {
-
-	glog.Info("Fetching manifest from URL %s\n", url)
+	glog.Infof("Fetching manifest from URL %s\n", url)
 	response, err := http.Get(url)
+
 	if err != nil {
 		return NaisAppConfig{}, err
 	}
-	if response.StatusCode > 299 {
-		return NaisAppConfig{}, fmt.Errorf("could fetching manifests gave status " + string(response.StatusCode))
-	}
+
 	defer response.Body.Close()
+
+	if response.StatusCode > 299 {
+		return NaisAppConfig{}, fmt.Errorf("got http status code %d\n", response.StatusCode)
+	}
+
 	var appConfig NaisAppConfig
 	if body, err := ioutil.ReadAll(response.Body); err != nil {
 		return NaisAppConfig{}, err
 	} else {
 		yaml.Unmarshal(body, &appConfig)
+		glog.Infof("Got manifest %s", appConfig)
 		return appConfig, nil
 	}
-
 }
 
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
@@ -157,10 +154,11 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appConfig, err := fetchManifest(appConfigUrl)
+
 	if err != nil {
-		fmt.Printf("Unable to fetch manifest %s", err)
+		glog.Errorf("Unable to fetch manifest: %s\n", err)
 		w.WriteHeader(500)
-		w.Write([]byte("Could not fetch manifest"))
+		w.Write([]byte("Could not fetch manifest\n"))
 		return
 	}
 
@@ -170,9 +168,11 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var resources []Resource
+
 	if len(resourceRequests) > 0 {
 		resources, err = api.Fasit.getResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, "zone")
 	}
+
 	if err != nil {
 		glog.Error("Error getting fasit resources", err)
 		w.WriteHeader(500)
@@ -182,9 +182,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	glog.Infof("Read app-config.yaml, looks like this:%s\n", appConfig)
 	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
-		glog.Error("Failed creating or updring serivce", err)
+		glog.Error("Failed creating or updating service", err)
 		w.WriteHeader(500)
-		w.Write([]byte("CreateUpdate of Service failed with errror: " + err.Error()))
+		w.Write([]byte("createOrUpdateService failed with: " + err.Error()))
 		return
 	}
 
@@ -230,6 +230,7 @@ func (api Api) createOrUpdateService(req NaisDeploymentRequest, appConfig NaisAp
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
 	}
+
 	return nil
 }
 
@@ -245,7 +246,7 @@ func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig Nai
 			return fmt.Errorf("failed to update deployment", err)
 		}
 		glog.Info("deployment updated %s", updatedDeployment)
-	case !errors.IsNotFound(err):
+	case errors.IsNotFound(err):
 		newDeployment, err := deploymentClient.Create(K8sResourceCreator{appConfig, req}.CreateDeployment(resource))
 		if err != nil {
 			return fmt.Errorf("could not create deployment %s", err)
@@ -269,7 +270,7 @@ func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAp
 			return fmt.Errorf("failed to update ingress", updatedIngress)
 		}
 		glog.Info("ingressClient updated %s", updatedIngress)
-	case !errors.IsNotFound(err):
+	case errors.IsNotFound(err):
 		newIngress, err := ingressClient.Create(K8sResourceCreator{appConfig, req}.CreateIngress())
 		if err != nil {
 			return fmt.Errorf("failed to create ingress", newIngress)

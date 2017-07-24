@@ -10,37 +10,23 @@ import (
 	"testing"
 )
 
-func TestService(t *testing.T) {
+const (
+	appName = "appname"
+	nameSpace = "namespace"
+	image = "docker.hub/app"
+	port = 6900
+	version = "13"
+	targetPort = 234
+)
 
-	appName := "appname"
-	nameSpace := "namesspace"
-	targetPort := 234
-	port := 123
+func TestService(t *testing.T) {
 	clusterIp := "11.22.33.44"
 	resourceVersion := "sdfrdd"
-	image := "docker.hub/app"
-	version := "13"
-	newVersion := "14"
-	resource1Name := "r1"
-	resource1Type := "db"
-	resource1Key := "key1"
-	resource1Value := "value1"
-	resource2Name := "r2"
-	resource2Type := "db"
-	resource2Key := "key2"
-	resource2Value := "value2"
-
 	appConfig := defaultAppConfig(appName, image, port, targetPort)
 
-	req := NaisDeploymentRequest{
-		Application:  appName,
-		Version:      version,
-		Environment:  nameSpace,
-		AppConfigUrl: ""}
+	req := defaultDeployRequest()
 
 	svc := defaultService(appName, nameSpace, resourceVersion, clusterIp, port)
-	deployment := defaultDeployment(appName, nameSpace, image, port, version)
-	ingress := createDefaultIngress(appName, nameSpace)
 
 	r := K8sResourceCreator{appConfig, req}
 
@@ -59,6 +45,26 @@ func TestService(t *testing.T) {
 		assert.Equal(t, int32(targetPort), service.Spec.Ports[0].TargetPort.IntVal)
 		assert.Equal(t, map[string]string{"app": appName}, service.Spec.Selector)
 	})
+}
+
+func TestDeployment(t *testing.T) {
+
+	newVersion := "14"
+	resource1Name := "r1"
+	resource1Type := "db"
+	resource1Key := "key1"
+	resource1Value := "value1"
+	resource2Name := "r2"
+	resource2Type := "db"
+	resource2Key := "key2"
+	resource2Value := "value2"
+
+	appConfig := defaultAppConfig(appName, image, port, targetPort)
+	deployment := defaultDeployment(appName, nameSpace, image, port, version)
+
+	req := defaultDeployRequest()
+
+	r := K8sResourceCreator{appConfig, req}
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewDeployment", func(t *testing.T) {
 		naisResources := []Resource{
@@ -92,6 +98,14 @@ func TestService(t *testing.T) {
 		assert.Equal(t, int32(port), updatedDeployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 		assert.Equal(t, newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Env[0].Value)
 	})
+}
+
+func TestIngress(t *testing.T){
+	ingress := createDefaultIngress(appName, nameSpace)
+	appConfig := defaultAppConfig(appName, image, port, targetPort)
+
+	req := defaultDeployRequest()
+
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewIngress", func(t *testing.T) {
 		ingress := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateIngress()
 
@@ -109,8 +123,17 @@ func TestService(t *testing.T) {
 		assert.Equal(t, appName, updatedIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), updatedIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
 	})
-
 }
+
+func defaultDeployRequest() NaisDeploymentRequest {
+	return NaisDeploymentRequest{
+		Application:  appName,
+		Version:      version,
+		Environment:  nameSpace,
+		AppConfigUrl: ""}
+}
+
+
 func defaultAppConfig(appName string, image string, port int, targetPort int) NaisAppConfig {
 	return NaisAppConfig{
 		[]Container{

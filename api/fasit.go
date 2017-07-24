@@ -3,10 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var httpReqsCounter = prometheus.NewCounterVec(
@@ -31,13 +31,13 @@ var errorCounter = prometheus.NewCounterVec(
 		Name:      "errors",
 		Help:      "Errors occurred in fasitadapter",
 	},
-	[]string{"type"}, )
+	[]string{"type"})
 
 func init() {
 	prometheus.MustRegister(httpReqsCounter)
 }
 
-type Properties struct{
+type Properties struct {
 	Url      string
 	Username string
 }
@@ -53,22 +53,21 @@ type Secrets struct {
 type FasitResource struct {
 	Alias        string
 	ResourceType string `json:"type"`
-	Properties   Properties
+	Properties   map[string]string
 	Secrets      Secrets
 }
 
-type ResourceRequest struct{
-	name string
+type ResourceRequest struct {
+	name         string
 	resourceType string
 }
 
 type Resource struct {
-	name string
+	name         string
 	resourceType string
-	properties map[string]string
-	secret string
+	properties   map[string]string
+	secret       string
 }
-
 
 type Fasit interface {
 	getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource Resource, err error)
@@ -121,7 +120,7 @@ func (fasit FasitAdapter) getResource(resourcesRequest ResourceRequest, environm
 
 	err = json.Unmarshal(body, &fasitResource)
 	if err != nil {
-		errorCounter.WithLabelValues("unmarshal_bpdy").Inc()
+		errorCounter.WithLabelValues("unmarshal_body").Inc()
 		return Resource{}, fmt.Errorf("Could not unmarshal body: ", err)
 	}
 
@@ -130,12 +129,10 @@ func (fasit FasitAdapter) getResource(resourcesRequest ResourceRequest, environm
 	return resource, nil
 }
 
-func mapToNaisResource(fasitResource FasitResource) (resource Resource){
+func mapToNaisResource(fasitResource FasitResource) (resource Resource) {
 	resource.name = fasitResource.Alias
 	resource.resourceType = fasitResource.ResourceType
-	resource.properties = make(map[string]string)
-	resource.properties["url"] = fasitResource.Properties.Url
-	resource.properties["username"] = fasitResource.Properties.Username
+	resource.properties = fasitResource.Properties
 	resource.secret = fasitResource.Secrets.Password.Ref
 	return
 }

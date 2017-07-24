@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	appName = "appname"
-	nameSpace = "namespace"
-	image = "docker.hub/app"
-	port = 6900
-	version = "13"
+	appName    = "appname"
+	nameSpace  = "namespace"
+	image      = "docker.hub/app"
+	port       = 6900
+	version    = "13"
 	targetPort = 234
 )
 
@@ -100,7 +100,7 @@ func TestDeployment(t *testing.T) {
 	})
 }
 
-func TestIngress(t *testing.T){
+func TestIngress(t *testing.T) {
 	ingress := createDefaultIngress(appName, nameSpace)
 	appConfig := defaultAppConfig(appName, image, port, targetPort)
 
@@ -132,7 +132,6 @@ func defaultDeployRequest() NaisDeploymentRequest {
 		Environment:  nameSpace,
 		AppConfigUrl: ""}
 }
-
 
 func defaultAppConfig(appName string, image string, port int, targetPort int) NaisAppConfig {
 	return NaisAppConfig{

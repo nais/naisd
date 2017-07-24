@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: naisd
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        image: "{{ .Values.image.repository }}:{{ .Values.image.version }}"
         ports:
         - containerPort: 8081
           protocol: TCP

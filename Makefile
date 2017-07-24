@@ -6,7 +6,7 @@ GO_IMG  := golang:1.8
 GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go
 
 dockerhub-release: install test linux bump tag docker-build push-dockerhub
-minikube: linux docker-minikube-build deploy
+minikube: linux docker-minikube-build helm-upgrade
 
 bump:
 	/bin/bash bump.sh
@@ -28,7 +28,7 @@ linux:
 
 docker-minikube-build:
 	@eval $$(minikube docker-env) ;\
-	docker image build -t ${NAME}:$(shell /bin/cat ./version) -t ${NAME} -t ${LATEST} -f Dockerfile .
+	docker image build -t ${NAME}:$(shell /bin/cat ./version) -t ${NAME} -t ${LATEST} -f Dockerfile --no-cache .
 
 docker-build:
 	docker image build -t ${NAME}:$(shell /bin/cat ./version) -t naisd -t ${NAME} -t ${LATEST} -f Dockerfile .
@@ -36,5 +36,5 @@ docker-build:
 push-dockerhub:
 	docker image push ${NAME}:$(shell /bin/cat ./version)
 
-deploy:
-	helm upgrade -i naisd helm/naisd --set image.tag=${LATEST}
+helm-upgrade:
+	helm delete naisd; helm upgrade -i naisd helm/naisd --set image.version=$(shell /bin/cat ./version)

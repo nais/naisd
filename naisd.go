@@ -15,7 +15,10 @@ const Port string = ":8081"
 
 func main() {
 	fmt.Printf("serving @ %s\n", Port)
-	http.ListenAndServe(Port, api.Api{newClientSet(), fasit()}.NewApi())
+	err := http.ListenAndServe(Port, api.Api{newClientSet(), fasit()}.NewApi())
+	if err != nil {
+		panic(err)
+	}
 }
 
 // returns config using kubeconfig if provided, else from cluster context

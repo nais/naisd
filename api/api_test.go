@@ -174,7 +174,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset(service, deployment, ingress)
 
 
-	api := Api{clientset, FasitClient{"https://fasit.basta.no"}}
+	api := Api{clientset, FasitClient{"https://fasit.basta.no", "username", "password"}}
 
 	depReq := NaisDeploymentRequest{
 		Application:  appName,
@@ -198,7 +198,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 				},
 			},
 		},
-		[]NaisResource{{resourceType, resourceAlias}},
+		[]NaisAppConfigResource{{resourceType, resourceAlias}},
 	}
 	data, _ := yaml.Marshal(config)
 

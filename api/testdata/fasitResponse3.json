@@ -9,11 +9,6 @@
     "url": "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta",
     "username": "basta"
   },
-  "secrets": {
-    "password": {
-      "ref": "https://fasit.adeo.no/api/v2/secrets/2586446"
-    }
-  },
   "files": {},
   "dodgy": false,
   "id": 848186,

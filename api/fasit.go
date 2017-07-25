@@ -9,6 +9,173 @@ import (
 	"strconv"
 )
 
+func init() {
+	prometheus.MustRegister(httpReqsCounter)
+}
+
+type Properties struct {
+	Url      string
+	Username string
+}
+
+type Password struct {
+	Ref string
+}
+
+type FasitResource struct {
+	Alias        string
+	ResourceType string `json:"type"`
+	Properties   map[string]string
+	Secrets      map[string]map[string]string
+}
+
+type ResourceRequest struct {
+	name         string
+	resourceType string
+}
+
+type NaisResource struct {
+	name         string
+	resourceType string
+	properties   map[string]string
+	secret       map[string]string
+}
+
+type Fasit interface {
+	getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error)
+	getResources(resourceRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error)
+}
+
+type FasitClient struct {
+	FasitUrl string
+	Username string
+	Password string
+}
+
+func (fasit FasitClient) getResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
+	for _, request := range resourcesRequests {
+		resource, err := fasit.getResource(request, environment, application, zone)
+		if err != nil {
+			return []NaisResource{}, fmt.Errorf("failed to get resource for " + request.name, err)
+		}
+		resources = append(resources, resource)
+	}
+	return resources, nil
+}
+
+func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
+	requestCounter.With(nil).Inc()
+	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.name, resourcesRequest.resourceType, environment, application, zone)
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return NaisResource{}, fmt.Errorf("Could not create request: %s", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		errorCounter.WithLabelValues("contact_fasit").Inc()
+		return NaisResource{}, fmt.Errorf("Error contacting fasit: %s", err)
+	}
+	httpReqsCounter.WithLabelValues(string(resp.StatusCode), "GET").Inc()
+	if resp.StatusCode > 299 {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return NaisResource{}, fmt.Errorf("Fasit gave errormessage: %s" + strconv.Itoa(resp.StatusCode))
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		errorCounter.WithLabelValues("read_body").Inc()
+		return NaisResource{}, fmt.Errorf("Could not read body: %s", err)
+	}
+	var fasitResource FasitResource
+
+	err = json.Unmarshal(body, &fasitResource)
+	if err != nil {
+		errorCounter.WithLabelValues("unmarshal_body").Inc()
+		return NaisResource{}, fmt.Errorf("Could not unmarshal body: %s", err)
+	}
+
+	resource, err = fasit.mapToNaisResource(fasitResource)
+
+	if err != nil {
+		return NaisResource{}, err
+	}
+
+	return resource, nil
+}
+
+func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resource NaisResource, err error) {
+	resource.name = fasitResource.Alias
+	resource.resourceType = fasitResource.ResourceType
+	resource.properties = fasitResource.Properties
+
+	if len(fasitResource.Secrets) > 0 {
+		secret, err := resolveSecret(fasitResource.Secrets, fasit.Username, fasit.Password)
+		if err != nil {
+			errorCounter.WithLabelValues("resolve_secret").Inc()
+			return NaisResource{}, fmt.Errorf("Unable to resolve secret: %s", err)
+		}
+		resource.secret = secret
+	}
+
+	return resource, nil
+}
+
+func resolveSecret(secrets map[string]map[string]string, username string, password string) (map[string]string, error) {
+
+	req, err := http.NewRequest("GET", secrets[getFirstKey(secrets)]["ref"], nil)
+
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	req.SetBasicAuth(username, password)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		errorCounter.WithLabelValues("contact_fasit").Inc()
+		return map[string]string{}, fmt.Errorf("Error contacting fasit when resolving secret: %s", err)
+	}
+
+	httpReqsCounter.WithLabelValues(string(resp.StatusCode), "GET").Inc()
+	if resp.StatusCode > 299 {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return map[string]string{}, fmt.Errorf("Fasit gave errormessage when resolving secret: %s" + strconv.Itoa(resp.StatusCode))
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	return map[string]string{"password": string(body)}, nil
+}
+
+func getFirstKey(m map[string]map[string]string) string {
+	if len(m) > 0 {
+		for key := range (m) {
+			return key
+		}
+	}
+	return ""
+}
+
+func buildRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
+	req, err := http.NewRequest("GET", fasit + "/api/v2/scopedresource", nil)
+
+	q := req.URL.Query()
+	q.Add("alias", alias)
+	q.Add("type", resourceType)
+	q.Add("environment", environment)
+	q.Add("application", application)
+	q.Add("zone", zone)
+	req.URL.RawQuery = q.Encode()
+	return req, err
+}
+
 var httpReqsCounter = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Subsystem: "fasitAdapter",
@@ -32,119 +199,3 @@ var errorCounter = prometheus.NewCounterVec(
 		Help:      "Errors occurred in fasitadapter",
 	},
 	[]string{"type"})
-
-func init() {
-	prometheus.MustRegister(httpReqsCounter)
-}
-
-type Properties struct {
-	Url      string
-	Username string
-}
-
-type Password struct {
-	Ref string
-}
-type Secrets struct {
-	Password Password
-	Actual   string
-}
-
-type FasitResource struct {
-	Alias        string
-	ResourceType string `json:"type"`
-	Properties   map[string]string
-	Secrets      Secrets
-}
-
-type ResourceRequest struct {
-	name         string
-	resourceType string
-}
-
-type Resource struct {
-	name         string
-	resourceType string
-	properties   map[string]string
-	secret       string
-}
-
-type Fasit interface {
-	getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource Resource, err error)
-	getResources(resourceRequests []ResourceRequest, environment string, application string, zone string) (resources []Resource, err error)
-}
-
-type FasitClient struct {
-	FasitUrl string
-}
-
-func (fasit FasitClient) getResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []Resource, err error) {
-	for _, request := range resourcesRequests {
-		resource, err := fasit.getResource(request, environment, application, zone)
-		if err != nil {
-			return []Resource{}, fmt.Errorf("failed to get resource for "+request.name, err)
-		}
-		resources = append(resources, resource)
-	}
-	return resources, nil
-}
-
-func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource Resource, err error) {
-	requestCounter.With(nil).Inc()
-	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.name, resourcesRequest.resourceType, environment, application, zone)
-	if err != nil {
-		errorCounter.WithLabelValues("create_request").Inc()
-		return Resource{}, fmt.Errorf("could not create request: ", err)
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return Resource{}, fmt.Errorf("error contacting fasit: ", err)
-	}
-	httpReqsCounter.WithLabelValues(string(resp.StatusCode), "GET").Inc()
-	if resp.StatusCode > 299 {
-		errorCounter.WithLabelValues("error_fasit").Inc()
-		return Resource{}, fmt.Errorf("Fasit gave errormessage: " + strconv.Itoa(resp.StatusCode))
-	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		errorCounter.WithLabelValues("read_body").Inc()
-		return Resource{}, fmt.Errorf("Could not read body: ", err)
-	}
-	var fasitResource FasitResource
-
-	err = json.Unmarshal(body, &fasitResource)
-	if err != nil {
-		errorCounter.WithLabelValues("unmarshal_body").Inc()
-		return Resource{}, fmt.Errorf("Could not unmarshal body: ", err)
-	}
-
-	resource = mapToNaisResource(fasitResource)
-
-	return resource, nil
-}
-
-func mapToNaisResource(fasitResource FasitResource) (resource Resource) {
-	resource.name = fasitResource.Alias
-	resource.resourceType = fasitResource.ResourceType
-	resource.properties = fasitResource.Properties
-	resource.secret = fasitResource.Secrets.Password.Ref
-	return
-}
-
-func buildRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", fasit+"/api/v2/scopedresource", nil)
-	q := req.URL.Query()
-	q.Add("alias", alias)
-	q.Add("type", resourceType)
-	q.Add("environment", environment)
-	q.Add("application", application)
-	q.Add("zone", zone)
-	req.URL.RawQuery = q.Encode()
-	return req, err
-}

@@ -79,7 +79,7 @@ type NaisDeploymentRequest struct {
 
 type NaisAppConfig struct {
 	Containers []Container
-	Resources  []NaisResource
+	Resources  []NaisAppConfigResource
 }
 
 type Container struct {
@@ -95,7 +95,7 @@ type Port struct {
 	Protocol   string
 }
 
-type NaisResource struct {
+type NaisAppConfigResource struct {
 	ResourceType string
 	ResourceName string
 }
@@ -167,7 +167,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		resourceRequests = append(resourceRequests, ResourceRequest{resource.ResourceName, resource.ResourceType})
 	}
 
-	var resources []Resource
+	var resources []NaisResource
 
 	if len(resourceRequests) > 0 {
 		resources, err = api.Fasit.getResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, "zone")
@@ -234,7 +234,7 @@ func (api Api) createOrUpdateService(req NaisDeploymentRequest, appConfig NaisAp
 	return nil
 }
 
-func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig NaisAppConfig, resource []Resource) error {
+func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig NaisAppConfig, resource []NaisResource) error {
 
 	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(req.Environment)
 	deployment, err := deploymentClient.Get(req.Application)

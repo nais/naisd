@@ -67,9 +67,9 @@ func TestDeployment(t *testing.T) {
 	r := K8sResourceCreator{appConfig, req}
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewDeployment", func(t *testing.T) {
-		naisResources := []Resource{
-			{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, "secret"},
-			{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, "secret"}}
+		naisResources := []NaisResource{
+			{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{"password": "secret"}},
+			{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{"password": "secret"}}}
 
 		deployment := *r.CreateDeployment(naisResources)
 
@@ -89,7 +89,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("AValidDeploymentCanBeUpdated", func(t *testing.T) {
 		r.DeploymentRequest.Version = newVersion
 
-		updatedDeployment := *r.UpdateDeployment(deployment, []Resource{})
+		updatedDeployment := *r.UpdateDeployment(deployment, []NaisResource{})
 
 		assert.Equal(t, appName, updatedDeployment.Name)
 		assert.Equal(t, appName, updatedDeployment.Spec.Template.Name)
@@ -148,7 +148,7 @@ func defaultAppConfig(appName string, image string, port int, targetPort int) Na
 					},
 				},
 			},
-		}, []NaisResource{{"db", "db1"}, {"db", "db2"}},
+		}, []NaisAppConfigResource{{"db", "db1"}, {"db", "db2"}},
 	}
 }
 func defaultService(appName string, nameSpace string, resourceVersion string, clusterIp string, port int) *v1.Service {

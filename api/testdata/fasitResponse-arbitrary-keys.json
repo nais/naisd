@@ -6,10 +6,10 @@
     "application": "appName"
   },
   "properties": {
-    "url": "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta",
-    "username": "basta"
+    "a": "1",
+    "b": "2",
+    "c": "3"
   },
-
   "files": {},
   "dodgy": false,
   "id": 848186,

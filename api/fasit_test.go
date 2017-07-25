@@ -14,7 +14,7 @@ func TestGettingResource(t *testing.T) {
 	application := "application"
 	zone := "zone"
 
-	fasit := FasitClient{"https://fasit.basta.no"}
+	fasit := FasitClient{"https://fasit.basta.no", "username", "password"}
 
 
 	defer gock.Off()
@@ -34,8 +34,6 @@ func TestGettingResource(t *testing.T) {
 	assert.Equal(t, resourceType, resource.resourceType)
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
 	assert.Equal(t, "basta", resource.properties["username"])
-	assert.Equal(t, "https://fasit.adeo.no/api/v2/secrets/2586446", resource.secret)
-
 }
 
 func TestGettingListOfResources(t *testing.T) {
@@ -50,7 +48,7 @@ func TestGettingListOfResources(t *testing.T) {
 	zone := "zone"
 
 
-	fasit := FasitClient{"https://fasit.basta.no"}
+	fasit := FasitClient{"https://fasit.basta.no", "username", "password"}
 
 
 	defer gock.Off()
@@ -93,6 +91,45 @@ func TestGettingListOfResources(t *testing.T) {
 	assert.Equal(t, alias, resourcesReplies[0].name)
 	assert.Equal(t, alias2, resourcesReplies[1].name)
 	assert.Equal(t, alias3, resourcesReplies[2].name)
-
-
 }
+
+func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
+	fasit := FasitClient{"https://fasit.local", "username", "password"}
+
+	defer gock.Off()
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
+		MatchParam("alias", "alias").
+		Reply(200).File("testdata/fasitResponse-arbitrary-keys.json")
+
+	resource, err := fasit.getResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, "1", resource.properties["a"])
+	assert.Equal(t, "2", resource.properties["b"])
+	assert.Equal(t, "3", resource.properties["c"])
+}
+
+func TestResolvingSecret(t *testing.T) {
+	fasit := FasitClient{"https://fasit.local", "username", "password"}
+
+	defer gock.Off()
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
+		MatchParam("alias", "aliaset").
+		Reply(200).File("testdata/response-with-secret.json")
+
+	gock.New("https://fasit.adeo.no").
+		Get("/api/v2/secrets/696969").
+		HeaderPresent("Authorization").
+		Reply(200).BodyString("hemmelig")
+
+	resource, err := fasit.getResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, "1", resource.properties["a"])
+	assert.Equal(t, "hemmelig", resource.secret["password"])
+}
+

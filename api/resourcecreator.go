@@ -52,7 +52,7 @@ func (r K8sResourceCreator) CreateService() *v1.Service {
 	}
 }
 
-func (r K8sResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deployment, resource []Resource) *v1beta1.Deployment {
+func (r K8sResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deployment, resource []NaisResource) *v1beta1.Deployment {
 	deploymentSpec := r.CreateDeployment(resource)
 	deploymentSpec.ObjectMeta.ResourceVersion = exisitingDeployment.ObjectMeta.ResourceVersion
 	deploymentSpec.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version)
@@ -60,7 +60,7 @@ func (r K8sResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deploy
 	return deploymentSpec
 }
 
-func (r K8sResourceCreator) CreateDeployment(resource []Resource) *v1beta1.Deployment {
+func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.Deployment {
 	appName := r.DeploymentRequest.Application
 	namespace := r.DeploymentRequest.Environment
 

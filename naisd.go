@@ -20,7 +20,7 @@ func main() {
 
 	flag.Parse()
 
-	fasitClient := api.FasitClient{*fasitUrl}
+	fasitClient := api.FasitClient{*fasitUrl, "", ""}
 	glog.Infof("using fasit instance %s", fasitClient.FasitUrl)
 
 	glog.Infof("running on port %s", Port)

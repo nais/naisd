@@ -39,7 +39,7 @@ func (api Api) NewApi() http.Handler {
 	mux := goji.NewMux()
 
 	mux.HandleFunc(pat.Get("/pods"), api.listPods)
-	mux.HandleFunc(pat.Get("/hello"), api.isAlive)
+	mux.HandleFunc(pat.Get("/isalive"), api.isAlive)
 	mux.HandleFunc(pat.Post("/deploy"), api.deploy)
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 

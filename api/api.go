@@ -39,7 +39,7 @@ func (api Api) NewApi() http.Handler {
 	mux := goji.NewMux()
 
 	mux.HandleFunc(pat.Get("/pods"), api.listPods)
-	mux.HandleFunc(pat.Get("/hello"), api.hello)
+	mux.HandleFunc(pat.Get("/hello"), api.isAlive)
 	mux.HandleFunc(pat.Post("/deploy"), api.deploy)
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 
@@ -64,10 +64,10 @@ func (api Api) listPods(w http.ResponseWriter, _ *http.Request) {
 	glog.Info(w, string(output))
 }
 
-func (api Api) hello(w http.ResponseWriter, _ *http.Request) {
-	requests.With(prometheus.Labels{"path": "hello"}).Inc()
+func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) {
+	requests.With(prometheus.Labels{"path": "isAlive"}).Inc()
 
-	fmt.Fprint(w, "banan")
+	fmt.Fprint(w, "ok\n")
 }
 
 type NaisDeploymentRequest struct {

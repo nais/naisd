@@ -9,4 +9,4 @@ WORKDIR /app
 COPY naisd .
 COPY app-config.yaml .
 
-CMD ["/app/naisd", "--logtostderr=true"]
+CMD /app/naisd --fasiturl $fasit_url --logtostderr=true

@@ -17,6 +17,9 @@ spec:
       containers:
       - name: naisd
         image: "{{ .Values.image.repository }}:{{ .Values.image.version }}"
+        env:
+          - name: fasit_url
+            value: "{{ .Values.fasitUrl }}"
         ports:
         - containerPort: 8081
           protocol: TCP

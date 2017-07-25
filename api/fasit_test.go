@@ -14,7 +14,7 @@ func TestGettingResource(t *testing.T) {
 	application := "application"
 	zone := "zone"
 
-	fasit := FasitAdapter{"https://fasit.basta.no"}
+	fasit := FasitClient{"https://fasit.basta.no"}
 
 
 	defer gock.Off()
@@ -50,7 +50,7 @@ func TestGettingListOfResources(t *testing.T) {
 	zone := "zone"
 
 
-	fasit := FasitAdapter{"https://fasit.basta.no"}
+	fasit := FasitClient{"https://fasit.basta.no"}
 
 
 	defer gock.Off()

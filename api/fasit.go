@@ -74,11 +74,11 @@ type Fasit interface {
 	getResources(resourceRequests []ResourceRequest, environment string, application string, zone string) (resources []Resource, err error)
 }
 
-type FasitAdapter struct {
+type FasitClient struct {
 	FasitUrl string
 }
 
-func (fasit FasitAdapter) getResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []Resource, err error) {
+func (fasit FasitClient) getResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []Resource, err error) {
 	for _, request := range resourcesRequests {
 		resource, err := fasit.getResource(request, environment, application, zone)
 		if err != nil {
@@ -89,7 +89,7 @@ func (fasit FasitAdapter) getResources(resourcesRequests []ResourceRequest, envi
 	return resources, nil
 }
 
-func (fasit FasitAdapter) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource Resource, err error) {
+func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource Resource, err error) {
 	requestCounter.With(nil).Inc()
 	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.name, resourcesRequest.resourceType, environment, application, zone)
 	if err != nil {

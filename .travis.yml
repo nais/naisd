@@ -6,12 +6,19 @@ before_script:
 - docker pull golang:1.8
 - docker pull navikt/helm
 - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+- git clone https://github.com/nais/charts
 script:
 - make install test linux
 - /bin/bash bump.sh $GH_TOKEN
 - git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags https://$GH_TOKEN@github.com/nais/naisd
 - make docker-build push-dockerhub
 - docker run --entrypoint=/bin/bash -w /helm -v $(pwd)/helm/naisd:/helm navikt/helm -c "/bin/helm registry login quay.io -u nais+travis -p $QUAY_TOKEN && /bin/helm registry push --namespace nais --channel stable quay.io"
+- cd charts
+- docker run -v $(pwd):/charts -v $(pwd)/../naisd:/naisd  -w /charts navikt/helm package /naisd/helm/naisd
+- docker run -v $(pwd):/charts -w /charts navikt/helm repo index .
+- git add --all
+- git commit -m "auto-update by travis [skip ci]"
+- git push https://$GH_TOKEN@github.com/nais/charts
 branches:
   only:
   - master

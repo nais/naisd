@@ -20,7 +20,7 @@ func main() {
 
 	flag.Parse()
 
-	glog.Infof("using fasit instance %s", fasitUrl)
+	glog.Infof("using fasit instance %s", *fasitUrl)
 
 	glog.Infof("running on port %s", Port)
 	err := http.ListenAndServe(Port, api.Api{newClientSet(*kubeconfig), *fasitUrl}.NewApi())

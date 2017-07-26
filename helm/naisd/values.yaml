@@ -1,4 +1,3 @@
-image:
-  repository: navikt/naisd
-  version: 35.0.0
 fasitUrl: https://localhost:6969
+repository: navikt/naisd
+version: 36.0.0

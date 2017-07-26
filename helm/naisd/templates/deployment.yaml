@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: naisd
-        image: "{{ .Values.image.repository }}:{{ .Values.image.version }}"
+        image: "{{ .Values.repository }}:{{ .Values.version }}"
         env:
           - name: fasit_url
             value: "{{ .Values.fasitUrl }}"

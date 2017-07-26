@@ -203,13 +203,13 @@ func (api Api) createOrUpdateService(req NaisDeploymentRequest, appConfig NaisAp
 		if err != nil {
 			return fmt.Errorf("failed to update service: %s", err)
 		}
-		glog.Info("serviceClient updated: %s", updatedService)
+		glog.Infof("serviceClient updated: %s", updatedService)
 	case errors.IsNotFound(err):
 		newService, err := serviceClient.Create(K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateService())
 		if err != nil {
 			return fmt.Errorf("failed to create service: %s", err)
 		}
-		glog.Info("service created %s", newService)
+		glog.Infof("service created %s", newService)
 
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
@@ -229,13 +229,13 @@ func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig Nai
 		if err != nil {
 			return fmt.Errorf("failed to update deployment: %s", err)
 		}
-		glog.Info("deployment updated %s", updatedDeployment)
+		glog.Infof("deployment updated %s", updatedDeployment)
 	case errors.IsNotFound(err):
 		newDeployment, err := deploymentClient.Create(K8sResourceCreator{appConfig, req}.CreateDeployment(resource))
 		if err != nil {
 			return fmt.Errorf("could not create deployment %s", err)
 		}
-		glog.Info("deployment created %s", newDeployment)
+		glog.Infof("deployment created %s", newDeployment)
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
 	}
@@ -253,13 +253,13 @@ func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAp
 		if err != nil {
 			return fmt.Errorf("failed to update ingress: %s", updatedIngress)
 		}
-		glog.Info("ingressClient updated %s", updatedIngress)
+		glog.Infof("ingressClient updated %s", updatedIngress)
 	case errors.IsNotFound(err):
 		newIngress, err := ingressClient.Create(K8sResourceCreator{appConfig, req}.CreateIngress())
 		if err != nil {
 			return fmt.Errorf("failed to create ingress: %s", newIngress)
 		}
-		glog.Info("ingressClient created %s", newIngress)
+		glog.Infof("ingressClient created %s", newIngress)
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
 	}

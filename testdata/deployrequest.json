@@ -2,5 +2,7 @@
 	"application": "k8s-testapp",
 	"environment": "default",
 	"version": "42.0.0",
-	"appConfigUrl": "https://raw.githubusercontent.com/nais/naisd/master/testdata/nais.yml"
+	"appConfigUrl": "https://raw.githubusercontent.com/nais/naisd/master/testdata/nais.yml",
+	"username": "user",
+	"password": "pw"
 }	

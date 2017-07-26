@@ -13,6 +13,12 @@ func init() {
 	prometheus.MustRegister(httpReqsCounter)
 }
 
+type FasitClient struct {
+	FasitUrl string
+	Username string
+	Password string
+}
+
 type Properties struct {
 	Url      string
 	Username string
@@ -41,18 +47,7 @@ type NaisResource struct {
 	secret       map[string]string
 }
 
-type Fasit interface {
-	getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error)
-	getResources(resourceRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error)
-}
-
-type FasitClient struct {
-	FasitUrl string
-	Username string
-	Password string
-}
-
-func (fasit FasitClient) getResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
+func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
 		resource, err := fasit.getResource(request, environment, application, zone)
 		if err != nil {
@@ -113,7 +108,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 	resource.properties = fasitResource.Properties
 
 	if len(fasitResource.Secrets) > 0 {
-		secret, err := resolveSecret(fasitResource.Secrets, fasit.Username, fasit.Password)
+		secret, err := resolveSecret(fasitResource.Secrets, "", "")
 		if err != nil {
 			errorCounter.WithLabelValues("resolve_secret").Inc()
 			return NaisResource{}, fmt.Errorf("Unable to resolve secret: %s", err)

@@ -20,11 +20,10 @@ func main() {
 
 	flag.Parse()
 
-	fasitClient := api.FasitClient{*fasitUrl, "", ""}
-	glog.Infof("using fasit instance %s", fasitClient.FasitUrl)
+	glog.Infof("using fasit instance %s", fasitUrl)
 
 	glog.Infof("running on port %s", Port)
-	err := http.ListenAndServe(Port, api.Api{newClientSet(*kubeconfig), fasitClient}.NewApi())
+	err := http.ListenAndServe(Port, api.Api{newClientSet(*kubeconfig), *fasitUrl}.NewApi())
 	if err != nil {
 		panic(err)
 	}

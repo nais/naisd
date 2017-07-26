@@ -14,11 +14,11 @@ func TestGettingResource(t *testing.T) {
 	application := "application"
 	zone := "zone"
 
-	fasit := FasitClient{"https://fasit.basta.no", "username", "password"}
+	fasit := FasitClient{"https://fasit.local", "", ""}
 
 
 	defer gock.Off()
-	gock.New("https://fasit.basta.no").
+	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", alias).
 		MatchParam("type", resourceType).
@@ -48,11 +48,11 @@ func TestGettingListOfResources(t *testing.T) {
 	zone := "zone"
 
 
-	fasit := FasitClient{"https://fasit.basta.no", "username", "password"}
+	fasit := FasitClient{"https://fasit.local", "", ""}
 
 
 	defer gock.Off()
-	gock.New("https://fasit.basta.no").
+	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", alias).
 		MatchParam("type", resourceType).
@@ -61,7 +61,7 @@ func TestGettingListOfResources(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
-	gock.New("https://fasit.basta.no").
+	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", alias2).
 		MatchParam("type", resourceType).
@@ -70,7 +70,7 @@ func TestGettingListOfResources(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse2.json")
 
-	gock.New("https://fasit.basta.no").
+	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", alias3).
 		MatchParam("type", resourceType).
@@ -84,7 +84,7 @@ func TestGettingListOfResources(t *testing.T) {
 	resources = append(resources, ResourceRequest{alias2, resourceType})
 	resources = append(resources, ResourceRequest{alias3, resourceType})
 
-	resourcesReplies, err  := fasit.getResources(resources, environment, application, zone)
+	resourcesReplies, err  := fasit.GetResources(resources, environment, application, zone)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(resourcesReplies))
@@ -94,7 +94,7 @@ func TestGettingListOfResources(t *testing.T) {
 }
 
 func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
-	fasit := FasitClient{"https://fasit.local", "username", "password"}
+	fasit := FasitClient{"https://fasit.local", "", ""}
 
 	defer gock.Off()
 	gock.New("https://fasit.local").
@@ -112,7 +112,7 @@ func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
 }
 
 func TestResolvingSecret(t *testing.T) {
-	fasit := FasitClient{"https://fasit.local", "username", "password"}
+	fasit := FasitClient{"https://fasit.local", "", ""}
 
 	defer gock.Off()
 	gock.New("https://fasit.local").

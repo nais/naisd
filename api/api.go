@@ -12,62 +12,12 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/v1"
 	"net/http"
 )
 
 type Api struct {
 	Clientset kubernetes.Interface
-	Fasit     Fasit
-}
-
-var (
-	requests = prometheus.NewCounterVec(
-		prometheus.CounterOpts{Name: "requests", Help: "requests pr path"}, []string{"path"},
-	)
-	deploys = prometheus.NewCounterVec(
-		prometheus.CounterOpts{Name: "deployments", Help: "deployments done by NaisD"}, []string{"nais_app"},
-	)
-)
-
-func init() {
-	prometheus.MustRegister(requests)
-	prometheus.MustRegister(deploys)
-}
-
-func (api Api) NewApi() http.Handler {
-	mux := goji.NewMux()
-
-	mux.HandleFunc(pat.Get("/pods"), api.listPods)
-	mux.HandleFunc(pat.Get("/isalive"), api.isAlive)
-	mux.HandleFunc(pat.Post("/deploy"), api.deploy)
-	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
-
-	return mux
-}
-
-func (api Api) listPods(w http.ResponseWriter, _ *http.Request) {
-	requests.With(prometheus.Labels{"path": "pods"}).Inc()
-	pods, err := api.Clientset.CoreV1().Pods("").List(v1.ListOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-
-	glog.Info("There are %d pods in the cluster\n", len(pods.Items))
-
-	for _, pod := range pods.Items {
-		glog.Info(pod.Name)
-	}
-
-	output, _ := json.MarshalIndent(pods.Items, "", "    ")
-
-	glog.Info(w, string(output))
-}
-
-func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) {
-	requests.With(prometheus.Labels{"path": "isAlive"}).Inc()
-
-	fmt.Fprint(w, "ok\n")
+	FasitUrl string
 }
 
 type NaisDeploymentRequest struct {
@@ -75,6 +25,8 @@ type NaisDeploymentRequest struct {
 	Version      string
 	Environment  string
 	AppConfigUrl string
+	Username     string
+	Password     string
 }
 
 type NaisAppConfig struct {
@@ -98,6 +50,35 @@ type Port struct {
 type NaisAppConfigResource struct {
 	ResourceType string
 	ResourceName string
+}
+
+var (
+	requests = prometheus.NewCounterVec(
+		prometheus.CounterOpts{Name: "requests", Help: "requests pr path"}, []string{"path"},
+	)
+	deploys = prometheus.NewCounterVec(
+		prometheus.CounterOpts{Name: "deployments", Help: "deployments done by NaisD"}, []string{"nais_app"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(requests)
+	prometheus.MustRegister(deploys)
+}
+
+func (api Api) NewApi() http.Handler {
+	mux := goji.NewMux()
+
+	mux.HandleFunc(pat.Get("/isalive"), api.isAlive)
+	mux.HandleFunc(pat.Post("/deploy"), api.deploy)
+	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
+
+	return mux
+}
+
+func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) {
+	requests.With(prometheus.Labels{"path": "isAlive"}).Inc()
+	fmt.Fprint(w, "")
 }
 
 func fetchManifest(url string) (NaisAppConfig, error) {
@@ -130,7 +111,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		glog.Error("Could not read body %s", err)
+		glog.Errorf("Could not read body %s", err)
 		w.WriteHeader(400)
 		w.Write([]byte("Could not read body "))
 		return
@@ -138,7 +119,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	var deploymentRequest NaisDeploymentRequest
 	if err = json.Unmarshal(body, &deploymentRequest); err != nil {
-		glog.Error("Could not parse body %s", err)
+		glog.Errorf("Could not parse body %s", err)
 		w.WriteHeader(400)
 		w.Write([]byte("Could not parse body "))
 		return
@@ -167,14 +148,17 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		resourceRequests = append(resourceRequests, ResourceRequest{resource.ResourceName, resource.ResourceType})
 	}
 
+
+	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+
 	var resources []NaisResource
 
 	if len(resourceRequests) > 0 {
-		resources, err = api.Fasit.getResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, "zone")
+		resources, err = fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, "zone")
 	}
 
 	if err != nil {
-		glog.Error("Error getting fasit resources", err)
+		glog.Errorf("Error getting fasit resources: %s", err)
 		w.WriteHeader(500)
 		w.Write([]byte("Error getting fasit resources: " + err.Error()))
 		return
@@ -182,21 +166,21 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	glog.Infof("Read app-config.yaml, looks like this:%s\n", appConfig)
 	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
-		glog.Error("Failed creating or updating service", err)
+		glog.Errorf("Failed creating or updating service: %s", err)
 		w.WriteHeader(500)
 		w.Write([]byte("createOrUpdateService failed with: " + err.Error()))
 		return
 	}
 
 	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig, resources); err != nil {
-		glog.Error("failed create or update Deployment", err)
+		glog.Errorf("failed create or update Deployment: %s", err)
 		w.WriteHeader(500)
 		w.Write([]byte("createOrUpdateDeployment failed with: " + err.Error()))
 		return
 	}
 
 	if err := api.createOrUpdateIngress(deploymentRequest, appConfig); err != nil {
-		glog.Error("failed create or update Ingress", err)
+		glog.Errorf("failed create or update Ingress: %s", err)
 		w.WriteHeader(500)
 		w.Write([]byte("createOrUpdateIngress failed with: " + err.Error()))
 		return
@@ -243,7 +227,7 @@ func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig Nai
 	case err == nil:
 		updatedDeployment, err := deploymentClient.Update(K8sResourceCreator{appConfig, req}.UpdateDeployment(deployment, resource))
 		if err != nil {
-			return fmt.Errorf("failed to update deployment", err)
+			return fmt.Errorf("failed to update deployment: %s", err)
 		}
 		glog.Info("deployment updated %s", updatedDeployment)
 	case errors.IsNotFound(err):
@@ -267,13 +251,13 @@ func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAp
 	case err == nil:
 		updatedIngress, err := ingressClient.Update(K8sResourceCreator{appConfig, req}.updateIngress(existingIngress))
 		if err != nil {
-			return fmt.Errorf("failed to update ingress", updatedIngress)
+			return fmt.Errorf("failed to update ingress: %s", updatedIngress)
 		}
 		glog.Info("ingressClient updated %s", updatedIngress)
 	case errors.IsNotFound(err):
 		newIngress, err := ingressClient.Create(K8sResourceCreator{appConfig, req}.CreateIngress())
 		if err != nil {
-			return fmt.Errorf("failed to create ingress", newIngress)
+			return fmt.Errorf("failed to create ingress: %s", newIngress)
 		}
 		glog.Info("ingressClient created %s", newIngress)
 	default:

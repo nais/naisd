@@ -174,7 +174,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset(service, deployment, ingress)
 
 
-	api := Api{clientset, FasitClient{"https://fasit.basta.no", "username", "password"}}
+	api := Api{clientset, "https://fasit.local"}
 
 	depReq := NaisDeploymentRequest{
 		Application:  appName,
@@ -210,7 +210,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		BodyString(string(data))
 
 
-	gock.New("https://fasit.basta.no").
+	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", resourceAlias).
 		MatchParam("type", resourceType).

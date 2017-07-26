@@ -15,7 +15,7 @@ script:
 - docker run --entrypoint=/bin/bash -w /helm -v $(pwd)/helm/naisd:/helm navikt/helm -c "/bin/helm registry login quay.io -u nais+travis -p $QUAY_TOKEN && /bin/helm registry push --namespace nais --channel stable quay.io"
 - cd charts
 - docker run -v $(pwd):/charts -v $(pwd)/../:/naisd  -w /charts navikt/helm package /naisd/helm/naisd
-- docker run -v $(pwd):/charts -w /charts navikt/helm repo index .
+- docker run -v $(pwd):/charts -w /charts navikt/helm repo index --url https://nais.github.io/charts .
 - echo "<html><body><pre>$(cat index.yaml)</pre></body></html>" > index.html
 - git add --all
 - git commit -m "auto-update by travis [skip ci]"

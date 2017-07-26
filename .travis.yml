@@ -16,6 +16,7 @@ script:
 - cd charts
 - docker run -v $(pwd):/charts -v $(pwd)/../:/naisd  -w /charts navikt/helm package /naisd/helm/naisd
 - docker run -v $(pwd):/charts -w /charts navikt/helm repo index .
+- echo "<html><body><pre>$(cat index.yaml)</pre></body></html>" > index.html
 - git add --all
 - git commit -m "auto-update by travis [skip ci]"
 - git push https://$GH_TOKEN@github.com/nais/charts

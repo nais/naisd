@@ -12,10 +12,11 @@ script:
 - /bin/bash bump.sh $GH_TOKEN
 - git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags https://$GH_TOKEN@github.com/nais/naisd
 - make docker-build push-dockerhub
-- docker run --entrypoint=/bin/bash -w /helm -v $(pwd)/helm/naisd:/helm navikt/helm -c "/bin/helm registry login quay.io -u nais+travis -p $QUAY_TOKEN && /bin/helm registry push --namespace nais --channel stable quay.io"
+# unstable endpoint, disabling for now
+#- docker run --entrypoint=/bin/bash -w /helm -v $(pwd)/helm/naisd:/helm navikt/helm -c "/bin/helm registry login quay.io -u nais+travis -p $QUAY_TOKEN && /bin/helm registry push --namespace nais --channel stable quay.io"
 - cd charts
-- docker run -v $(pwd):/charts -v $(pwd)/../:/naisd  -w /charts navikt/helm package /naisd/helm/naisd
-- docker run -v $(pwd):/charts -w /charts navikt/helm repo index --url https://nais.github.io/charts .
+- docker run -v $(pwd):/charts -v $(pwd)/../:/naisd  -w /charts navikt/helm /usr/bin/helm package /naisd/helm/naisd
+- docker run -v $(pwd):/charts -w /charts navikt/helm /usr/bin/helm repo index --url https://nais.github.io/charts .
 - echo "<html><body><pre>$(cat index.yaml)</pre></body></html>" > index.html
 - git add --all
 - git commit -m "auto-update by travis [skip ci]"

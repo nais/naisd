@@ -148,7 +148,10 @@ func defaultAppConfig(appName string, image string, port int, targetPort int) Na
 					},
 				},
 			},
-		}, []NaisAppConfigResource{{"db", "db1"}, {"db", "db2"}},
+		},
+		FasitResources{
+			Used: []UsedResource{{"db", "db1"}, {"db", "db2"} },
+		},
 	}
 }
 func defaultService(appName string, nameSpace string, resourceVersion string, clusterIp string, port int) *v1.Service {

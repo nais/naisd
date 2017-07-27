@@ -197,7 +197,9 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 				},
 			},
 		},
-		[]NaisAppConfigResource{{resourceType, resourceAlias}},
+		FasitResources{
+			Used: []UsedResource{{resourceType, resourceAlias}},
+		},
 	}
 	data, _ := yaml.Marshal(config)
 
@@ -232,4 +234,19 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
+}
+
+func TestAppConfigUnmarshal(t *testing.T) {
+	const repopath = "https://appconfig.repo"
+
+	gock.New(repopath).
+		Reply(200).
+		File("testdata/nais.yaml")
+
+	appConfig, err := fetchAppConfig(repopath)
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, "/api", appConfig.FasitResources.Exposed[0].Path)
+	assert.Equal(t, "datasource", appConfig.FasitResources.Used[0].ResourceType)
 }

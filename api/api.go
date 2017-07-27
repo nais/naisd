@@ -30,8 +30,8 @@ type NaisDeploymentRequest struct {
 }
 
 type NaisAppConfig struct {
-	Containers []Container
-	Resources  []NaisAppConfigResource
+	Containers     []Container
+	FasitResources FasitResources `yaml:"fasitResources"`
 }
 
 type Container struct {
@@ -42,14 +42,25 @@ type Container struct {
 
 type Port struct {
 	Name       string
-	TargetPort int
 	Port       int
+	TargetPort int `yaml:"targetPort"`
 	Protocol   string
 }
 
-type NaisAppConfigResource struct {
-	ResourceType string
-	ResourceName string
+type FasitResources struct {
+	Used    []UsedResource
+	Exposed []ExposedResource
+}
+
+type UsedResource struct {
+	Alias        string
+	ResourceType string `yaml:"resourceType"`
+}
+
+type ExposedResource struct {
+	Alias        string
+	ResourceType string `yaml:"resourceType"`
+	Path         string
 }
 
 var (
@@ -81,7 +92,7 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, "")
 }
 
-func fetchManifest(url string) (NaisAppConfig, error) {
+func fetchAppConfig(url string) (NaisAppConfig, error) {
 	glog.Infof("Fetching manifest from URL %s\n", url)
 	response, err := http.Get(url)
 
@@ -134,7 +145,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		appConfigUrl = fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/%s", deploymentRequest.Application, deploymentRequest.Version, fmt.Sprintf("%s-%s.yaml", deploymentRequest.Application, deploymentRequest.Version))
 	}
 
-	appConfig, err := fetchManifest(appConfigUrl)
+	appConfig, err := fetchAppConfig(appConfigUrl)
 
 	if err != nil {
 		glog.Errorf("Unable to fetch manifest: %s\n", err)
@@ -144,8 +155,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var resourceRequests []ResourceRequest
-	for _, resource := range appConfig.Resources {
-		resourceRequests = append(resourceRequests, ResourceRequest{resource.ResourceName, resource.ResourceType})
+	for _, resource := range appConfig.FasitResources.Used {
+		resourceRequests = append(resourceRequests, ResourceRequest{resource.Alias, resource.ResourceType})
 	}
 
 

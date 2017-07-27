@@ -1,0 +1,18 @@
+containers:
+- name: k8s-testapp
+  image: navikt/k8s-testapp:69
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: http
+fasitResources:
+  used:
+  - alias: mydb
+    resourceType: datasource
+  - alias: someservice
+    resourceType: restservice
+  exposed:
+  - alias: myservice
+    resourceType: restservice
+    path: /api

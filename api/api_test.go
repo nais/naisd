@@ -173,7 +173,6 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset(service, deployment, ingress)
 
-
 	api := Api{clientset, "https://fasit.local"}
 
 	depReq := NaisDeploymentRequest{

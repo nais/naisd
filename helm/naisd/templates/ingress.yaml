@@ -2,9 +2,10 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: naisd
+  namespace: kube-system
 spec:
   rules:
-  - host: daemon.nais.devillo.no
+  - host: daemon.nais-ci.devillo.no
     http:
       paths:
       - path: /

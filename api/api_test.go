@@ -198,7 +198,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 			},
 		},
 		FasitResources{
-			Used: []UsedResource{{resourceType, resourceAlias}},
+			Used: []UsedResource{{resourceAlias, resourceType}},
 		},
 	}
 	data, _ := yaml.Marshal(config)

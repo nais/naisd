@@ -36,8 +36,8 @@ type FasitResource struct {
 }
 
 type ResourceRequest struct {
-	name         string
-	resourceType string
+	Alias        string
+	ResourceType string
 }
 
 type NaisResource struct {
@@ -51,7 +51,7 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 	for _, request := range resourcesRequests {
 		resource, err := fasit.getResource(request, environment, application, zone)
 		if err != nil {
-			return []NaisResource{}, fmt.Errorf("failed to get resource for " + request.name, err)
+			return []NaisResource{}, fmt.Errorf("failed to get resource for " + request.Alias, err)
 		}
 		resources = append(resources, resource)
 	}
@@ -60,7 +60,7 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 
 func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
 	requestCounter.With(nil).Inc()
-	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.name, resourcesRequest.resourceType, environment, application, zone)
+	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return NaisResource{}, fmt.Errorf("Could not create request: %s", err)

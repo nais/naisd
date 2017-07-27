@@ -156,9 +156,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	var resourceRequests []ResourceRequest
 	for _, resource := range appConfig.FasitResources.Used {
-		resourceRequests = append(resourceRequests, ResourceRequest{resource.Alias, resource.ResourceType})
+		resourceRequests = append(resourceRequests, ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType})
 	}
-
 
 	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
 

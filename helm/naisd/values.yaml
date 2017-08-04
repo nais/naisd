@@ -1,5 +1,5 @@
 fasitUrl: https://fasit.adeo.no
 repository: navikt/naisd
-version: 42.0.0
 configuration:
   ingress: daemon.domain.com
+version: 43.0.0

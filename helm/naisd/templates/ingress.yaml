@@ -5,7 +5,7 @@ metadata:
   namespace: kube-system
 spec:
   rules:
-  - host: "{{ .Values.configuration.ingress }}"
+  - host: "{{ .Values.ingress }}"
     http:
       paths:
       - path: /

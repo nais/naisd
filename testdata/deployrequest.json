@@ -4,5 +4,6 @@
 	"version": "42.0.0",
 	"appConfigUrl": "https://raw.githubusercontent.com/nais/naisd/master/testdata/nais.yml",
 	"username": "user",
-	"password": "pw"
+	"password": "pw",
+	"zone": "fss"
 }	

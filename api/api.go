@@ -24,9 +24,11 @@ type NaisDeploymentRequest struct {
 	Application  string
 	Version      string
 	Environment  string
+	Zone		 string
 	AppConfigUrl string
 	Username     string
 	Password     string
+	Namespace	 string
 }
 
 type NaisAppConfig struct {
@@ -164,7 +166,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	var resources []NaisResource
 
 	if len(resourceRequests) > 0 {
-		resources, err = fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, "zone")
+		resources, err = fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
 	}
 
 	if err != nil {

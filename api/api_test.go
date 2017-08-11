@@ -43,6 +43,7 @@ func TestNoManifestGivesError(t *testing.T) {
 		Version:      "",
 		Environment:  "",
 		AppConfigUrl: "http://repo.com/app",
+		Zone: "zone",
 	}
 
 	defer gock.Off()
@@ -77,6 +78,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	version := "123"
 	resourceAlias := "alias1"
 	resourceType := "db"
+	zone := "zone"
 
 	service := &v1.Service{ObjectMeta: v1.ObjectMeta{
 		Name:      appName,
@@ -180,6 +182,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Version:      version,
 		Environment:  namespace,
 		AppConfigUrl: "http://repo.com/app",
+		Zone: "zone",
 	}
 
 	config := NaisAppConfig{
@@ -217,7 +220,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		MatchParam("type", resourceType).
 		MatchParam("environment", namespace).
 		MatchParam("application", appName).
-		MatchParam("zone", "zone").
+		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
 

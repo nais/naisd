@@ -206,7 +206,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 func (api Api) createOrUpdateService(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
 
-	serviceClient := api.Clientset.CoreV1().Services(req.Environment)
+	serviceClient := api.Clientset.CoreV1().Services(req.Namespace)
 	existingService, err := serviceClient.Get(req.Application)
 
 	switch {
@@ -232,7 +232,7 @@ func (api Api) createOrUpdateService(req NaisDeploymentRequest, appConfig NaisAp
 
 func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig NaisAppConfig, resource []NaisResource) error {
 
-	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(req.Environment)
+	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(req.Namespace)
 	deployment, err := deploymentClient.Get(req.Application)
 
 	switch {
@@ -257,7 +257,7 @@ func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig Nai
 
 func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
 
-	ingressClient := api.Clientset.Extensions().Ingresses(req.Environment)
+	ingressClient := api.Clientset.Extensions().Ingresses(req.Namespace)
 	existingIngress, err := ingressClient.Get(req.Application)
 	switch {
 	case err == nil:

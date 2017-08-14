@@ -33,7 +33,7 @@ func (r K8sResourceCreator) CreateService() *v1.Service {
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      r.DeploymentRequest.Application,
-			Namespace: r.DeploymentRequest.Environment,
+			Namespace: r.DeploymentRequest.Namespace,
 		},
 		Spec: v1.ServiceSpec{
 			Type:     v1.ServiceTypeClusterIP,
@@ -62,7 +62,7 @@ func (r K8sResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deploy
 
 func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.Deployment {
 	appName := r.DeploymentRequest.Application
-	namespace := r.DeploymentRequest.Environment
+	namespace := r.DeploymentRequest.Namespace
 
 	deployment := &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{
@@ -142,7 +142,7 @@ func (r K8sResourceCreator) CreateIngress() *v1beta1.Ingress {
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      appName,
-			Namespace: r.DeploymentRequest.Environment,
+			Namespace: r.DeploymentRequest.Namespace,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{

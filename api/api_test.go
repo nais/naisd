@@ -44,6 +44,7 @@ func TestNoManifestGivesError(t *testing.T) {
 		Environment:  "",
 		AppConfigUrl: "http://repo.com/app",
 		Zone: "zone",
+		Namespace: "namespace",
 	}
 
 	defer gock.Off()
@@ -183,6 +184,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Environment:  namespace,
 		AppConfigUrl: "http://repo.com/app",
 		Zone: "zone",
+		Namespace: "namespace",
 	}
 
 	config := NaisAppConfig{

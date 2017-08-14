@@ -108,7 +108,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 	resource.properties = fasitResource.Properties
 
 	if len(fasitResource.Secrets) > 0 {
-		secret, err := resolveSecret(fasitResource.Secrets, "", "")
+		secret, err := resolveSecret(fasitResource.Secrets, fasit.Username, fasit.Password)
 		if err != nil {
 			errorCounter.WithLabelValues("resolve_secret").Inc()
 			return NaisResource{}, fmt.Errorf("Unable to resolve secret: %s", err)

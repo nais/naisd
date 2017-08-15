@@ -223,7 +223,7 @@ func defaultDeployment(appName string, namespace string, image string, port int,
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceCPU:    resource.MustParse("100m"),
-									v1.ResourceMemory: resource.MustParse("256Mi"),
+									v1.ResourceMemory: resource.MustParse("512Mi"),
 								},
 							},
 							Env: []v1.EnvVar{{

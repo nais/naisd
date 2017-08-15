@@ -105,7 +105,7 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
 									v1.ResourceCPU:    k8sresource.MustParse("100m"),
-									v1.ResourceMemory: k8sresource.MustParse("256Mi"),
+									v1.ResourceMemory: k8sresource.MustParse("512Mi"),
 								},
 							},
 							Env: []v1.EnvVar{{

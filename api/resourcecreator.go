@@ -103,7 +103,7 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 								{ContainerPort: int32(r.AppConfig.Containers[0].Ports[0].Port), Protocol: v1.ProtocolTCP},
 							},
 							Resources: v1.ResourceRequirements{
-								Limits: v1.ResourceList{
+								Requests: v1.ResourceList{
 									v1.ResourceCPU:    k8sresource.MustParse("100m"),
 									v1.ResourceMemory: k8sresource.MustParse("256Mi"),
 								},

@@ -221,7 +221,7 @@ func defaultDeployment(appName string, namespace string, image string, port int,
 								{ContainerPort: int32(port), Protocol: v1.ProtocolTCP},
 							},
 							Resources: v1.ResourceRequirements{
-								Limits: v1.ResourceList{
+								Requests: v1.ResourceList{
 									v1.ResourceCPU:    resource.MustParse("100m"),
 									v1.ResourceMemory: resource.MustParse("256Mi"),
 								},

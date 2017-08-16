@@ -7,6 +7,8 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
+
+
 )
 
 type K8sResourceCreator struct {
@@ -44,7 +46,7 @@ func (r K8sResourceCreator) CreateService() *v1.Service {
 					Port:     80,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: int32(r.AppConfig.Containers[0].Ports[0].TargetPort),
+						IntVal: int32(r.AppConfig.Ports[0].TargetPort),
 					},
 				},
 			},
@@ -55,7 +57,7 @@ func (r K8sResourceCreator) CreateService() *v1.Service {
 func (r K8sResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deployment, resource []NaisResource) *v1beta1.Deployment {
 	deploymentSpec := r.CreateDeployment(resource)
 	deploymentSpec.ObjectMeta.ResourceVersion = exisitingDeployment.ObjectMeta.ResourceVersion
-	deploymentSpec.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version)
+	deploymentSpec.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("%s:%s", r.AppConfig.Image, r.DeploymentRequest.Version)
 
 	return deploymentSpec
 }
@@ -97,10 +99,10 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:  r.AppConfig.Containers[0].Name,
-							Image: fmt.Sprintf("%s:%s", r.AppConfig.Containers[0].Image, r.DeploymentRequest.Version),
+							Name:  r.AppConfig.Name,
+							Image: fmt.Sprintf("%s:%s", r.AppConfig.Image, r.DeploymentRequest.Version),
 							Ports: []v1.ContainerPort{
-								{ContainerPort: int32(r.AppConfig.Containers[0].Ports[0].Port), Protocol: v1.ProtocolTCP},
+								{ContainerPort: int32(r.AppConfig.Ports[0].Port), Protocol: v1.ProtocolTCP},
 							},
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{

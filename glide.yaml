@@ -22,3 +22,9 @@ import:
 - package: gopkg.in/h2non/gock.v1
   version: ^1.0.4
 - package: github.com/golang/glog
+- package: github.com/jteeuwen/go-bindata
+  version: ^3.0.7
+  subpackages:
+  - '...'
+- package: github.com/imdario/mergo
+  version: ^0.2.2

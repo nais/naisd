@@ -1,5 +1,5 @@
-hash: 95bbe8678407cee6a106c857881ef1768d5f4800cfab578b53e2baff387708ad
-updated: 2017-07-07T11:25:01.362572254+02:00
+hash: 2ed14a128b7f60812f5f157df4ae3bd385d55c8a12c7e6f764cbd1d658473516
+updated: 2017-08-15T10:09:37.222956416+02:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -66,9 +66,13 @@ imports:
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo
-  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
+  version: 3e95a51e0639b4cf372f2ccf74c86749d747fbdc
 - name: github.com/jonboulle/clockwork
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
+- name: github.com/jteeuwen/go-bindata
+  version: bbd0c6e271208dce66d8fda4bc536453cd27fc4a
+  subpackages:
+  - '...'
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
 - name: github.com/mailru/easyjson
@@ -173,7 +177,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: gopkg.in/h2non/gock.v1
-  version: 2897ffde93a71060ce86518f1e7317ec8433d2d6
+  version: 84d599244901620fb3eb96473eb9e50619f69b47
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2

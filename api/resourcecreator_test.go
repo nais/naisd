@@ -144,21 +144,17 @@ func defaultDeployRequest() NaisDeploymentRequest {
 
 func defaultAppConfig(appName string, image string, port int, targetPort int) NaisAppConfig {
 	return NaisAppConfig{
-		[]Container{
+		Name:  appName,
+		Image: image,
+		Ports: []Port{
 			{
-				Name:  appName,
-				Image: image,
-				Ports: []Port{
-					{
-						Name:       "portname",
-						Port:       port,
-						Protocol:   "http",
-						TargetPort: targetPort,
-					},
-				},
+				Name:       "portname",
+				Port:       port,
+				Protocol:   "http",
+				TargetPort: targetPort,
 			},
 		},
-		FasitResources{
+		FasitResources: FasitResources{
 			Used: []UsedResource{{"db", "db1"}, {"db", "db2"} },
 		},
 	}

@@ -7,6 +7,5 @@ RUN apk add --no-cache ca-certificates && \
 WORKDIR /app
 
 COPY naisd .
-COPY app-config.yaml .
 
 CMD /app/naisd --fasiturl $fasit_url --logtostderr=true

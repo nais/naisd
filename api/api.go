@@ -13,11 +13,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
 	"net/http"
+	"github.com/imdario/mergo"
 )
 
 type Api struct {
 	Clientset kubernetes.Interface
-	FasitUrl string
+	FasitUrl  string
 }
 
 type NaisDeploymentRequest struct {
@@ -32,14 +33,10 @@ type NaisDeploymentRequest struct {
 }
 
 type NaisAppConfig struct {
-	Containers     []Container
+	Name           string
+	Image          string
+	Ports          []Port
 	FasitResources FasitResources `yaml:"fasitResources"`
-}
-
-type Container struct {
-	Name  string
-	Image string
-	Ports []Port
 }
 
 type Port struct {
@@ -97,8 +94,8 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) {
 func fetchAppConfig(url string) (NaisAppConfig, error) {
 	glog.Infof("Fetching manifest from URL %s\n", url)
 	response, err := http.Get(url)
-
 	if err != nil {
+		glog.Errorf("Could not fetch %s", err)
 		return NaisAppConfig{}, err
 	}
 
@@ -108,14 +105,28 @@ func fetchAppConfig(url string) (NaisAppConfig, error) {
 		return NaisAppConfig{}, fmt.Errorf("got http status code %d\n", response.StatusCode)
 	}
 
+	var defaultAppConfig = GetDefaultAppConfig()
 	var appConfig NaisAppConfig
+
 	if body, err := ioutil.ReadAll(response.Body); err != nil {
 		return NaisAppConfig{}, err
 	} else {
-		yaml.Unmarshal(body, &appConfig)
+		if err := yaml.Unmarshal(body, &appConfig); err != nil {
+			glog.Errorf("Could not unmarshal yaml %s", err)
+			return NaisAppConfig{}, err
+		}
 		glog.Infof("Got manifest %s", appConfig)
-		return appConfig, nil
 	}
+
+	if appConfig.Ports != nil && len(appConfig.Ports) == 0 {
+		defaultAppConfig.Ports = nil
+	}
+	if err := mergo.Merge(&appConfig, defaultAppConfig); err != nil {
+		glog.Errorf("Could not merge appconfig %s", err)
+		return NaisAppConfig{}, err
+	}
+
+	return appConfig, nil
 }
 
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) {

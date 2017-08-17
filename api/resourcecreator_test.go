@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
 	"testing"
-	"encoding/base64"
+	"fmt"
 )
 
 const (
@@ -88,11 +88,10 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, resource1Name+"_"+resource1Key, deployment.Spec.Template.Spec.Containers[0].Env[1].Name)
 		assert.Equal(t, "value1", deployment.Spec.Template.Spec.Containers[0].Env[1].Value)
 		assert.Equal(t, resource1Name+"_"+secret1Key, deployment.Spec.Template.Spec.Containers[0].Env[2].Name)
-		assert.Equal(t, base64.StdEncoding.EncodeToString([]byte(secret1Value)), deployment.Spec.Template.Spec.Containers[0].Env[2].Value)
 		assert.Equal(t, resource2Name+"_"+resource2Key, deployment.Spec.Template.Spec.Containers[0].Env[3].Name)
 		assert.Equal(t, "value2", deployment.Spec.Template.Spec.Containers[0].Env[3].Value)
 		assert.Equal(t, resource2Name+"_"+secret2Key, deployment.Spec.Template.Spec.Containers[0].Env[4].Name)
-		assert.Equal(t, base64.StdEncoding.EncodeToString([]byte(secret2Value)), deployment.Spec.Template.Spec.Containers[0].Env[4].Value)
+
 	})
 
 	t.Run("AValidDeploymentCanBeUpdated", func(t *testing.T) {

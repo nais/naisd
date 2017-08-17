@@ -8,7 +8,6 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
 	"testing"
-	"fmt"
 )
 
 const (

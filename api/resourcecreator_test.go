@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
 	"testing"
+	"encoding/base64"
 )
 
 const (
@@ -54,10 +55,14 @@ func TestDeployment(t *testing.T) {
 	resource1Type := "db"
 	resource1Key := "key1"
 	resource1Value := "value1"
+	secret1Key := "password"
+	secret1Value := "secret"
 	resource2Name := "r2"
 	resource2Type := "db"
 	resource2Key := "key2"
 	resource2Value := "value2"
+	secret2Key := "password"
+	secret2Value := "anothersecret"
 
 	appConfig := defaultAppConfig(appName, image, port, targetPort)
 	deployment := defaultDeployment(appName, nameSpace, image, port, version)
@@ -68,8 +73,8 @@ func TestDeployment(t *testing.T) {
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewDeployment", func(t *testing.T) {
 		naisResources := []NaisResource{
-			{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{"password": "secret"}},
-			{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{"password": "secret"}}}
+			{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}},
+			{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}}}
 
 		deployment := *r.CreateDeployment(naisResources)
 
@@ -78,12 +83,16 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Containers[0].Name)
 		assert.Equal(t, image+":"+version, deployment.Spec.Template.Spec.Containers[0].Image)
 		assert.Equal(t, int32(port), deployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
-		assert.Equal(t, 3, len(deployment.Spec.Template.Spec.Containers[0].Env))
+		assert.Equal(t, 5, len(deployment.Spec.Template.Spec.Containers[0].Env))
 		assert.Equal(t, version, deployment.Spec.Template.Spec.Containers[0].Env[0].Value)
 		assert.Equal(t, resource1Name+"_"+resource1Key, deployment.Spec.Template.Spec.Containers[0].Env[1].Name)
 		assert.Equal(t, "value1", deployment.Spec.Template.Spec.Containers[0].Env[1].Value)
-		assert.Equal(t, resource2Name+"_"+resource2Key, deployment.Spec.Template.Spec.Containers[0].Env[2].Name)
-		assert.Equal(t, "value2", deployment.Spec.Template.Spec.Containers[0].Env[2].Value)
+		assert.Equal(t, resource1Name+"_"+secret1Key, deployment.Spec.Template.Spec.Containers[0].Env[2].Name)
+		assert.Equal(t, base64.StdEncoding.EncodeToString([]byte(secret1Value)), deployment.Spec.Template.Spec.Containers[0].Env[2].Value)
+		assert.Equal(t, resource2Name+"_"+resource2Key, deployment.Spec.Template.Spec.Containers[0].Env[3].Name)
+		assert.Equal(t, "value2", deployment.Spec.Template.Spec.Containers[0].Env[3].Value)
+		assert.Equal(t, resource2Name+"_"+secret2Key, deployment.Spec.Template.Spec.Containers[0].Env[4].Name)
+		assert.Equal(t, base64.StdEncoding.EncodeToString([]byte(secret2Value)), deployment.Spec.Template.Spec.Containers[0].Env[4].Value)
 	})
 
 	t.Run("AValidDeploymentCanBeUpdated", func(t *testing.T) {

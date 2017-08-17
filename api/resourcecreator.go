@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"fmt"
 	k8sresource "k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/unversioned"
@@ -126,6 +127,13 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 		for k,v := range res.properties{
 			envVar := v1.EnvVar{res.name+"_"+k, v, nil}
 			deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, envVar)
+		}
+		if res.secret != nil {
+			for k, v := range res.secret{
+				envVar := v1.EnvVar{res.name+"_"+k, base64.StdEncoding.EncodeToString([]byte(v)), nil}
+				deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, envVar)
+
+			}
 		}
 	}
 

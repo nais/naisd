@@ -136,7 +136,7 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector {
 							LocalObjectReference: v1.LocalObjectReference{
-								Name: r.AppConfig.Name+"_secrets",
+								Name: r.AppConfig.Name+"-secrets",
 							},
 							Key: k,
 						},

@@ -202,6 +202,13 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := api.createOrUpdateSecret(deploymentRequest, appConfig, resources); err != nil {
+		glog.Errorf("failed create or update Secret: %s", err)
+		w.WriteHeader(500)
+		w.Write([]byte("createOrUpdateSecret failed with: " + err.Error()))
+		return
+	}
+
 	if err := api.createOrUpdateIngress(deploymentRequest, appConfig); err != nil {
 		glog.Errorf("failed create or update Ingress: %s", err)
 		w.WriteHeader(500)
@@ -265,6 +272,31 @@ func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig Nai
 
 	return nil
 }
+
+func (api Api) createOrUpdateSecret(req NaisDeploymentRequest, appConfig NaisAppConfig, resource []NaisResource) error {
+
+	secretClient := api.Clientset.CoreV1().Secrets(req.Namespace)
+	existingSecret, err := secretClient.Get(req.Application)
+	switch {
+	case err == nil:
+		updatedSecret, err := secretClient.Update(K8sResourceCreator{appConfig, req}.updateSecret(existingSecret, resource))
+		if err != nil {
+			return fmt.Errorf("failed to update secret: %s", updatedSecret)
+		}
+		glog.Infof("secretClient updated %s", updatedSecret)
+	case errors.IsNotFound(err):
+		newSecret, err := secretClient.Create(K8sResourceCreator{appConfig, req}.CreateSecret(resource))
+		if err != nil {
+			glog.Infof("No secrets associated with deployment")
+		}
+		glog.Infof("secretClient created %s", newSecret)
+	default:
+		return fmt.Errorf("unexpected error: %s", err)
+	}
+
+	return nil
+}
+
 
 func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
 

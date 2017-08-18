@@ -7,8 +7,6 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
-
-
 )
 
 type K8sResourceCreator struct {
@@ -138,7 +136,7 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 							LocalObjectReference: v1.LocalObjectReference{
 								Name: r.AppConfig.Name+"-secrets",
 							},
-							Key: k,
+							Key: res.name+"_"+k,
 						},
 					},
 				}
@@ -147,6 +145,42 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 		}
 	}
 	return deployment
+}
+
+func (r K8sResourceCreator) CreateSecret(resource []NaisResource) *v1.Secret {
+	secret := &v1.Secret{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      r.AppConfig.Name+"-secrets",
+			Namespace: r.DeploymentRequest.Namespace,
+		},
+		Data: map[string][]byte{},
+		Type: "Opaque",
+
+	}
+	for _,res := range resource{
+		if res.secret != nil {
+			for k,v := range res.secret {
+				secret.Data[res.name+"_"+k] = []byte(v)
+			}
+
+		}
+	}
+	if len(secret.Data) > 0 {
+		return secret
+	}
+	return nil
+}
+
+func (r K8sResourceCreator) updateSecret(existingSecret *v1.Secret, resource []NaisResource) *v1.Secret {
+	secretSpec := r.CreateSecret(resource)
+	secretSpec.ObjectMeta.ResourceVersion = existingSecret.ObjectMeta.ResourceVersion
+
+	return secretSpec
 }
 
 func (r K8sResourceCreator) CreateIngress() *v1beta1.Ingress {

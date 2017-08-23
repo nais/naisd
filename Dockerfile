@@ -8,4 +8,4 @@ WORKDIR /app
 
 COPY naisd .
 
-CMD /app/naisd --fasiturl $fasit_url --logtostderr=true
+CMD /app/naisd --fasit-url=$fasit_url --cluster-subdomain=$cluster_subdomain --logtostderr=true

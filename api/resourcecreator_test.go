@@ -116,19 +116,19 @@ func TestIngress(t *testing.T) {
 	req := defaultDeployRequest()
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewIngress", func(t *testing.T) {
-		ingress := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateIngress()
+		ingress := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateIngress("nais.example.com")
 
 		assert.Equal(t, appName, ingress.ObjectMeta.Name)
-		assert.Equal(t, appName+".nais.devillo.no", ingress.Spec.Rules[0].Host)
+		assert.Equal(t, appName+".nais.example.com", ingress.Spec.Rules[0].Host)
 		assert.Equal(t, appName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
 	})
 
 	t.Run("AValidIngressCanBeUpdated", func(t *testing.T) {
-		updatedIngress := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.updateIngress(ingress)
+		updatedIngress := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.updateIngress(ingress, "subdomain")
 
 		assert.Equal(t, appName, updatedIngress.ObjectMeta.Name)
-		assert.Equal(t, appName+".nais.devillo.no", updatedIngress.Spec.Rules[0].Host)
+		assert.Equal(t, appName+".subdomain", updatedIngress.Spec.Rules[0].Host)
 		assert.Equal(t, appName, updatedIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), updatedIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
 	})
@@ -148,7 +148,6 @@ func TestSecret(t *testing.T) {
 	secret2Key := "password"
 	secret2Value := "anothersecret"
 
-	//secret := createDefaultSecret(appName, nameSpace)
 	appConfig := defaultAppConfig(appName, image, port, targetPort)
 
 	req := defaultDeployRequest()
@@ -166,7 +165,6 @@ func TestSecret(t *testing.T) {
 		assert.Equal(t, []byte(secret2Value), secret.Data[resource2Name+"_"+secret2Key])
 
 	})
-
 }
 
 func defaultDeployRequest() NaisDeploymentRequest {
@@ -194,6 +192,7 @@ func defaultAppConfig(appName string, image string, port int, targetPort int) Na
 		},
 	}
 }
+
 func defaultService(appName string, nameSpace string, resourceVersion string, clusterIp string, port int) *v1.Service {
 	return &v1.Service{TypeMeta: unversioned.TypeMeta{
 		Kind:       "Service",
@@ -221,6 +220,7 @@ func defaultService(appName string, nameSpace string, resourceVersion string, cl
 		},
 	}
 }
+
 func defaultDeployment(appName string, namespace string, image string, port int, version string) *v1beta1.Deployment {
 	return &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{
@@ -288,22 +288,6 @@ func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSo
 			},
 			Key: resName + "_" + resKey,
 		},
-	}
-}
-
-func createDefaultSecret(appName string, nameSpace string) *v1.Secret {
-	return &v1.Secret{
-		TypeMeta: unversioned.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-
-		},
-		ObjectMeta: v1.ObjectMeta{
-			Name:      appName,
-			Namespace: nameSpace,
-		},
-		Data: map[string][]byte{},
-		Type: "Opaque",
 	}
 }
 

@@ -122,21 +122,21 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 		},
 	}
 
-	for _,res := range resource  {
-		for k,v := range res.properties{
-			envVar := v1.EnvVar{res.name+"_"+k, v, nil}
+	for _, res := range resource {
+		for k, v := range res.properties {
+			envVar := v1.EnvVar{res.name + "_" + k, v, nil}
 			deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, envVar)
 		}
 		if res.secret != nil {
-			for k := range res.secret{
+			for k := range res.secret {
 				envVar := v1.EnvVar{
-					Name: res.name+"_"+k,
+					Name: res.name + "_" + k,
 					ValueFrom: &v1.EnvVarSource{
-						SecretKeyRef: &v1.SecretKeySelector {
+						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{
-								Name: r.AppConfig.Name+"-secrets",
+								Name: r.AppConfig.Name + "-secrets",
 							},
-							Key: res.name+"_"+k,
+							Key: res.name + "_" + k,
 						},
 					},
 				}
@@ -152,19 +152,17 @@ func (r K8sResourceCreator) CreateSecret(resource []NaisResource) *v1.Secret {
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
-
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      r.AppConfig.Name+"-secrets",
+			Name:      r.AppConfig.Name + "-secrets",
 			Namespace: r.DeploymentRequest.Namespace,
 		},
 		Data: map[string][]byte{},
 		Type: "Opaque",
-
 	}
-	for _,res := range resource{
+	for _, res := range resource {
 		if res.secret != nil {
-			for k,v := range res.secret {
+			for k, v := range res.secret {
 				secret.Data[res.name+"_"+k] = []byte(v)
 			}
 
@@ -183,7 +181,7 @@ func (r K8sResourceCreator) updateSecret(existingSecret *v1.Secret, resource []N
 	return secretSpec
 }
 
-func (r K8sResourceCreator) CreateIngress() *v1beta1.Ingress {
+func (r K8sResourceCreator) CreateIngress(subdomain string) *v1beta1.Ingress {
 	appName := r.DeploymentRequest.Application
 
 	return &v1beta1.Ingress{
@@ -198,7 +196,7 @@ func (r K8sResourceCreator) CreateIngress() *v1beta1.Ingress {
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
 				{
-					Host: fmt.Sprintf("%s.nais.devillo.no", appName),
+					Host: fmt.Sprintf("%s.%s", appName, subdomain),
 					IngressRuleValue: v1beta1.IngressRuleValue{
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
@@ -217,11 +215,11 @@ func (r K8sResourceCreator) CreateIngress() *v1beta1.Ingress {
 	}
 }
 
-func (r K8sResourceCreator) updateIngress(existingIngress *v1beta1.Ingress) *v1beta1.Ingress {
-	ingressSpec := r.CreateIngress()
+func (r K8sResourceCreator) updateIngress(existingIngress *v1beta1.Ingress, subdomain string) *v1beta1.Ingress {
+	ingressSpec := r.CreateIngress(subdomain)
 	ingressSpec.ObjectMeta.ResourceVersion = existingIngress.ObjectMeta.ResourceVersion
 
-	return existingIngress
+	return ingressSpec
 }
 
 func int32p(i int32) *int32 {

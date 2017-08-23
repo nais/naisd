@@ -17,19 +17,20 @@ import (
 )
 
 type Api struct {
-	Clientset kubernetes.Interface
-	FasitUrl  string
+	Clientset        kubernetes.Interface
+	FasitUrl         string
+	ClusterSubdomain string
 }
 
 type NaisDeploymentRequest struct {
 	Application  string
 	Version      string
 	Environment  string
-	Zone		 string
+	Zone         string
 	AppConfigUrl string
 	Username     string
 	Password     string
-	Namespace	 string
+	Namespace    string
 }
 
 type NaisAppConfig struct {
@@ -227,9 +228,10 @@ func (api Api) createOrUpdateService(req NaisDeploymentRequest, appConfig NaisAp
 	serviceClient := api.Clientset.CoreV1().Services(req.Namespace)
 	existingService, err := serviceClient.Get(req.Application)
 
+	resourceCreator := K8sResourceCreator{appConfig, req}
 	switch {
 	case err == nil:
-		updatedService, err := serviceClient.Update(K8sResourceCreator{appConfig, req}.UpdateService(*existingService))
+		updatedService, err := serviceClient.Update(resourceCreator.UpdateService(*existingService))
 		if err != nil {
 			return fmt.Errorf("failed to update service: %s", err)
 		}
@@ -253,15 +255,16 @@ func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig Nai
 	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(req.Namespace)
 	deployment, err := deploymentClient.Get(req.Application)
 
+	resourceCreator := K8sResourceCreator{appConfig, req}
 	switch {
 	case err == nil:
-		updatedDeployment, err := deploymentClient.Update(K8sResourceCreator{appConfig, req}.UpdateDeployment(deployment, resource))
+		updatedDeployment, err := deploymentClient.Update(resourceCreator.UpdateDeployment(deployment, resource))
 		if err != nil {
 			return fmt.Errorf("failed to update deployment: %s", err)
 		}
 		glog.Infof("deployment updated %s", updatedDeployment)
 	case errors.IsNotFound(err):
-		newDeployment, err := deploymentClient.Create(K8sResourceCreator{appConfig, req}.CreateDeployment(resource))
+		newDeployment, err := deploymentClient.Create(resourceCreator.CreateDeployment(resource))
 		if err != nil {
 			return fmt.Errorf("could not create deployment %s", err)
 		}
@@ -277,15 +280,16 @@ func (api Api) createOrUpdateSecret(req NaisDeploymentRequest, appConfig NaisApp
 
 	secretClient := api.Clientset.CoreV1().Secrets(req.Namespace)
 	existingSecret, err := secretClient.Get(req.Application)
+	resourceCreator := K8sResourceCreator{appConfig, req}
 	switch {
 	case err == nil:
-		updatedSecret, err := secretClient.Update(K8sResourceCreator{appConfig, req}.updateSecret(existingSecret, resource))
+		updatedSecret, err := secretClient.Update(resourceCreator.updateSecret(existingSecret, resource))
 		if err != nil {
 			return fmt.Errorf("failed to update secret: %s", updatedSecret)
 		}
 		glog.Infof("secretClient updated %s", updatedSecret)
 	case errors.IsNotFound(err):
-		newSecret, err := secretClient.Create(K8sResourceCreator{appConfig, req}.CreateSecret(resource))
+		newSecret, err := secretClient.Create(resourceCreator.CreateSecret(resource))
 		if err != nil {
 			glog.Infof("No secrets associated with deployment")
 		}
@@ -297,20 +301,20 @@ func (api Api) createOrUpdateSecret(req NaisDeploymentRequest, appConfig NaisApp
 	return nil
 }
 
-
 func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
 
-	ingressClient := api.Clientset.Extensions().Ingresses(req.Namespace)
+	ingressClient := api.Clientset.ExtensionsV1beta1().Ingresses(req.Namespace)
 	existingIngress, err := ingressClient.Get(req.Application)
+	resourceCreator := K8sResourceCreator{appConfig, req}
 	switch {
 	case err == nil:
-		updatedIngress, err := ingressClient.Update(K8sResourceCreator{appConfig, req}.updateIngress(existingIngress))
+		updatedIngress, err := ingressClient.Update(resourceCreator.updateIngress(existingIngress, api.ClusterSubdomain))
 		if err != nil {
 			return fmt.Errorf("failed to update ingress: %s", updatedIngress)
 		}
 		glog.Infof("ingressClient updated %s", updatedIngress)
 	case errors.IsNotFound(err):
-		newIngress, err := ingressClient.Create(K8sResourceCreator{appConfig, req}.CreateIngress())
+		newIngress, err := ingressClient.Create(resourceCreator.CreateIngress(api.ClusterSubdomain))
 		if err != nil {
 			return fmt.Errorf("failed to create ingress: %s", newIngress)
 		}

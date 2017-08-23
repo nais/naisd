@@ -1,3 +1,4 @@
-fasitUrl: https://fasit.adeo.no
+fasitUrl: https://fasit.example.no
+clusterSubdomain: nais-example.nais.example.no
 repository: navikt/naisd
 version: 64.0.0

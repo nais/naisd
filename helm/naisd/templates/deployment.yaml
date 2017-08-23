@@ -22,6 +22,8 @@ spec:
         env:
           - name: fasit_url
             value: "{{ .Values.fasitUrl }}"
+          - name: cluster_subdomain
+            value: "{{ .Values.clusterSubdomain }}"
         ports:
         - containerPort: 8081
           protocol: TCP

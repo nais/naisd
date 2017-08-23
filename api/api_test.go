@@ -176,7 +176,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset(service, deployment, ingress)
 
-	api := Api{clientset, "https://fasit.local"}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk"}
 
 	depReq := NaisDeploymentRequest{
 		Application:  appName,
@@ -277,11 +277,9 @@ func TestAppConfigUnmarshalEmptyPortListGivesNoPorts(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_no_ports.yaml")
 
-
 	appConfig, err := fetchAppConfig(repopath)
 
 	t.Log(appConfig)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(appConfig.Ports))
-
 }

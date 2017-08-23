@@ -16,14 +16,15 @@ const Port string = ":8081"
 func main() {
 
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")
-	fasitUrl := flag.String("fasiturl", "https://fasit.adeo.no", "URL to fasit instance")
+	fasitUrl := flag.String("fasit-url", "https://fasit.example.no", "URL to fasit instance")
+	clusterSubdomain := flag.String("cluster-subdomain", "nais-example.nais.example.no", "Cluster sub-domain")
 
 	flag.Parse()
 
 	glog.Infof("using fasit instance %s", *fasitUrl)
 
 	glog.Infof("running on port %s", Port)
-	err := http.ListenAndServe(Port, api.Api{newClientSet(*kubeconfig), *fasitUrl}.NewApi())
+	err := http.ListenAndServe(Port, api.Api{newClientSet(*kubeconfig), *fasitUrl, *clusterSubdomain}.NewApi())
 	if err != nil {
 		panic(err)
 	}

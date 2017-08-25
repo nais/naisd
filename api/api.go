@@ -37,7 +37,14 @@ type NaisAppConfig struct {
 	Name           string
 	Image          string
 	Ports          []Port
+	Replicas       Replicas
 	FasitResources FasitResources `yaml:"fasitResources"`
+}
+
+type Replicas struct {
+	Min                    int
+	Max                    int
+	CpuThresholdPercentage int `yaml:"cpuThresholdPercentage"`
 }
 
 type Port struct {
@@ -319,6 +326,32 @@ func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAp
 			return fmt.Errorf("failed to create ingress: %s", newIngress)
 		}
 		glog.Infof("ingressClient created %s", newIngress)
+	default:
+		return fmt.Errorf("unexpected error: %s", err)
+	}
+
+	return nil
+}
+
+func (api Api) createOrUpdateAutoscaler(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
+
+	autoscalerClient := api.Clientset.AutoscalingV1().HorizontalPodAutoscalers(req.Namespace)
+
+	existingAutoscaler, err := autoscalerClient.Get(req.Application)
+	resourceCreator := K8sResourceCreator{appConfig, req}
+	switch {
+	case err == nil:
+		updatedAutoscaler, err := autoscalerClient.Update(resourceCreator.UpdateAutoscaler(existingAutoscaler, appConfig.Replicas.Min, appConfig.Replicas.Max, appConfig.Replicas.CpuThresholdPercentage))
+		if err != nil {
+			return fmt.Errorf("failed to update autoscaler: %s", updatedAutoscaler)
+		}
+		glog.Infof("autoscalerClient updated %s", updatedAutoscaler)
+	case errors.IsNotFound(err):
+		newAutoscaler, err := autoscalerClient.Create(resourceCreator.CreateAutoscaler(1, 2, 3))
+		if err != nil {
+			return fmt.Errorf("failed to create autoscaler: %s", newAutoscaler)
+		}
+		glog.Infof("autoscalerClient created %s", newAutoscaler)
 	default:
 		return fmt.Errorf("unexpected error: %s", err)
 	}

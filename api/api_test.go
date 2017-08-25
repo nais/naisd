@@ -249,8 +249,8 @@ func TestAppConfigUnmarshal(t *testing.T) {
 	assert.Equal(t, 799, appConfig.Port.TargetPort)
 	assert.Equal(t, "/api", appConfig.FasitResources.Exposed[0].Path)
 	assert.Equal(t, "datasource", appConfig.FasitResources.Used[0].ResourceType)
-	assert.Equal(t, "/isAlive", appConfig.Healthcheks.Liveness.Path)
-	assert.Equal(t, "/isAlive", appConfig.Healthcheks.Readiness.Path)
+	assert.Equal(t, "isAlive", appConfig.Healthcheks.Liveness.Path)
+	assert.Equal(t, "isReady", appConfig.Healthcheks.Readiness.Path)
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {

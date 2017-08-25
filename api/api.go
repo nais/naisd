@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/imdario/mergo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
 	"net/http"
-	"github.com/imdario/mergo"
 )
 
 type Api struct {
@@ -33,10 +33,21 @@ type NaisDeploymentRequest struct {
 	Namespace    string
 }
 
+type Probe struct {
+	Path string
+	Port string
+}
+
+type HealthCheck struct {
+	Liveness  Probe
+	Readiness Probe
+}
+
 type NaisAppConfig struct {
 	Name           string
 	Image          string
-	Ports          []Port
+	Port           *Port
+	Healthcheks    HealthCheck
 	FasitResources FasitResources `yaml:"fasitResources"`
 }
 
@@ -92,7 +103,7 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, "")
 }
 
-func fetchAppConfig(url string) (NaisAppConfig, error) {
+func fetchAppConfig(url string) (naisAppConfig NaisAppConfig, err error) {
 	glog.Infof("Fetching manifest from URL %s\n", url)
 	response, err := http.Get(url)
 	if err != nil {
@@ -119,9 +130,17 @@ func fetchAppConfig(url string) (NaisAppConfig, error) {
 		glog.Infof("Got manifest %s", appConfig)
 	}
 
-	if appConfig.Ports != nil && len(appConfig.Ports) == 0 {
-		defaultAppConfig.Ports = nil
+	emptyPort := Port{}
+
+	if *appConfig.Port == emptyPort {
+		fmt.Println("port is nil" , )
+		defaultAppConfig.Port = nil
+		appConfig.Port = nil
 	}
+
+	//fmt.Println(appConfig.Port)
+	//fmt.Println(defaultAppConfig.Port)
+
 	if err := mergo.Merge(&appConfig, defaultAppConfig); err != nil {
 		glog.Errorf("Could not merge appconfig %s", err)
 		return NaisAppConfig{}, err

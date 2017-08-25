@@ -1,10 +1,17 @@
 name: appname # mandatory
-image: navikt/k8s-testapp:42 # mandatory
-ports: # list of ports the application listens on. [] if no ports should be exposed. Default you get an http port
-- name: http
+image: navikt/k8s-testapp # mandatory. Ref to docker container
+port: # the port the application listens on. [] if no ports should be exposed. Default you get an http port
+  name: http
   port: 80 # port number that must be exposed
-  targetPort: 8080 # the port number which is exposed by the container and should receive traffic routed to `port`
+  targetPort: 80x80 # the port number which is exposed by the container and should receive traffic routed to `port`
   protocol: http
+healthchecks:
+  liveness:
+    http:
+      path: /isAlive
+  readyness:
+    http:
+      path: /isReady
 fasitResources: # Resources fetched from Fasit
   used: #This will be injected into the application as environment variables
   - alias: mydb

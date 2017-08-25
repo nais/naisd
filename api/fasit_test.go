@@ -2,8 +2,8 @@ package api
 
 import (
 	"github.com/stretchr/testify/assert"
-	"testing"
 	"gopkg.in/h2non/gock.v1"
+	"testing"
 )
 
 func TestGettingResource(t *testing.T) {
@@ -15,7 +15,6 @@ func TestGettingResource(t *testing.T) {
 	zone := "zone"
 
 	fasit := FasitClient{"https://fasit.local", "", ""}
-
 
 	defer gock.Off()
 	gock.New("https://fasit.local").
@@ -47,9 +46,7 @@ func TestGettingListOfResources(t *testing.T) {
 	application := "application"
 	zone := "zone"
 
-
 	fasit := FasitClient{"https://fasit.local", "", ""}
-
 
 	defer gock.Off()
 	gock.New("https://fasit.local").
@@ -84,7 +81,7 @@ func TestGettingListOfResources(t *testing.T) {
 	resources = append(resources, ResourceRequest{alias2, resourceType})
 	resources = append(resources, ResourceRequest{alias3, resourceType})
 
-	resourcesReplies, err  := fasit.GetResources(resources, environment, application, zone)
+	resourcesReplies, err := fasit.GetResources(resources, environment, application, zone)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(resourcesReplies))
@@ -132,4 +129,3 @@ func TestResolvingSecret(t *testing.T) {
 	assert.Equal(t, "1", resource.properties["a"])
 	assert.Equal(t, "hemmelig", resource.secret["password"])
 }
-

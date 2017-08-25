@@ -179,16 +179,14 @@ func defaultAppConfig(appName string, image string, port int, targetPort int) Na
 	return NaisAppConfig{
 		Name:  appName,
 		Image: image,
-		Ports: []Port{
-			{
-				Name:       "portname",
-				Port:       port,
-				Protocol:   "http",
-				TargetPort: targetPort,
-			},
+		Port: &Port{
+			Name:       "portname",
+			Port:       port,
+			Protocol:   "http",
+			TargetPort: targetPort,
 		},
 		FasitResources: FasitResources{
-			Used: []UsedResource{{"db", "db1"}, {"db", "db2"} },
+			Used: []UsedResource{{"db", "db1"}, {"db", "db2"}},
 		},
 	}
 }

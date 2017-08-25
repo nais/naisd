@@ -1,10 +1,17 @@
 name: k8s-testapp
 image: navikt/k8s-testapp:69
-ports:
-- name: http
+port:
+  name: http
   port: 79
   targetPort: 799
   protocol: http
+healthchecks:
+  liveness:
+    http:
+      path: /isAlive
+  readyness:
+    http:
+      path: /isReady
 fasitResources:
   used:
   - alias: mydb

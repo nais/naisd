@@ -7,8 +7,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
 
-	"github.com/nais/naisd/api"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api"
 )
 
 const Port string = ":8081"

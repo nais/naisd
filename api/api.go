@@ -35,7 +35,6 @@ type NaisDeploymentRequest struct {
 
 type Probe struct {
 	Path string
-	Port string
 }
 
 type HealthCheck struct {

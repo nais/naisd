@@ -279,5 +279,5 @@ func TestAppConfigUnmarshalEmptyPortListGivesNoPorts(t *testing.T) {
 	appConfig, err := fetchAppConfig(repopath)
 
 	assert.NoError(t, err)
-	assert.Equal(t, nil, *appConfig.Port)
+	assert.Empty(t, appConfig.Port)
 }

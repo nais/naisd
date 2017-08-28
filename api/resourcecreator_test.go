@@ -15,14 +15,17 @@ const (
 	nameSpace  = "namespace"
 	image      = "docker.hub/app"
 	port       = 6900
+	portName   = "http"
 	version    = "13"
 	targetPort = 234
+	livenessPath = "isAlive"
+	readinessPath = "isReady"
 )
 
 func TestService(t *testing.T) {
 	clusterIp := "11.22.33.44"
 	resourceVersion := "sdfrdd"
-	appConfig := defaultAppConfig(appName, image, port, targetPort)
+	appConfig := defaultAppConfig(appName, image, port, targetPort, portName, livenessPath, readinessPath)
 
 	req := defaultDeployRequest()
 
@@ -63,7 +66,7 @@ func TestDeployment(t *testing.T) {
 	secret2Key := "password"
 	secret2Value := "anothersecret"
 
-	appConfig := defaultAppConfig(appName, image, port, targetPort)
+	appConfig := defaultAppConfig(appName, image, port, targetPort, portName,  livenessPath, readinessPath)
 	deployment := defaultDeployment(appName, nameSpace, image, port, version)
 
 	req := defaultDeployRequest()
@@ -82,6 +85,10 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Containers[0].Name)
 		assert.Equal(t, image+":"+version, deployment.Spec.Template.Spec.Containers[0].Image)
 		assert.Equal(t, int32(port), deployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+		assert.Equal(t, livenessPath, deployment.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Path)
+		assert.Equal(t, portName, deployment.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Port.StrVal)
+		assert.Equal(t, readinessPath, deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Path)
+		assert.Equal(t, portName, deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Port.StrVal)
 		assert.Equal(t, 5, len(deployment.Spec.Template.Spec.Containers[0].Env))
 		assert.Equal(t, version, deployment.Spec.Template.Spec.Containers[0].Env[0].Value)
 		assert.Equal(t, resource1Name+"_"+resource1Key, deployment.Spec.Template.Spec.Containers[0].Env[1].Name)
@@ -111,7 +118,7 @@ func TestDeployment(t *testing.T) {
 
 func TestIngress(t *testing.T) {
 	ingress := createDefaultIngress(appName, nameSpace)
-	appConfig := defaultAppConfig(appName, image, port, targetPort)
+	appConfig := defaultAppConfig(appName, image, port, targetPort, portName, livenessPath, readinessPath)
 
 	req := defaultDeployRequest()
 
@@ -148,7 +155,7 @@ func TestSecret(t *testing.T) {
 	secret2Key := "password"
 	secret2Value := "anothersecret"
 
-	appConfig := defaultAppConfig(appName, image, port, targetPort)
+	appConfig := defaultAppConfig(appName, image, port, targetPort, portName,livenessPath, readinessPath)
 
 	req := defaultDeployRequest()
 
@@ -175,15 +182,23 @@ func defaultDeployRequest() NaisDeploymentRequest {
 		AppConfigUrl: ""}
 }
 
-func defaultAppConfig(appName string, image string, port int, targetPort int) NaisAppConfig {
+func defaultAppConfig(appName string, image string, port int, targetPort int, portname string,livenessPath string, readinessPath string) NaisAppConfig {
 	return NaisAppConfig{
 		Name:  appName,
 		Image: image,
-		Port: &Port{
-			Name:       "portname",
+		Port: Port{
+			Name:       portname,
 			Port:       port,
 			Protocol:   "http",
 			TargetPort: targetPort,
+		},
+		Healthcheck: Healthcheck{
+			Liveness: Probe{
+				Path: livenessPath,
+			},
+			Readiness: Probe{
+				Path: readinessPath,
+			},
 		},
 		FasitResources: FasitResources{
 			Used: []UsedResource{{"db", "db1"}, {"db", "db2"}},

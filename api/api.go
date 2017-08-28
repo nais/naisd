@@ -37,7 +37,7 @@ type Probe struct {
 	Path string
 }
 
-type HealthCheck struct {
+type Healthcheck struct {
 	Liveness  Probe
 	Readiness Probe
 }
@@ -45,8 +45,8 @@ type HealthCheck struct {
 type NaisAppConfig struct {
 	Name           string
 	Image          string
-	Port           *Port
-	Healthcheks    HealthCheck
+	Port           Port
+	Healthcheck    Healthcheck
 	FasitResources FasitResources `yaml:"fasitResources"`
 }
 
@@ -129,19 +129,22 @@ func fetchAppConfig(url string) (naisAppConfig NaisAppConfig, err error) {
 		glog.Infof("Got manifest %s", appConfig)
 	}
 
-	var noPorts bool
-	if appConfig.Port != nil && (*appConfig.Port == Port{}) {
-		noPorts = true
-	}
+	//var noPorts bool
+	//if appConfig.Port != nil && (*appConfig.Port == Port{}) {
+	//	noPorts = true
+	//}
+
+	fmt.Println(appConfig)
+	fmt.Println(defaultAppConfig)
 
 	if err := mergo.Merge(&appConfig, defaultAppConfig); err != nil {
 		glog.Errorf("Could not merge appconfig %s", err)
 		return NaisAppConfig{}, err
 	}
 
-	if noPorts {
-		appConfig.Port = nil
-	}
+	//if noPorts {
+	//	appConfig.Port = nil
+	//}
 
 	return appConfig, nil
 }

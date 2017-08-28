@@ -3,12 +3,12 @@ package api
 func GetDefaultAppConfig() NaisAppConfig {
 
 	return NaisAppConfig{
-		Port: &Port{
+		Port: Port{
 			Name:       "http",
 			Port:       80,
 			TargetPort: 8080,
 			Protocol:   "http",
-		}, Healthcheks: HealthCheck{
+		}, Healthcheck: Healthcheck{
 			Liveness: Probe{
 				Path: "isAlive",
 			},

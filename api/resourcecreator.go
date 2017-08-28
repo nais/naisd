@@ -105,7 +105,7 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 							LivenessProbe: &v1.Probe{
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
-										Path: r.AppConfig.Healthcheks.Liveness.Path,
+										Path: r.AppConfig.Healthcheck.Liveness.Path,
 										Port: intstr.FromString(r.AppConfig.Port.Name),
 									},
 								},
@@ -113,7 +113,7 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 							ReadinessProbe: &v1.Probe{
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
-										Path: r.AppConfig.Healthcheks.Readiness.Path,
+										Path: r.AppConfig.Healthcheck.Readiness.Path,
 										Port: intstr.FromString(r.AppConfig.Port.Name),
 									},
 								},

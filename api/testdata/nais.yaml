@@ -5,13 +5,11 @@ port:
   port: 79
   targetPort: 799
   protocol: http
-healthchecks:
+healthcheck:
   liveness:
-    http:
-      path: /isAlive
-  readyness:
-    http:
-      path: /isReady
+    path: isAlive2
+  readiness:
+    path: isReady2
 fasitResources:
   used:
   - alias: mydb

@@ -12,10 +12,10 @@ port: # the port the application listens on. [] if no ports should be exposed. D
 healthcheck:
   liveness:
     http:
-      path: /isAlive
+      path: isAlive
   readiness:
     http:
-      path: /isReady
+      path: isReady
 fasitResources: # Resources fetched from Fasit
   used: #This will be injected into the application as environment variables
   - alias: mydb

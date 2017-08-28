@@ -175,7 +175,7 @@ func TestSecret(t *testing.T) {
 }
 
 func TestAutoscaler(t *testing.T){
-	appConfig := defaultAppConfig(appName, image, port, targetPort)
+	appConfig := defaultAppConfig(appName, image, port, targetPort, portName, livenessPath, readinessPath)
 
 	req := defaultDeployRequest()
 	resourceCreator := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}

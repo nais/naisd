@@ -45,7 +45,7 @@ func (r K8sResourceCreator) CreateService() *v1.Service {
 					Port:     80,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: int32(r.AppConfig.Ports[0].TargetPort),
+						IntVal: int32(r.AppConfig.Port.TargetPort),
 					},
 				},
 			},
@@ -101,7 +101,23 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 							Name:  r.AppConfig.Name,
 							Image: fmt.Sprintf("%s:%s", r.AppConfig.Image, r.DeploymentRequest.Version),
 							Ports: []v1.ContainerPort{
-								{ContainerPort: int32(r.AppConfig.Ports[0].Port), Protocol: v1.ProtocolTCP},
+								{ContainerPort: int32(r.AppConfig.Port.Port), Protocol: v1.ProtocolTCP},
+							},
+							LivenessProbe: &v1.Probe{
+								Handler: v1.Handler{
+									HTTPGet: &v1.HTTPGetAction{
+										Path: r.AppConfig.Healthcheck.Liveness.Path,
+										Port: intstr.FromString(r.AppConfig.Port.Name),
+									},
+								},
+							},
+							ReadinessProbe: &v1.Probe{
+								Handler: v1.Handler{
+									HTTPGet: &v1.HTTPGetAction{
+										Path: r.AppConfig.Healthcheck.Readiness.Path,
+										Port: intstr.FromString(r.AppConfig.Port.Name),
+									},
+								},
 							},
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{

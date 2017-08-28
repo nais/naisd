@@ -51,7 +51,7 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 	for _, request := range resourcesRequests {
 		resource, err := fasit.getResource(request, environment, application, zone)
 		if err != nil {
-			return []NaisResource{}, fmt.Errorf("failed to get resource for " + request.Alias, err)
+			return []NaisResource{}, fmt.Errorf("failed to get resource for "+request.Alias, err)
 		}
 		resources = append(resources, resource)
 	}
@@ -151,7 +151,7 @@ func resolveSecret(secrets map[string]map[string]string, username string, passwo
 
 func getFirstKey(m map[string]map[string]string) string {
 	if len(m) > 0 {
-		for key := range (m) {
+		for key := range m {
 			return key
 		}
 	}
@@ -159,7 +159,7 @@ func getFirstKey(m map[string]map[string]string) string {
 }
 
 func buildRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", fasit + "/api/v2/scopedresource", nil)
+	req, err := http.NewRequest("GET", fasit+"/api/v2/scopedresource", nil)
 
 	q := req.URL.Query()
 	q.Add("alias", alias)

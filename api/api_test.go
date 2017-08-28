@@ -43,8 +43,8 @@ func TestNoManifestGivesError(t *testing.T) {
 		Version:      "",
 		Environment:  "",
 		AppConfigUrl: "http://repo.com/app",
-		Zone: "zone",
-		Namespace: "namespace",
+		Zone:         "zone",
+		Namespace:    "namespace",
 	}
 
 	defer gock.Off()
@@ -183,20 +183,19 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Version:      version,
 		Environment:  namespace,
 		AppConfigUrl: "http://repo.com/app",
-		Zone: "zone",
-		Namespace: "namespace",
+		Zone:         "zone",
+		Namespace:    "namespace",
 	}
 
 	config := NaisAppConfig{
 		Name:  appName,
 		Image: image,
-		Ports: []Port{
-			{
-				Name:       "portname",
-				Port:       123,
-				Protocol:   "http",
-				TargetPort: 321,
-			},
+		Port: Port{
+
+			Name:       "portname",
+			Port:       123,
+			Protocol:   "http",
+			TargetPort: 321,
 		},
 		FasitResources: FasitResources{
 			Used: []UsedResource{{resourceAlias, resourceType}},
@@ -246,14 +245,15 @@ func TestAppConfigUnmarshal(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(appConfig.Ports))
-	assert.Equal(t, 79, appConfig.Ports[0].Port)
-	assert.Equal(t, 799, appConfig.Ports[0].TargetPort)
+	assert.Equal(t, 79, appConfig.Port.Port)
+	assert.Equal(t, 799, appConfig.Port.TargetPort)
 	assert.Equal(t, "/api", appConfig.FasitResources.Exposed[0].Path)
 	assert.Equal(t, "datasource", appConfig.FasitResources.Used[0].ResourceType)
+	assert.Equal(t, "isAlive2", appConfig.Healthcheck.Liveness.Path)
+	assert.Equal(t, "isReady2", appConfig.Healthcheck.Readiness.Path)
 }
 
-func TestAppConfigUnmarshalUsesDefaultValues(t *testing.T) {
+func TestAppConfigUsesDefaultValues(t *testing.T) {
 	const repopath = "https://appconfig.repo"
 
 	gock.New(repopath).
@@ -261,25 +261,14 @@ func TestAppConfigUnmarshalUsesDefaultValues(t *testing.T) {
 		File("testdata/nais_minimal.yaml")
 
 	appConfig, err := fetchAppConfig(repopath)
+
+	port := appConfig.Port
+
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(appConfig.Ports))
-	assert.Equal(t, "http", appConfig.Ports[0].Name)
-	assert.Equal(t, 80, appConfig.Ports[0].Port)
-	assert.Equal(t, 8080, appConfig.Ports[0].TargetPort)
+	assert.Equal(t, 80, port.Port)
+	assert.Equal(t, 8080, port.TargetPort)
+	assert.Equal(t, "isAlive", appConfig.Healthcheck.Liveness.Path)
+	assert.Equal(t, "isReady", appConfig.Healthcheck.Readiness.Path)
 	assert.Equal(t, 0, len(appConfig.FasitResources.Exposed))
 	assert.Equal(t, 0, len(appConfig.FasitResources.Exposed))
-}
-
-func TestAppConfigUnmarshalEmptyPortListGivesNoPorts(t *testing.T) {
-	const repopath = "https://appconfig.repo"
-
-	gock.New(repopath).
-		Reply(200).
-		File("testdata/nais_no_ports.yaml")
-
-	appConfig, err := fetchAppConfig(repopath)
-
-	t.Log(appConfig)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(appConfig.Ports))
 }

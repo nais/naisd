@@ -174,6 +174,28 @@ func TestSecret(t *testing.T) {
 	})
 }
 
+func TestAutoscaler(t *testing.T){
+	appConfig := defaultAppConfig(appName, image, port, targetPort)
+
+	req := defaultDeployRequest()
+	resourceCreator := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}
+	autoscaler := resourceCreator.CreateAutoscaler(10, 20, 30)
+
+	t.Run("CreatesValidAutoscaler", func(t *testing.T) {
+		assert.Equal(t, *autoscaler.Spec.MinReplicas, int32(10))
+		assert.Equal(t, autoscaler.Spec.MaxReplicas, int32(20))
+		assert.Equal(t, *autoscaler.Spec.TargetCPUUtilizationPercentage, int32(30))
+	})
+
+	t.Run("AutoscalerUpdateWorks", func(t *testing.T) {
+		updatedAutoscaler := resourceCreator.UpdateAutoscaler(autoscaler, 100, 200, 300)
+		assert.Equal(t, *updatedAutoscaler.Spec.MinReplicas, int32(100))
+		assert.Equal(t, updatedAutoscaler.Spec.MaxReplicas, int32(200))
+		assert.Equal(t, *updatedAutoscaler.Spec.TargetCPUUtilizationPercentage, int32(300))
+	})
+
+}
+
 func defaultDeployRequest() NaisDeploymentRequest {
 	return NaisDeploymentRequest{
 		Application:  appName,
@@ -186,6 +208,12 @@ func defaultAppConfig(appName string, image string, port int, targetPort int, po
 	return NaisAppConfig{
 		Name:  appName,
 		Image: image,
+
+    Replicas: Replicas{
+			Min: 6,
+			Max: 9,
+			CpuThresholdPercentage: 69,
+		},
 		Port: Port{
 			Name:       portname,
 			Port:       port,

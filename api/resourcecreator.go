@@ -5,6 +5,7 @@ import (
 	k8sresource "k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
+	autoscalingv1 "k8s.io/client-go/pkg/apis/autoscaling/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
 )
@@ -227,6 +228,31 @@ func (r K8sResourceCreator) CreateIngress(subdomain string) *v1beta1.Ingress {
 					},
 				},
 			},
+		},
+	}
+}
+
+func (r K8sResourceCreator) UpdateAutoscaler(existingAutoscaler *autoscalingv1.HorizontalPodAutoscaler, min, max, cpuTargetPercentage int) *autoscalingv1.HorizontalPodAutoscaler {
+	autoscaler := r.CreateAutoscaler(min, max, cpuTargetPercentage)
+	autoscaler.ObjectMeta.ResourceVersion = existingAutoscaler.ObjectMeta.ResourceVersion
+
+	return autoscaler
+}
+
+func (r K8sResourceCreator) CreateAutoscaler(min, max, cpuTargetPercentage int) *autoscalingv1.HorizontalPodAutoscaler {
+	return &autoscalingv1.HorizontalPodAutoscaler{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "HorizontalPodAutoscaler",
+			APIVersion: "autoscaling/v1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      r.DeploymentRequest.Application,
+			Namespace: r.DeploymentRequest.Namespace,
+		},
+		Spec: autoscalingv1.HorizontalPodAutoscalerSpec{
+			MinReplicas: int32p(int32(min)),
+			MaxReplicas: int32(max),
+			TargetCPUUtilizationPercentage: int32p(int32(cpuTargetPercentage)),
 		},
 	}
 }

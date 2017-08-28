@@ -1,5 +1,9 @@
 name: appname # mandatory
 image: navikt/k8s-testapp # mandatory. Ref to docker container
+replicas: # set min = max to disable autoscaling
+  min: 2 # minimum number of replicas
+  max: 4 # maximum number of replicas
+  cpuThresholdPercentage: 50 # total cpu percentage threshold on deployment, at which point it will increase number of pods if current < max
 port: # the port the application listens on. [] if no ports should be exposed. Default you get an http port
   name: http
   port: 80 # port number that must be exposed

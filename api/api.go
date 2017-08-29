@@ -218,28 +218,35 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
 		glog.Errorf("Failed creating or updating service: %s", err)
 		w.WriteHeader(500)
-		w.Write([]byte("createOrUpdateService failed with: " + err.Error()))
+		w.Write([]byte("Failed create/update of service: " + err.Error()))
 		return
 	}
 
 	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig, resources); err != nil {
 		glog.Errorf("failed create or update Deployment: %s", err)
 		w.WriteHeader(500)
-		w.Write([]byte("createOrUpdateDeployment failed with: " + err.Error()))
+		w.Write([]byte("Failed create/update of deployment: " + err.Error()))
 		return
 	}
 
 	if err := api.createOrUpdateSecret(deploymentRequest, appConfig, resources); err != nil {
 		glog.Errorf("failed create or update Secret: %s", err)
 		w.WriteHeader(500)
-		w.Write([]byte("createOrUpdateSecret failed with: " + err.Error()))
+		w.Write([]byte("Failed create/update of secret: " + err.Error()))
 		return
 	}
 
 	if err := api.createOrUpdateIngress(deploymentRequest, appConfig); err != nil {
 		glog.Errorf("failed create or update Ingress: %s", err)
 		w.WriteHeader(500)
-		w.Write([]byte("createOrUpdateIngress failed with: " + err.Error()))
+		w.Write([]byte("Failed create/update of ingress: " + err.Error()))
+		return
+	}
+
+	if err := api.createOrUpdateAutoscaler(deploymentRequest, appConfig); err != nil {
+		glog.Errorf("failed create or update autoscaler: %s", err)
+		w.WriteHeader(500)
+		w.Write([]byte("Failed create/update of autoscaler: " + err.Error()))
 		return
 	}
 
@@ -360,13 +367,13 @@ func (api Api) createOrUpdateAutoscaler(req NaisDeploymentRequest, appConfig Nai
 	resourceCreator := K8sResourceCreator{appConfig, req}
 	switch {
 	case err == nil:
-		updatedAutoscaler, err := autoscalerClient.Update(resourceCreator.UpdateAutoscaler(existingAutoscaler, appConfig.Replicas.Min, appConfig.Replicas.Max, appConfig.Replicas.CpuThresholdPercentage))
+		updatedAutoscaler, err := autoscalerClient.Update(resourceCreator.CreateAutoscaler(appConfig.Replicas.Min, appConfig.Replicas.Max, appConfig.Replicas.CpuThresholdPercentage, existingAutoscaler.ObjectMeta.ResourceVersion))
 		if err != nil {
 			return fmt.Errorf("failed to update autoscaler: %s", updatedAutoscaler)
 		}
 		glog.Infof("autoscalerClient updated %s", updatedAutoscaler)
 	case errors.IsNotFound(err):
-		newAutoscaler, err := autoscalerClient.Create(resourceCreator.CreateAutoscaler(1, 2, 3))
+		newAutoscaler, err := autoscalerClient.Create(resourceCreator.CreateAutoscaler(appConfig.Replicas.Min, appConfig.Replicas.Max, appConfig.Replicas.CpuThresholdPercentage, ""))
 		if err != nil {
 			return fmt.Errorf("failed to create autoscaler: %s", newAutoscaler)
 		}

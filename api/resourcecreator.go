@@ -232,26 +232,22 @@ func (r K8sResourceCreator) CreateIngress(subdomain string) *v1beta1.Ingress {
 	}
 }
 
-func (r K8sResourceCreator) UpdateAutoscaler(existingAutoscaler *autoscalingv1.HorizontalPodAutoscaler, min, max, cpuTargetPercentage int) *autoscalingv1.HorizontalPodAutoscaler {
-	autoscaler := r.CreateAutoscaler(min, max, cpuTargetPercentage)
-	autoscaler.ObjectMeta.ResourceVersion = existingAutoscaler.ObjectMeta.ResourceVersion
-
-	return autoscaler
-}
-
-func (r K8sResourceCreator) CreateAutoscaler(min, max, cpuTargetPercentage int) *autoscalingv1.HorizontalPodAutoscaler {
+// Creates a Kubernetes HorizontalPodAutoscaler object
+// If existingAutoscalerId is provided, this is included in object so it can be used to update object
+func (r K8sResourceCreator) CreateAutoscaler(min, max, cpuTargetPercentage int, existingAutoscalerId string) *autoscalingv1.HorizontalPodAutoscaler {
 	return &autoscalingv1.HorizontalPodAutoscaler{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "HorizontalPodAutoscaler",
 			APIVersion: "autoscaling/v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      r.DeploymentRequest.Application,
-			Namespace: r.DeploymentRequest.Namespace,
+			Name:            r.DeploymentRequest.Application,
+			Namespace:       r.DeploymentRequest.Namespace,
+			ResourceVersion: existingAutoscalerId,
 		},
 		Spec: autoscalingv1.HorizontalPodAutoscalerSpec{
-			MinReplicas: int32p(int32(min)),
-			MaxReplicas: int32(max),
+			MinReplicas:                    int32p(int32(min)),
+			MaxReplicas:                    int32(max),
 			TargetCPUUtilizationPercentage: int32p(int32(cpuTargetPercentage)),
 		},
 	}

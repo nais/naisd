@@ -179,7 +179,7 @@ func TestAutoscaler(t *testing.T){
 
 	req := defaultDeployRequest()
 	resourceCreator := K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}
-	autoscaler := resourceCreator.CreateAutoscaler(10, 20, 30)
+	autoscaler := resourceCreator.CreateAutoscaler(10, 20, 30, "")
 
 	t.Run("CreatesValidAutoscaler", func(t *testing.T) {
 		assert.Equal(t, *autoscaler.Spec.MinReplicas, int32(10))
@@ -188,12 +188,11 @@ func TestAutoscaler(t *testing.T){
 	})
 
 	t.Run("AutoscalerUpdateWorks", func(t *testing.T) {
-		updatedAutoscaler := resourceCreator.UpdateAutoscaler(autoscaler, 100, 200, 300)
+		updatedAutoscaler := resourceCreator.CreateAutoscaler(100, 200, 300, autoscaler.ObjectMeta.ResourceVersion)
 		assert.Equal(t, *updatedAutoscaler.Spec.MinReplicas, int32(100))
 		assert.Equal(t, updatedAutoscaler.Spec.MaxReplicas, int32(200))
 		assert.Equal(t, *updatedAutoscaler.Spec.TargetCPUUtilizationPercentage, int32(300))
 	})
-
 }
 
 func defaultDeployRequest() NaisDeploymentRequest {

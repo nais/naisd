@@ -2,3 +2,12 @@ fasitUrl: https://fasit.example.no
 clusterSubdomain: nais-example.nais.example.no
 repository: navikt/naisd
 version: 69.0.0
+minReplicas: 2
+maxReplicas: 4
+targetAverageUtilization: 50
+request:
+  memory: 64Mi
+  cpu: 250m
+limit:
+  memory: 128Mi
+  cpu: 500m

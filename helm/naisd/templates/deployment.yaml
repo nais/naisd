@@ -4,7 +4,6 @@ metadata:
   name: naisd
   namespace: kube-system
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: naisd
@@ -19,6 +18,13 @@ spec:
       containers:
       - name: naisd
         image: "{{ .Values.repository }}:{{ .Values.version }}"
+        resources:
+          requests:
+            memory: "{{ .Values.request.memory }}"
+            cpu: "{{ .Values.request.cpu }}"
+          limits:
+            memory: "{{ .Values.limit.memory }}"
+            cpu: "{{ .Values.limit.cpu }}"
         livenessProbe:
           httpGet:
             path: /isalive

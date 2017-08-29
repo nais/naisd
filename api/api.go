@@ -136,22 +136,10 @@ func fetchAppConfig(url string) (naisAppConfig NaisAppConfig, err error) {
 		glog.Infof("Got manifest %s", appConfig)
 	}
 
-	//var noPorts bool
-	//if appConfig.Port != nil && (*appConfig.Port == Port{}) {
-	//	noPorts = true
-	//}
-
-	fmt.Println(appConfig)
-	fmt.Println(defaultAppConfig)
-
 	if err := mergo.Merge(&appConfig, defaultAppConfig); err != nil {
 		glog.Errorf("Could not merge appconfig %s", err)
 		return NaisAppConfig{}, err
 	}
-
-	//if noPorts {
-	//	appConfig.Port = nil
-	//}
 
 	return appConfig, nil
 }

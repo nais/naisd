@@ -19,6 +19,10 @@ spec:
       containers:
       - name: naisd
         image: "{{ .Values.repository }}:{{ .Values.version }}"
+        livenessProbe:
+          httpGet:
+            path: /isalive
+            port: http
         env:
           - name: fasit_url
             value: "{{ .Values.fasitUrl }}"
@@ -27,3 +31,4 @@ spec:
         ports:
         - containerPort: 8081
           protocol: TCP
+          name: http

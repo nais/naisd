@@ -74,6 +74,7 @@ func TestNoManifestGivesError(t *testing.T) {
 func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
+	resourceVersion := "69"
 	image := "name/Container:latest"
 	containerPort := 123
 	version := "123"
@@ -84,6 +85,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	service := &v1.Service{ObjectMeta: v1.ObjectMeta{
 		Name:      appName,
 		Namespace: namespace,
+		ResourceVersion: resourceVersion,
 	}}
 
 	deployment := &v1beta1.Deployment{
@@ -94,6 +96,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      appName,
 			Namespace: namespace,
+			ResourceVersion: resourceVersion,
 		},
 		Spec: v1beta1.DeploymentSpec{
 			Replicas: int32p(1),
@@ -152,6 +155,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      appName,
 			Namespace: namespace,
+			ResourceVersion: resourceVersion,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -271,4 +275,40 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, "isReady", appConfig.Healthcheck.Readiness.Path)
 	assert.Equal(t, 0, len(appConfig.FasitResources.Exposed))
 	assert.Equal(t, 0, len(appConfig.FasitResources.Exposed))
+}
+
+func TestCreateOrUpdateAutoscaler(t *testing.T) {
+	const resourceId = "id"
+	autoscaler := createAutoscalerDef(1, 2, 3, resourceId, appName, namespace)
+	clientset := fake.NewSimpleClientset(autoscaler)
+	api := Api{Clientset: clientset}
+
+	t.Run("nonexistant autoscaler yields empty string and no error", func(t *testing.T) {
+		id, err := api.getExistingAutoscalerId("nonexisting", namespace)
+		assert.NoError(t, err)
+		assert.Equal(t, "", id)
+	})
+
+	t.Run("existing autoscaler yields id and no error", func(t *testing.T) {
+		id, err := api.getExistingAutoscalerId(appName, namespace)
+		assert.NoError(t, err)
+		assert.Equal(t, resourceId, id)
+	})
+
+	t.Run("when no autoscaler exists, a new one is created", func(t *testing.T) {
+		autoscaler, err := api.createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: "othernamespace", Application: "otherapp"}, NaisAppConfig{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}})
+		assert.NoError(t, err)
+		assert.Equal(t, "", autoscaler.ObjectMeta.ResourceVersion)
+		assert.Equal(t, int32(1), autoscaler.Spec.MaxReplicas)
+		assert.Equal(t, "othernamespace", autoscaler.ObjectMeta.Namespace)
+		assert.Equal(t, "otherapp", autoscaler.ObjectMeta.Name)
+	})
+
+	t.Run("when autoscaler exists, resource id is the same as before", func(t *testing.T) {
+		autoscaler, err := api.createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: appName}, NaisAppConfig{})
+		assert.NoError(t, err)
+		assert.Equal(t, resourceId, autoscaler.ObjectMeta.ResourceVersion)
+		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
+		assert.Equal(t, appName, autoscaler.ObjectMeta.Name)
+	})
 }

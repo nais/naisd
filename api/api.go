@@ -14,6 +14,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
 	"net/http"
+	autoscalingv1 "k8s.io/client-go/pkg/apis/autoscaling/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/pkg/api/v1"
+	"io"
 )
 
 type Api struct {
@@ -109,6 +113,65 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, "")
 }
 
+func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
+
+	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
+
+	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
+
+	if err != nil {
+		glog.Errorf("Unable to unmarshal deployment request %s", err)
+		w.WriteHeader(400)
+		w.Write([]byte("Unable to understand deployment request: " + err.Error()))
+		return
+	}
+
+	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
+
+	appConfigUrl := createAppConfigUrl(deploymentRequest.AppConfigUrl, deploymentRequest.Application, deploymentRequest.Version)
+	appConfig, err := fetchAppConfig(appConfigUrl)
+
+	if err != nil {
+		glog.Errorf("Unable to fetch manifest: %s\n", err)
+		w.WriteHeader(500)
+		w.Write([]byte("Could not fetch manifest\n"))
+		return
+	}
+
+	naisResources, err := fetchFasitResources(api.FasitUrl, deploymentRequest, appConfig)
+
+	if err != nil {
+		glog.Errorf("Error getting fasit resources: %s", err)
+		w.WriteHeader(500)
+		w.Write([]byte("Error getting fasit resources: " + err.Error()))
+		return
+	}
+
+	deploymentResult, err := api.createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources)
+
+	if err != nil {
+		glog.Errorf("Failed while creating or updating resources: %s\n Created this %s", err, deploymentResult)
+		w.WriteHeader(500)
+		w.Write([]byte("Failed while creating or updating resources: " + err.Error()))
+		return
+	}
+
+	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
+
+	w.WriteHeader(200)
+	w.Write([]byte("ok\n"))
+}
+func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) ([]NaisResource, error) {
+	var resourceRequests []ResourceRequest
+	for _, resource := range appConfig.FasitResources.Used {
+		resourceRequests = append(resourceRequests, ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType})
+	}
+
+	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+
+	return fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+}
+
 func fetchAppConfig(url string) (naisAppConfig NaisAppConfig, err error) {
 	glog.Infof("Fetching manifest from URL %s\n", url)
 	response, err := http.Get(url)
@@ -144,231 +207,238 @@ func fetchAppConfig(url string) (naisAppConfig NaisAppConfig, err error) {
 	return appConfig, nil
 }
 
-func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
-
-	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
-
-	body, err := ioutil.ReadAll(r.Body)
+func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, error) {
+	requestBody, err := ioutil.ReadAll(body)
 	if err != nil {
-		glog.Errorf("Could not read body %s", err)
-		w.WriteHeader(400)
-		w.Write([]byte("Could not read body "))
-		return
+		return NaisDeploymentRequest{}, fmt.Errorf("Could not read deployment request body %s", err)
 	}
 
 	var deploymentRequest NaisDeploymentRequest
-	if err = json.Unmarshal(body, &deploymentRequest); err != nil {
-		glog.Errorf("Could not parse body %s", err)
-		w.WriteHeader(400)
-		w.Write([]byte("Could not parse body "))
-		return
+	if err = json.Unmarshal(requestBody, &deploymentRequest); err != nil {
+		return NaisDeploymentRequest{}, fmt.Errorf("Could not parse body %s", err)
 	}
 
-	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
+	return deploymentRequest, nil
+}
 
-	var appConfigUrl string
-	if deploymentRequest.AppConfigUrl != "" {
-		appConfigUrl = deploymentRequest.AppConfigUrl
+func createAppConfigUrl(appConfigUrl, application, version string) string {
+	if appConfigUrl != "" {
+		return appConfigUrl
 	} else {
-		appConfigUrl = fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/%s", deploymentRequest.Application, deploymentRequest.Version, fmt.Sprintf("%s-%s.yaml", deploymentRequest.Application, deploymentRequest.Version))
+		return fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/%s", application, version, fmt.Sprintf("%s-%s.yaml", application, version))
 	}
+}
 
-	appConfig, err := fetchAppConfig(appConfigUrl)
+type DeploymentResult struct {
+	Autoscaler *autoscalingv1.HorizontalPodAutoscaler
+	Ingress    *v1beta1.Ingress
+	Deployment *v1beta1.Deployment
+	Secret     *v1.Secret
+	Service    *v1.Service
+}
+
+func (api Api) createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, resources []NaisResource) (DeploymentResult, error) {
+
+	var deploymentResult DeploymentResult
+
+	service, err := api.createOrUpdateService(deploymentRequest, appConfig)
 
 	if err != nil {
-		glog.Errorf("Unable to fetch manifest: %s\n", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Could not fetch manifest\n"))
-		return
+		return deploymentResult, fmt.Errorf("Failed while creating or updating service: %s", err)
 	}
 
-	var resourceRequests []ResourceRequest
-	for _, resource := range appConfig.FasitResources.Used {
-		resourceRequests = append(resourceRequests, ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType})
+	deploymentResult.Service = service
+
+	deployment, err := api.createOrUpdateDeployment(deploymentRequest, appConfig, resources)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("Failed while creating or updating deployment: %s", err)
 	}
+	deploymentResult.Deployment = deployment
 
-	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
-
-	var resources []NaisResource
-
-	if len(resourceRequests) > 0 {
-		resources, err = fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+	secret, err := api.createOrUpdateSecret(deploymentRequest, appConfig, resources)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("Failed while creating or updating secret: %s", err)
 	}
+	deploymentResult.Secret = secret
+
+	ingress, err := api.createOrUpdateIngress(deploymentRequest, api.ClusterSubdomain)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("Failed while creating or updating ingress: %s", err)
+	}
+	deploymentResult.Ingress = ingress
+
+	autoscaler, err := api.createOrUpdateAutoscaler(deploymentRequest, appConfig)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("Failed while creating or updating autoscaler: %s", err)
+	}
+	deploymentResult.Autoscaler = autoscaler
+
+	return deploymentResult, err
+}
+
+func (api Api) createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) (*autoscalingv1.HorizontalPodAutoscaler, error) {
+	autoscalerId, err := api.getExistingAutoscalerId(deploymentRequest.Application, deploymentRequest.Namespace)
 
 	if err != nil {
-		glog.Errorf("Error getting fasit resources: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Error getting fasit resources: " + err.Error()))
-		return
+		return nil, fmt.Errorf("Unable to get existing autoscaler id: %s", err)
 	}
 
-	glog.Infof("Read app-config.yaml, looks like this:%s\n", appConfig)
-	if err := api.createOrUpdateService(deploymentRequest, appConfig); err != nil {
-		glog.Errorf("Failed creating or updating service: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Failed create/update of service: " + err.Error()))
-		return
-	}
-
-	if err := api.createOrUpdateDeployment(deploymentRequest, appConfig, resources); err != nil {
-		glog.Errorf("failed create or update Deployment: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Failed create/update of deployment: " + err.Error()))
-		return
-	}
-
-	if err := api.createOrUpdateSecret(deploymentRequest, appConfig, resources); err != nil {
-		glog.Errorf("failed create or update Secret: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Failed create/update of secret: " + err.Error()))
-		return
-	}
-
-	if err := api.createOrUpdateIngress(deploymentRequest, appConfig); err != nil {
-		glog.Errorf("failed create or update Ingress: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Failed create/update of ingress: " + err.Error()))
-		return
-	}
-
-	if err := api.createOrUpdateAutoscaler(deploymentRequest, appConfig); err != nil {
-		glog.Errorf("failed create or update autoscaler: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Failed create/update of autoscaler: " + err.Error()))
-		return
-	}
-
-	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
-
-	w.WriteHeader(200)
-	w.Write([]byte("ok\n"))
+	autoscalerDef := createAutoscalerDef(appConfig.Replicas.Min, appConfig.Replicas.Max, appConfig.Replicas.CpuThresholdPercentage, autoscalerId, deploymentRequest.Application, deploymentRequest.Namespace)
+	return api.createOrUpdateAutoscalerResource(autoscalerDef, deploymentRequest.Namespace)
 }
 
-func (api Api) createOrUpdateService(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
+func (api Api) createOrUpdateIngress(deploymentRequest NaisDeploymentRequest, clusterSubdomain string) (*v1beta1.Ingress, error) {
+	existingIngressId, err := api.getExistingIngressId(deploymentRequest.Application, deploymentRequest.Namespace)
 
-	serviceClient := api.Clientset.CoreV1().Services(req.Namespace)
-	existingService, err := serviceClient.Get(req.Application)
-
-	resourceCreator := K8sResourceCreator{appConfig, req}
-	switch {
-	case err == nil:
-		updatedService, err := serviceClient.Update(resourceCreator.UpdateService(*existingService))
-		if err != nil {
-			return fmt.Errorf("failed to update service: %s", err)
-		}
-		glog.Infof("serviceClient updated: %s", updatedService)
-	case errors.IsNotFound(err):
-		newService, err := serviceClient.Create(K8sResourceCreator{AppConfig: appConfig, DeploymentRequest: req}.CreateService())
-		if err != nil {
-			return fmt.Errorf("failed to create service: %s", err)
-		}
-		glog.Infof("service created %s", newService)
-
-	default:
-		return fmt.Errorf("unexpected error: %s", err)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get existing ingress id: %s", err)
 	}
 
-	return nil
+	ingressDef := createIngressDef(clusterSubdomain, existingIngressId, deploymentRequest.Application, deploymentRequest.Namespace)
+	return api.createOrUpdateIngressResource(ingressDef, deploymentRequest.Namespace)
 }
 
-func (api Api) createOrUpdateDeployment(req NaisDeploymentRequest, appConfig NaisAppConfig, resource []NaisResource) error {
+func (api Api) createOrUpdateService(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) (*v1.Service, error) {
+	existingServiceId, err := api.getExistingServiceId(deploymentRequest.Application, deploymentRequest.Namespace)
 
-	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(req.Namespace)
-	deployment, err := deploymentClient.Get(req.Application)
-
-	resourceCreator := K8sResourceCreator{appConfig, req}
-	switch {
-	case err == nil:
-		updatedDeployment, err := deploymentClient.Update(resourceCreator.UpdateDeployment(deployment, resource))
-		if err != nil {
-			return fmt.Errorf("failed to update deployment: %s", err)
-		}
-		glog.Infof("deployment updated %s", updatedDeployment)
-	case errors.IsNotFound(err):
-		newDeployment, err := deploymentClient.Create(resourceCreator.CreateDeployment(resource))
-		if err != nil {
-			return fmt.Errorf("could not create deployment %s", err)
-		}
-		glog.Infof("deployment created %s", newDeployment)
-	default:
-		return fmt.Errorf("unexpected error: %s", err)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get existing service id: %s", err)
 	}
 
-	return nil
+	autoscalerDef := createServiceDef(appConfig.Port.TargetPort, existingServiceId, deploymentRequest.Application, deploymentRequest.Namespace)
+	return api.createOrUpdateServiceResource(autoscalerDef, deploymentRequest.Namespace)
 }
 
-func (api Api) createOrUpdateSecret(req NaisDeploymentRequest, appConfig NaisAppConfig, resource []NaisResource) error {
+func (api Api) createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) (*v1beta1.Deployment, error) {
+	existingDeploymentId, err := api.getExistingDeploymentId(deploymentRequest.Application, deploymentRequest.Namespace)
 
-	secretClient := api.Clientset.CoreV1().Secrets(req.Namespace)
-	existingSecret, err := secretClient.Get(req.Application)
-	resourceCreator := K8sResourceCreator{appConfig, req}
-	switch {
-	case err == nil:
-		updatedSecret, err := secretClient.Update(resourceCreator.updateSecret(existingSecret, resource))
-		if err != nil {
-			return fmt.Errorf("failed to update secret: %s", updatedSecret)
-		}
-		glog.Infof("secretClient updated %s", updatedSecret)
-	case errors.IsNotFound(err):
-		newSecret, err := secretClient.Create(resourceCreator.CreateSecret(resource))
-		if err != nil {
-			glog.Infof("No secrets associated with deployment")
-		}
-		glog.Infof("secretClient created %s", newSecret)
-	default:
-		return fmt.Errorf("unexpected error: %s", err)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get existing deployment id: %s", err)
 	}
 
-	return nil
+	deploymentDef := createDeploymentDef(naisResources, appConfig.Image, deploymentRequest.Version, appConfig.Port.Port, appConfig.Healthcheck.Liveness.Path, appConfig.Healthcheck.Readiness.Path, existingDeploymentId, deploymentRequest.Application, deploymentRequest.Namespace)
+	return api.createOrUpdateDeploymentResource(deploymentDef, deploymentRequest.Namespace)
 }
 
-func (api Api) createOrUpdateIngress(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
+func (api Api) createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) (*v1.Secret, error) {
+	existingSecretId, err := api.getExistingSecretId(deploymentRequest.Application, deploymentRequest.Namespace)
 
-	ingressClient := api.Clientset.ExtensionsV1beta1().Ingresses(req.Namespace)
-	existingIngress, err := ingressClient.Get(req.Application)
-	resourceCreator := K8sResourceCreator{appConfig, req}
-	switch {
-	case err == nil:
-		updatedIngress, err := ingressClient.Update(resourceCreator.updateIngress(existingIngress, api.ClusterSubdomain))
-		if err != nil {
-			return fmt.Errorf("failed to update ingress: %s", updatedIngress)
-		}
-		glog.Infof("ingressClient updated %s", updatedIngress)
-	case errors.IsNotFound(err):
-		newIngress, err := ingressClient.Create(resourceCreator.CreateIngress(api.ClusterSubdomain))
-		if err != nil {
-			return fmt.Errorf("failed to create ingress: %s", newIngress)
-		}
-		glog.Infof("ingressClient created %s", newIngress)
-	default:
-		return fmt.Errorf("unexpected error: %s", err)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get existing autoscaler id: %s", err)
 	}
 
-	return nil
+	secretDef := createSecretDef(naisResources, existingSecretId, deploymentRequest.Application, deploymentRequest.Namespace)
+	return api.createOrUpdateSecretResource(secretDef, deploymentRequest.Namespace)
 }
 
-func (api Api) createOrUpdateAutoscaler(req NaisDeploymentRequest, appConfig NaisAppConfig) error {
+func (api Api) getExistingServiceId(application string, namespace string) (string, error) {
+	serviceClient := api.Clientset.CoreV1().Services(namespace)
+	service, err := serviceClient.Get(application)
 
-	autoscalerClient := api.Clientset.AutoscalingV1().HorizontalPodAutoscalers(req.Namespace)
-
-	existingAutoscaler, err := autoscalerClient.Get(req.Application)
-	resourceCreator := K8sResourceCreator{appConfig, req}
 	switch {
 	case err == nil:
-		updatedAutoscaler, err := autoscalerClient.Update(resourceCreator.CreateAutoscaler(appConfig.Replicas.Min, appConfig.Replicas.Max, appConfig.Replicas.CpuThresholdPercentage, existingAutoscaler.ObjectMeta.ResourceVersion))
-		if err != nil {
-			return fmt.Errorf("failed to update autoscaler: %s", updatedAutoscaler)
-		}
-		glog.Infof("autoscalerClient updated %s", updatedAutoscaler)
+		return service.ObjectMeta.ResourceVersion, err
 	case errors.IsNotFound(err):
-		newAutoscaler, err := autoscalerClient.Create(resourceCreator.CreateAutoscaler(appConfig.Replicas.Min, appConfig.Replicas.Max, appConfig.Replicas.CpuThresholdPercentage, ""))
-		if err != nil {
-			return fmt.Errorf("failed to create autoscaler: %s", newAutoscaler)
-		}
-		glog.Infof("autoscalerClient created %s", newAutoscaler)
+		return "", nil
 	default:
-		return fmt.Errorf("unexpected error: %s", err)
+		return "", fmt.Errorf("unexpected error: %s", err)
 	}
+}
 
-	return nil
+func (api Api) getExistingSecretId(application string, namespace string) (string, error) {
+	secretClient := api.Clientset.CoreV1().Secrets(namespace)
+	secret, err := secretClient.Get(application)
+
+	switch {
+	case err == nil:
+		return secret.ObjectMeta.ResourceVersion, err
+	case errors.IsNotFound(err):
+		return "", nil
+	default:
+		return "", fmt.Errorf("unexpected error: %s", err)
+	}
+}
+
+func (api Api) getExistingDeploymentId(application string, namespace string) (string, error) {
+	deploymentClient := api.Clientset.ExtensionsV1beta1().Deployments(namespace)
+	deployment, err := deploymentClient.Get(application)
+
+	switch {
+	case err == nil:
+		return deployment.ObjectMeta.ResourceVersion, err
+	case errors.IsNotFound(err):
+		return "", nil
+	default:
+		return "", fmt.Errorf("unexpected error: %s", err)
+	}
+}
+
+func (api Api) getExistingIngressId(application string, namespace string) (string, error) {
+	ingressClient := api.Clientset.ExtensionsV1beta1().Ingresses(namespace)
+	ingress, err := ingressClient.Get(application)
+
+	switch {
+	case err == nil:
+		return ingress.ObjectMeta.ResourceVersion, err
+	case errors.IsNotFound(err):
+		return "", nil
+	default:
+		return "", fmt.Errorf("unexpected error: %s", err)
+	}
+}
+
+func (api Api) getExistingAutoscalerId(application string, namespace string) (string, error) {
+	autoscalerClient := api.Clientset.AutoscalingV1().HorizontalPodAutoscalers(namespace)
+	autoscaler, err := autoscalerClient.Get(application)
+
+	switch {
+	case err == nil:
+		return autoscaler.ObjectMeta.ResourceVersion, err
+	case errors.IsNotFound(err):
+		return "", nil
+	default:
+		return "", fmt.Errorf("unexpected error: %s", err)
+	}
+}
+
+func (api Api) createOrUpdateAutoscalerResource(autoscalerSpec *autoscalingv1.HorizontalPodAutoscaler, namespace string) (*autoscalingv1.HorizontalPodAutoscaler, error) {
+	if autoscalerSpec.ObjectMeta.ResourceVersion != "" {
+		return api.Clientset.AutoscalingV1().HorizontalPodAutoscalers(namespace).Update(autoscalerSpec)
+	} else {
+		return api.Clientset.AutoscalingV1().HorizontalPodAutoscalers(namespace).Create(autoscalerSpec)
+	}
+}
+
+func (api Api) createOrUpdateIngressResource(ingressSpec *v1beta1.Ingress, namespace string) (*v1beta1.Ingress, error) {
+	if ingressSpec.ObjectMeta.ResourceVersion != "" {
+		return api.Clientset.ExtensionsV1beta1().Ingresses(namespace).Update(ingressSpec)
+	} else {
+		return api.Clientset.ExtensionsV1beta1().Ingresses(namespace).Create(ingressSpec)
+	}
+}
+
+func (api Api) createOrUpdateDeploymentResource(deploymentSpec *v1beta1.Deployment, namespace string) (*v1beta1.Deployment, error) {
+	if deploymentSpec.ObjectMeta.ResourceVersion != "" {
+		return api.Clientset.ExtensionsV1beta1().Deployments(namespace).Update(deploymentSpec)
+	} else {
+		return api.Clientset.ExtensionsV1beta1().Deployments(namespace).Create(deploymentSpec)
+	}
+}
+
+func (api Api) createOrUpdateServiceResource(serviceSpec *v1.Service, namespace string) (*v1.Service, error) {
+	if serviceSpec.ObjectMeta.ResourceVersion != "" {
+		fmt.Println("updating..")
+		return api.Clientset.CoreV1().Services(namespace).Update(serviceSpec)
+	} else {
+		fmt.Println("creating..")
+		return api.Clientset.CoreV1().Services(namespace).Create(serviceSpec)
+	}
+}
+
+func (api Api) createOrUpdateSecretResource(secretSpec *v1.Secret, namespace string) (*v1.Secret, error) {
+	if secretSpec.ObjectMeta.ResourceVersion != "" {
+		return api.Clientset.CoreV1().Secrets(namespace).Update(secretSpec)
+	} else {
+		return api.Clientset.CoreV1().Secrets(namespace).Create(secretSpec)
+	}
 }

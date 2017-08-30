@@ -59,12 +59,20 @@ func TestDeployment(t *testing.T) {
 	resource1Value := "value1"
 	secret1Key := "password"
 	secret1Value := "secret"
+
 	resource2Name := "r2"
 	resource2Type := "db"
 	resource2Key := "key2"
 	resource2Value := "value2"
 	secret2Key := "password"
 	secret2Value := "anothersecret"
+
+	invalidlyNamedResourceName := "dots.are.not.allowed"
+	invalidlyNamedResourceType := "restservice"
+	invalidlyNamedResourceKey := "key"
+	invalidlyNamedResourceValue := "value"
+	invalidlyNamedResourceSecretKey := "secretkey"
+	invalidlyNamedResourceSecretValue := "secretvalue"
 
 	appConfig := defaultAppConfig(appName, image, port, targetPort, portName,  livenessPath, readinessPath)
 	deployment := defaultDeployment(appName, nameSpace, image, port, version)
@@ -75,30 +83,53 @@ func TestDeployment(t *testing.T) {
 
 	t.Run("AValidDeploymentRequestAndAppConfigCreatesANewDeployment", func(t *testing.T) {
 		naisResources := []NaisResource{
-			{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}},
-			{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}}}
+			{
+				resource1Name,
+				resource1Type,
+				map[string]string{resource1Key: resource1Value},
+				map[string]string{secret1Key: secret1Value},
+			},
+			{
+				resource2Name,
+				resource2Type,
+				map[string]string{resource2Key: resource2Value},
+				map[string]string{secret2Key: secret2Value},
+			},
+			{
+				invalidlyNamedResourceName,
+				invalidlyNamedResourceType,
+				map[string]string{invalidlyNamedResourceKey: invalidlyNamedResourceValue},
+				map[string]string{invalidlyNamedResourceSecretKey: invalidlyNamedResourceSecretValue},
+			},
+		}
 
 		deployment := *r.CreateDeployment(naisResources)
-
 		assert.Equal(t, appName, deployment.Name)
 		assert.Equal(t, appName, deployment.Spec.Template.Name)
-		assert.Equal(t, appName, deployment.Spec.Template.Spec.Containers[0].Name)
-		assert.Equal(t, image+":"+version, deployment.Spec.Template.Spec.Containers[0].Image)
-		assert.Equal(t, int32(port), deployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
-		assert.Equal(t, livenessPath, deployment.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Path)
-		assert.Equal(t, portName, deployment.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Port.StrVal)
-		assert.Equal(t, readinessPath, deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Path)
-		assert.Equal(t, portName, deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Port.StrVal)
-		assert.Equal(t, 5, len(deployment.Spec.Template.Spec.Containers[0].Env))
-		assert.Equal(t, version, deployment.Spec.Template.Spec.Containers[0].Env[0].Value)
-		assert.Equal(t, resource1Name+"_"+resource1Key, deployment.Spec.Template.Spec.Containers[0].Env[1].Name)
-		assert.Equal(t, "value1", deployment.Spec.Template.Spec.Containers[0].Env[1].Value)
-		assert.Equal(t, resource1Name+"_"+secret1Key, deployment.Spec.Template.Spec.Containers[0].Env[2].Name)
-		assert.Equal(t, createSecretRef(appName, secret1Key, resource1Name), deployment.Spec.Template.Spec.Containers[0].Env[2].ValueFrom)
-		assert.Equal(t, resource2Name+"_"+resource2Key, deployment.Spec.Template.Spec.Containers[0].Env[3].Name)
-		assert.Equal(t, "value2", deployment.Spec.Template.Spec.Containers[0].Env[3].Value)
-		assert.Equal(t, resource2Name+"_"+secret2Key, deployment.Spec.Template.Spec.Containers[0].Env[4].Name)
-		assert.Equal(t, createSecretRef(appName, secret2Key, resource2Name), deployment.Spec.Template.Spec.Containers[0].Env[4].ValueFrom)
+
+		containers := deployment.Spec.Template.Spec.Containers
+		container := containers[0]
+		assert.Equal(t, appName, container.Name)
+		assert.Equal(t, image+":"+version, container.Image)
+		assert.Equal(t, int32(port), container.Ports[0].ContainerPort)
+		assert.Equal(t, livenessPath, container.LivenessProbe.HTTPGet.Path)
+		assert.Equal(t, portName, container.LivenessProbe.HTTPGet.Port.StrVal)
+		assert.Equal(t, readinessPath, container.ReadinessProbe.HTTPGet.Path)
+		assert.Equal(t, portName, container.ReadinessProbe.HTTPGet.Port.StrVal)
+
+		env := container.Env
+		assert.Equal(t, 7, len(env))
+		assert.Equal(t, version, env[0].Value)
+		assert.Equal(t, resource1Name+"_"+resource1Key, env[1].Name)
+		assert.Equal(t, "value1", env[1].Value)
+		assert.Equal(t, resource1Name+"_"+secret1Key, env[2].Name)
+		assert.Equal(t, createSecretRef(appName, secret1Key, resource1Name), env[2].ValueFrom)
+		assert.Equal(t, resource2Name+"_"+resource2Key, env[3].Name)
+		assert.Equal(t, "value2", env[3].Value)
+		assert.Equal(t, resource2Name+"_"+secret2Key, env[4].Name)
+		assert.Equal(t, createSecretRef(appName, secret2Key, resource2Name), env[4].ValueFrom)
+		assert.Equal(t, "dots_are_not_allowed_key", env[5].Name)
+		assert.Equal(t, "dots_are_not_allowed_secretkey", env[6].Name)
 
 	})
 

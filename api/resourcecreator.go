@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"strings"
 	k8sresource "k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
@@ -59,6 +60,10 @@ func (r K8sResourceCreator) UpdateDeployment(exisitingDeployment *v1beta1.Deploy
 	deploymentSpec.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("%s:%s", r.AppConfig.Image, r.DeploymentRequest.Version)
 
 	return deploymentSpec
+}
+
+func ResourceVariableName(resource NaisResource, key string)  string {
+	return strings.Replace(resource.name, ".", "_", -1) + "_" + key
 }
 
 func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.Deployment {
@@ -139,25 +144,27 @@ func (r K8sResourceCreator) CreateDeployment(resource []NaisResource) *v1beta1.D
 		},
 	}
 
+	containers := deployment.Spec.Template.Spec.Containers
 	for _, res := range resource {
 		for k, v := range res.properties {
-			envVar := v1.EnvVar{res.name + "_" + k, v, nil}
-			deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, envVar)
+			envVar := v1.EnvVar{ResourceVariableName(res,k), v, nil}
+			containers[0].Env = append(containers[0].Env, envVar)
 		}
 		if res.secret != nil {
 			for k := range res.secret {
+				variableName := ResourceVariableName(res, k)
 				envVar := v1.EnvVar{
-					Name: res.name + "_" + k,
+					Name: variableName,
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{
 								Name: r.AppConfig.Name + "-secrets",
 							},
-							Key: res.name + "_" + k,
+							Key: variableName,
 						},
 					},
 				}
-				deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, envVar)
+				containers[0].Env = append(containers[0].Env, envVar)
 			}
 		}
 	}

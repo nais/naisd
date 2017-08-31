@@ -5,6 +5,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/util/intstr"
 	"testing"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 const (
@@ -195,6 +196,42 @@ func TestAutoscaler(t *testing.T) {
 		assert.Equal(t, updatedAutoscaler.ObjectMeta.ResourceVersion, resourceVersion)
 	})
 }
+
+func TestCreateOrUpdateAutoscaler(t *testing.T) {
+	const resourceId = "id"
+	autoscaler := createAutoscalerDef(1, 2, 3, resourceId, appName, namespace)
+	clientset := fake.NewSimpleClientset(autoscaler)
+
+	t.Run("nonexistant autoscaler yields empty string and no error", func(t *testing.T) {
+		id, err := getExistingAutoscalerId("nonexisting", namespace, clientset)
+		assert.NoError(t, err)
+		assert.Equal(t, "", id)
+	})
+
+	t.Run("existing autoscaler yields id and no error", func(t *testing.T) {
+		id, err := getExistingAutoscalerId(appName, namespace, clientset)
+		assert.NoError(t, err)
+		assert.Equal(t, resourceId, id)
+	})
+
+	t.Run("when no autoscaler exists, a new one is created", func(t *testing.T) {
+		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: "othernamespace", Application: "otherapp"}, NaisAppConfig{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}}, clientset)
+		assert.NoError(t, err)
+		assert.Equal(t, "", autoscaler.ObjectMeta.ResourceVersion)
+		assert.Equal(t, int32(1), autoscaler.Spec.MaxReplicas)
+		assert.Equal(t, "othernamespace", autoscaler.ObjectMeta.Namespace)
+		assert.Equal(t, "otherapp", autoscaler.ObjectMeta.Name)
+	})
+
+	t.Run("when autoscaler exists, resource id is the same as before", func(t *testing.T) {
+		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: appName}, NaisAppConfig{}, clientset)
+		assert.NoError(t, err)
+		assert.Equal(t, resourceId, autoscaler.ObjectMeta.ResourceVersion)
+		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
+		assert.Equal(t, appName, autoscaler.ObjectMeta.Name)
+	})
+}
+
 
 func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSource {
 	return &v1.EnvVarSource{

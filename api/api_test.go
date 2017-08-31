@@ -236,4 +236,5 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
+	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n", string(rr.Body.Bytes()))
 }

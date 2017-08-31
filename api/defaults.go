@@ -3,9 +3,9 @@ package api
 func GetDefaultAppConfig() NaisAppConfig {
 
 	return NaisAppConfig{
-    Replicas: Replicas{
-			Min: 2,
-			Max: 4,
+		Replicas: Replicas{
+			Min:                    2,
+			Max:                    4,
 			CpuThresholdPercentage: 50,
 		},
 		Port: Port{
@@ -13,8 +13,8 @@ func GetDefaultAppConfig() NaisAppConfig {
 			Port:       80,
 			TargetPort: 8080,
 			Protocol:   "http",
-		}, 
-    Healthcheck: Healthcheck {
+		},
+		Healthcheck: Healthcheck{
 			Liveness: Probe{
 				Path: "isAlive",
 			},

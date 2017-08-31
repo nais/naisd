@@ -98,3 +98,5 @@ func fetchAppConfig(url string) (naisAppConfig NaisAppConfig, err error) {
 
 	return appConfig, nil
 }
+
+

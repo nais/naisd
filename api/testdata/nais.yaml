@@ -1,5 +1,9 @@
 name: k8s-testapp
 image: navikt/k8s-testapp:69
+replicas:
+  min: 10
+  max: 20
+  cpuThresholdPercentage: 2
 port:
   name: http
   port: 79

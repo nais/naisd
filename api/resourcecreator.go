@@ -13,6 +13,14 @@ import (
 	"k8s.io/client-go/pkg/api/errors"
 )
 
+type DeploymentResult struct {
+	Autoscaler *autoscalingv1.HorizontalPodAutoscaler
+	Ingress    *v1beta1.Ingress
+	Deployment *v1beta1.Deployment
+	Secret     *v1.Secret
+	Service    *v1.Service
+}
+
 // Creates a Kubernetes Service object
 // If existingServiceId is provided, this is included in object so it can be used to update object
 func createServiceDef(targetPort int, existingServiceId, application, namespace string) *v1.Service {
@@ -43,21 +51,21 @@ func createServiceDef(targetPort int, existingServiceId, application, namespace 
 	}
 }
 
-func ResourceVariableName(resource NaisResource, key string)  string {
+func ResourceVariableName(resource NaisResource, key string) string {
 	return strings.Replace(resource.name, ".", "_", -1) + "_" + key
 }
 
 // Creates a Kubernetes Deployment object
 // If existingDeploymentId is provided, this is included in object so it can be used to update object
-func createDeploymentDef(resources []NaisResource, imageName, version string, port int, livenessPath, readinessPath,  existingDeploymentId, application, namespace string) *v1beta1.Deployment {
+func createDeploymentDef(resources []NaisResource, imageName, version string, port int, livenessPath, readinessPath, existingDeploymentId, application, namespace string) *v1beta1.Deployment {
 	deployment := &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Deployment",
 			APIVersion: "apps/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      application,
-			Namespace: namespace,
+			Name:            application,
+			Namespace:       namespace,
 			ResourceVersion: existingDeploymentId,
 		},
 		Spec: v1beta1.DeploymentSpec{
@@ -128,7 +136,7 @@ func createDeploymentDef(resources []NaisResource, imageName, version string, po
 	containers := deployment.Spec.Template.Spec.Containers
 	for _, res := range resources {
 		for k, v := range res.properties {
-			envVar := v1.EnvVar{ResourceVariableName(res,k), v, nil}
+			envVar := v1.EnvVar{ResourceVariableName(res, k), v, nil}
 			containers[0].Env = append(containers[0].Env, envVar)
 		}
 		if res.secret != nil {
@@ -161,8 +169,8 @@ func createSecretDef(resource []NaisResource, existingSecretId, application, nam
 			APIVersion: "v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      application,
-			Namespace: namespace,
+			Name:            application,
+			Namespace:       namespace,
 			ResourceVersion: existingSecretId,
 		},
 		Data: map[string][]byte{},
@@ -191,8 +199,8 @@ func createIngressDef(subdomain, existingIngressId, application, namespace strin
 			APIVersion: "extensions/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      application,
-			Namespace: namespace,
+			Name:            application,
+			Namespace:       namespace,
 			ResourceVersion: existingIngressId,
 		},
 		Spec: v1beta1.IngressSpec{
@@ -270,6 +278,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 	if err != nil {
 		return deploymentResult, fmt.Errorf("Failed while creating or updating autoscaler: %s", err)
 	}
+
 	deploymentResult.Autoscaler = autoscaler
 
 	return deploymentResult, err

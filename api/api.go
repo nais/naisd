@@ -11,9 +11,6 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
-	autoscalingv1 "k8s.io/client-go/pkg/apis/autoscaling/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/api/v1"
 	"io"
 )
 
@@ -21,14 +18,6 @@ type Api struct {
 	Clientset        kubernetes.Interface
 	FasitUrl         string
 	ClusterSubdomain string
-}
-
-type DeploymentResult struct {
-	Autoscaler *autoscalingv1.HorizontalPodAutoscaler
-	Ingress    *v1beta1.Ingress
-	Deployment *v1beta1.Deployment
-	Secret     *v1.Secret
-	Service    *v1.Service
 }
 
 type NaisDeploymentRequest struct {
@@ -116,10 +105,32 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
 	w.WriteHeader(200)
-	w.Write([]byte("ok\n"))
+
+	response := createResponse(deploymentResult)
+	w.Write(response)
 }
+func createResponse(deploymentResult DeploymentResult) []byte {
 
+	response := "result: \n"
 
+	if deploymentResult.Deployment != nil {
+		response += "- created deployment\n"
+	}
+	if deploymentResult.Secret != nil {
+		response += "- created secret\n"
+	}
+	if deploymentResult.Service != nil {
+		response += "- created service\n"
+	}
+	if deploymentResult.Ingress != nil {
+		response += "- created ingress\n"
+	}
+	if deploymentResult.Autoscaler != nil {
+		response += "- created autoscaler\n"
+	}
+
+	return []byte(response)
+}
 
 func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, error) {
 	requestBody, err := ioutil.ReadAll(body)
@@ -134,4 +145,3 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, erro
 
 	return deploymentRequest, nil
 }
-

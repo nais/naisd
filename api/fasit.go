@@ -58,6 +58,17 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 	return resources, nil
 }
 
+func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) ([]NaisResource, error) {
+	var resourceRequests []ResourceRequest
+	for _, resource := range appConfig.FasitResources.Used {
+		resourceRequests = append(resourceRequests, ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType})
+	}
+
+	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+
+	return fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+}
+
 func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
 	requestCounter.With(nil).Inc()
 	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)

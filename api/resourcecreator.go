@@ -139,7 +139,7 @@ func createDeploymentDef(resources []NaisResource, imageName, version string, po
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{
-								Name: application + "-secrets",
+								Name: application,
 							},
 							Key: variableName,
 						},
@@ -161,7 +161,7 @@ func createSecretDef(resource []NaisResource, existingSecretId, application, nam
 			APIVersion: "v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      application + "-secrets",
+			Name:      application,
 			Namespace: namespace,
 			ResourceVersion: existingSecretId,
 		},
@@ -246,7 +246,6 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 	if err != nil {
 		return deploymentResult, fmt.Errorf("Failed while creating or updating service: %s", err)
 	}
-
 	deploymentResult.Service = service
 
 	deployment, err := createOrUpdateDeployment(deploymentRequest, appConfig, resources, k8sClient)
@@ -255,7 +254,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 	}
 	deploymentResult.Deployment = deployment
 
-	secret, err := createOrUpdateSecret(deploymentRequest, appConfig, resources, k8sClient)
+	secret, err := createOrUpdateSecret(deploymentRequest, resources, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("Failed while creating or updating secret: %s", err)
 	}
@@ -320,7 +319,7 @@ func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, appConfig
 	return createOrUpdateDeploymentResource(deploymentDef, deploymentRequest.Namespace, k8sClient)
 }
 
-func createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource, k8sClient kubernetes.Interface) (*v1.Secret, error) {
+func createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource, k8sClient kubernetes.Interface) (*v1.Secret, error) {
 	existingSecretId, err := getExistingSecretId(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
@@ -351,7 +350,6 @@ func getExistingServiceId(application string, namespace string, k8sClient kubern
 func getExistingSecretId(application string, namespace string, k8sClient kubernetes.Interface) (string, error) {
 	secretClient := k8sClient.CoreV1().Secrets(namespace)
 	secret, err := secretClient.Get(application)
-
 	switch {
 	case err == nil:
 		return secret.ObjectMeta.ResourceVersion, err

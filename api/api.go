@@ -119,16 +119,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok\n"))
 }
 
-func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) ([]NaisResource, error) {
-	var resourceRequests []ResourceRequest
-	for _, resource := range appConfig.FasitResources.Used {
-		resourceRequests = append(resourceRequests, ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType})
-	}
 
-	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
-
-	return fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
-}
 
 func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, error) {
 	requestBody, err := ioutil.ReadAll(body)

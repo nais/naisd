@@ -26,6 +26,14 @@ type Api struct {
 	ClusterSubdomain string
 }
 
+type DeploymentResult struct {
+	Autoscaler *autoscalingv1.HorizontalPodAutoscaler
+	Ingress    *v1beta1.Ingress
+	Deployment *v1beta1.Deployment
+	Secret     *v1.Secret
+	Service    *v1.Service
+}
+
 type NaisDeploymentRequest struct {
 	Application  string
 	Version      string
@@ -120,7 +128,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
 
 	if err != nil {
-		glog.Errorf("Unable to unmarshal deployment request %s", err)
+		glog.Errorf("Unable to unmarshal deployment request: %s", err)
 		w.WriteHeader(400)
 		w.Write([]byte("Unable to understand deployment request: " + err.Error()))
 		return
@@ -215,7 +223,7 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, erro
 
 	var deploymentRequest NaisDeploymentRequest
 	if err = json.Unmarshal(requestBody, &deploymentRequest); err != nil {
-		return NaisDeploymentRequest{}, fmt.Errorf("Could not parse body %s", err)
+		return NaisDeploymentRequest{}, fmt.Errorf("Could not unmarshal body %s", err)
 	}
 
 	return deploymentRequest, nil
@@ -229,16 +237,7 @@ func createAppConfigUrl(appConfigUrl, application, version string) string {
 	}
 }
 
-type DeploymentResult struct {
-	Autoscaler *autoscalingv1.HorizontalPodAutoscaler
-	Ingress    *v1beta1.Ingress
-	Deployment *v1beta1.Deployment
-	Secret     *v1.Secret
-	Service    *v1.Service
-}
-
 func (api Api) createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, resources []NaisResource) (DeploymentResult, error) {
-
 	var deploymentResult DeploymentResult
 
 	service, err := api.createOrUpdateService(deploymentRequest, appConfig)
@@ -327,8 +326,12 @@ func (api Api) createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, app
 		return nil, fmt.Errorf("Unable to get existing autoscaler id: %s", err)
 	}
 
-	secretDef := createSecretDef(naisResources, existingSecretId, deploymentRequest.Application, deploymentRequest.Namespace)
-	return api.createOrUpdateSecretResource(secretDef, deploymentRequest.Namespace)
+	if secretDef := createSecretDef(naisResources, existingSecretId, deploymentRequest.Application, deploymentRequest.Namespace); secretDef != nil {
+		return api.createOrUpdateSecretResource(secretDef, deploymentRequest.Namespace)
+	} else {
+		return nil, nil
+	}
+
 }
 
 func (api Api) getExistingServiceId(application string, namespace string) (string, error) {
@@ -427,10 +430,8 @@ func (api Api) createOrUpdateDeploymentResource(deploymentSpec *v1beta1.Deployme
 
 func (api Api) createOrUpdateServiceResource(serviceSpec *v1.Service, namespace string) (*v1.Service, error) {
 	if serviceSpec.ObjectMeta.ResourceVersion != "" {
-		fmt.Println("updating..")
 		return api.Clientset.CoreV1().Services(namespace).Update(serviceSpec)
 	} else {
-		fmt.Println("creating..")
 		return api.Clientset.CoreV1().Services(namespace).Create(serviceSpec)
 	}
 }

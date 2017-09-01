@@ -3,7 +3,7 @@ clusterSubdomain: nais-example.nais.example.no
 repository: navikt/naisd
 minReplicas: 2
 maxReplicas: 4
-targetAverageUtilization: 50
+targetCPUUtilizationPercentage: 50
 request:
   memory: 64Mi
   cpu: 250m

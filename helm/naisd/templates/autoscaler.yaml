@@ -1,16 +1,12 @@
-apiVersion: v1
+apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
   name: naisd
   namespace: kube-system
 spec:
-  maxReplicas: {{ .Values.maxReplicas }}
   minReplicas: {{ .Values.minReplicas }}
-  metrics:
-  - resource:
-      name: cpu
-      targetAverageUtilization: {{ .Values.targetAverageUtilization }}
-    type: Resource
+  maxReplicas: {{ .Values.maxReplicas }}
+  targetCPUUtilizationPercentage: {{ .Values.targetCPUUtilizationPercentage }}
   scaleTargetRef:
     apiVersion: extensions/v1beta1
     kind: Deployment

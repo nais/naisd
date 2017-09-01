@@ -1,4 +1,4 @@
-apiVersion: autoscaling/v2alpha1
+apiVersion: v1
 kind: HorizontalPodAutoscaler
 metadata:
   name: naisd

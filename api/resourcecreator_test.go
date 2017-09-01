@@ -300,6 +300,8 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 		assert.Equal(t, int32p(69), autoscaler.Spec.TargetCPUUtilizationPercentage)
 		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
 		assert.Equal(t, otherAppName, autoscaler.ObjectMeta.Name)
+		assert.Equal(t, otherAppName, autoscaler.Spec.ScaleTargetRef.Name)
+		assert.Equal(t, "Deployment", autoscaler.Spec.ScaleTargetRef.Kind)
 	})
 
 	t.Run("when autoscaler exists, it's updated", func(t *testing.T) {

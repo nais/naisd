@@ -242,6 +242,11 @@ func createAutoscalerDef(min, max, cpuTargetPercentage int, existingAutoscalerId
 			MinReplicas:                    int32p(int32(min)),
 			MaxReplicas:                    int32(max),
 			TargetCPUUtilizationPercentage: int32p(int32(cpuTargetPercentage)),
+			ScaleTargetRef: autoscalingv1.CrossVersionObjectReference{
+				APIVersion: "extensions/v1beta1",
+				Kind: "Deployment",
+				Name: application,
+			},
 		},
 	}
 }

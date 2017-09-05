@@ -22,5 +22,15 @@ func GetDefaultAppConfig() NaisAppConfig {
 				Path: "isReady",
 			},
 		},
+		Resources: Resources{
+			Limits: ContainerResource{
+				Cpu: "500m",
+				Memory: "512Mi",
+			},
+			Requests: ContainerResource{
+				Cpu: "200m",
+				Memory: "256Mi",
+			},
+		},
 	}
 }

@@ -14,6 +14,13 @@ healthcheck:
     path: isAlive2
   readiness:
     path: isReady2
+resources:
+  limits:
+    cpu: 100m
+    memory: 100Mi
+  requests:
+    cpu: 100m
+    memory: 100Mi
 fasitResources:
   used:
   - alias: mydb

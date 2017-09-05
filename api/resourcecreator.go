@@ -244,8 +244,8 @@ func createAutoscalerDef(min, max, cpuTargetPercentage int, existingAutoscalerId
 			TargetCPUUtilizationPercentage: int32p(int32(cpuTargetPercentage)),
 			ScaleTargetRef: autoscalingv1.CrossVersionObjectReference{
 				APIVersion: "extensions/v1beta1",
-				Kind: "Deployment",
-				Name: application,
+				Kind:       "Deployment",
+				Name:       application,
 			},
 		},
 	}

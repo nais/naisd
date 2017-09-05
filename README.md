@@ -24,7 +24,7 @@ on push:
 
 For local development, use minikube. You can run naisd.go with -kubeconfig=<path to kube config> for testing without deploying to cluster. 
 
-```glide install```
+```glide install --strip-vendor```
 
 ...to fetch dependecies
 

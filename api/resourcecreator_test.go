@@ -122,7 +122,7 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	deployment := createDeploymentDef(naisResources, image, version, port, livenessPath, readinessPath, resourceVersion, appName, namespace)
+	deployment := createDeploymentDef(naisResources, appConfig, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, resourceVersion)
 
 	clientset := fake.NewSimpleClientset(deployment)
 

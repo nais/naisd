@@ -57,15 +57,15 @@ func ResourceVariableName(resource NaisResource, key string) string {
 
 // Creates a Kubernetes Deployment object
 // If existingDeploymentId is provided, this is included in object so it can be used to update object
-func createDeploymentDef(resources []NaisResource, imageName, version string, port int, livenessPath, readinessPath, existingDeploymentId, application, namespace string) *v1beta1.Deployment {
+func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeploymentId string) *v1beta1.Deployment {
 	deployment := &v1beta1.Deployment{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Deployment",
 			APIVersion: "apps/v1beta1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:            application,
-			Namespace:       namespace,
+			Name:            deploymentRequest.Application,
+			Namespace:       deploymentRequest.Namespace,
 			ResourceVersion: existingDeploymentId,
 		},
 		Spec: v1beta1.DeploymentSpec{
@@ -86,30 +86,30 @@ func createDeploymentDef(resources []NaisResource, imageName, version string, po
 			RevisionHistoryLimit: int32p(10),
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
-					Name:   application,
-					Labels: map[string]string{"app": application},
+					Name:   deploymentRequest.Application,
+					Labels: map[string]string{"app": deploymentRequest.Application},
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:  application,
-							Image: fmt.Sprintf("%s:%s", imageName, version),
+							Name:  deploymentRequest.Application,
+							Image: fmt.Sprintf("%s:%s", appConfig.Image, deploymentRequest.Version),
 							Ports: []v1.ContainerPort{
-								{ContainerPort: int32(port), Protocol: v1.ProtocolTCP},
+								{ContainerPort: int32(appConfig.Port.Port), Protocol: v1.ProtocolTCP},
 							},
 							LivenessProbe: &v1.Probe{
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
-										Path: livenessPath,
-										Port: intstr.FromInt(port),
+										Path: appConfig.Healthcheck.Liveness.Path,
+										Port: intstr.FromInt(appConfig.Port.Port),
 									},
 								},
 							},
 							ReadinessProbe: &v1.Probe{
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
-										Path: readinessPath,
-										Port: intstr.FromInt(port),
+										Path: appConfig.Healthcheck.Readiness.Path,
+										Port: intstr.FromInt(appConfig.Port.Port),
 									},
 								},
 							},
@@ -121,7 +121,7 @@ func createDeploymentDef(resources []NaisResource, imageName, version string, po
 							},
 							Env: []v1.EnvVar{{
 								Name:  "app_version",
-								Value: version,
+								Value: deploymentRequest.Version,
 							}},
 							ImagePullPolicy: v1.PullIfNotPresent,
 						},
@@ -134,7 +134,7 @@ func createDeploymentDef(resources []NaisResource, imageName, version string, po
 	}
 
 	containers := deployment.Spec.Template.Spec.Containers
-	for _, res := range resources {
+	for _, res := range naisResources {
 		for k, v := range res.properties {
 			envVar := v1.EnvVar{ResourceVariableName(res, k), v, nil}
 			containers[0].Env = append(containers[0].Env, envVar)
@@ -147,7 +147,7 @@ func createDeploymentDef(resources []NaisResource, imageName, version string, po
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{
-								Name: application,
+								Name: deploymentRequest.Application,
 							},
 							Key: variableName,
 						},
@@ -329,7 +329,7 @@ func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, appConfig
 		return nil, fmt.Errorf("Unable to get existing deployment id: %s", err)
 	}
 
-	deploymentDef := createDeploymentDef(naisResources, appConfig.Image, deploymentRequest.Version, appConfig.Port.Port, appConfig.Healthcheck.Liveness.Path, appConfig.Healthcheck.Readiness.Path, existingDeploymentId, deploymentRequest.Application, deploymentRequest.Namespace)
+	deploymentDef := createDeploymentDef(naisResources, appConfig, deploymentRequest, existingDeploymentId)
 	return createOrUpdateDeploymentResource(deploymentDef, deploymentRequest.Namespace, k8sClient)
 }
 

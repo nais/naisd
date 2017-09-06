@@ -355,6 +355,16 @@ func TestCreateK8sResources(t *testing.T) {
 			Protocol:   "http",
 			TargetPort: targetPort,
 		},
+		Resources:Resources{
+			Requests:ContainerResource{
+				Cpu:cpuRequest,
+				Memory:memoryRequest,
+			},
+			Limits:ContainerResource{
+				Cpu:cpuLimit,
+				Memory:memoryLimit,
+			},
+		},
 	}
 
 	naisResources := []NaisResource{

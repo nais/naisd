@@ -23,12 +23,12 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 				Path: "isReady",
 			},
 		},
-		Resources: Resources{
-			Limits: ContainerResource{
+		Resources: ResourceRequirements{
+			Limits: ResourceList{
 				Cpu: "500m",
 				Memory: "512Mi",
 			},
-			Requests: ContainerResource{
+			Requests: ResourceList{
 				Cpu: "200m",
 				Memory: "256Mi",
 			},

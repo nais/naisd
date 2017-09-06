@@ -125,12 +125,12 @@ func TestDeployment(t *testing.T) {
 				Path: livenessPath,
 			},
 		},
-		Resources: Resources{
-			Requests: ContainerResource{
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
 				Memory: memoryRequest,
 				Cpu:    cpuRequest,
 			},
-			Limits: ContainerResource{
+			Limits: ResourceList{
 				Memory: memoryLimit,
 				Cpu:    cpuLimit,
 			},
@@ -355,12 +355,12 @@ func TestCreateK8sResources(t *testing.T) {
 			Protocol:   "http",
 			TargetPort: targetPort,
 		},
-		Resources:Resources{
-			Requests:ContainerResource{
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
 				Cpu:cpuRequest,
 				Memory:memoryRequest,
 			},
-			Limits:ContainerResource{
+			Limits: ResourceList{
 				Cpu:cpuLimit,
 				Memory:memoryLimit,
 			},

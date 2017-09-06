@@ -18,21 +18,21 @@ type Healthcheck struct {
 	Readiness Probe
 }
 
-type ContainerResource struct {
+type ResourceList struct {
 	Cpu    string
 	Memory string
 }
 
-type Resources struct {
-	Limits   ContainerResource
-	Requests ContainerResource
+type ResourceRequirements struct {
+	Limits   ResourceList
+	Requests ResourceList
 }
 type NaisAppConfig struct {
 	Image          string
 	Port           Port
 	Healthcheck    Healthcheck
 	Replicas       Replicas
-	Resources      Resources
+	Resources      ResourceRequirements
 	FasitResources FasitResources `yaml:"fasitResources"`
 }
 

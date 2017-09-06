@@ -192,7 +192,6 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	}
 
 	config := NaisAppConfig{
-		Name:  appName,
 		Image: image,
 		Port: Port{
 

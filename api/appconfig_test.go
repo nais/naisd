@@ -8,12 +8,13 @@ import (
 
 func TestAppConfigUnmarshal(t *testing.T) {
 	const repopath = "https://appconfig.repo"
+	defer gock.Off()
 
 	gock.New(repopath).
 		Reply(200).
 		File("testdata/nais.yaml")
 
-	appConfig, err := fetchAppConfig(repopath)
+	appConfig, err := fetchAppConfig(repopath, NaisDeploymentRequest{})
 
 	assert.NoError(t, err)
 
@@ -26,6 +27,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 	assert.Equal(t, 10, appConfig.Replicas.Min)
 	assert.Equal(t, 20, appConfig.Replicas.Max)
 	assert.Equal(t, 2, appConfig.Replicas.CpuThresholdPercentage)
+	assert.True(t, gock.IsDone(), "verifies that the appconfigUrl has been called")
 	assert.Equal(t, "100m", appConfig.Resources.Limits.Cpu)
 	assert.Equal(t, "100Mi", appConfig.Resources.Limits.Memory)
 	assert.Equal(t, "100m", appConfig.Resources.Requests.Cpu)
@@ -34,12 +36,12 @@ func TestAppConfigUnmarshal(t *testing.T) {
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
 	const repopath = "https://appconfig.repo"
-
+	defer gock.Off()
 	gock.New(repopath).
 		Reply(200).
 		File("testdata/nais_minimal.yaml")
 
-	appConfig, err := fetchAppConfig(repopath)
+	appConfig, err := fetchAppConfig(repopath, NaisDeploymentRequest{})
 
 	port := appConfig.Port
 
@@ -61,15 +63,29 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 
 func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
 	const repopath = "https://appconfig.repo"
-
+	defer gock.Off()
 	gock.New(repopath).
 		Reply(200).
 		File("testdata/nais_partial.yaml")
 
-	appConfig, err := fetchAppConfig(repopath)
+	appConfig, err := fetchAppConfig(repopath, NaisDeploymentRequest{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, 10, appConfig.Replicas.Min)
 	assert.Equal(t, 4, appConfig.Replicas.Max)
 	assert.Equal(t, 2, appConfig.Replicas.CpuThresholdPercentage)
+}
+
+func TestNoAppConfigFlagCreatesAppconfigFromDefaults(t *testing.T) {
+	image := "docker.adeo.no:5000/" + appName + ":" + version
+	const repopath = "https://appconfig.repo"
+	defer gock.Off()
+	gock.New(repopath).
+		Reply(200)
+
+	appConfig, err := fetchAppConfig(repopath, NaisDeploymentRequest{NoAppConfig:true, Application:appName, Version:version})
+
+	assert.NoError(t, err)
+	assert.Equal(t, image, appConfig.Image, "If no Image provided, a default is created")
+	assert.True(t, gock.IsPending(), "No calls to appConfigUrl registered")
 }

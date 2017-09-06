@@ -24,12 +24,8 @@ const (
 	cpuLimit        = "200m"
 	memoryRequest   = "200Mi"
 	memoryLimit     = "400Mi"
+	noAppConfig		= false
 )
-
-func asString(q resource.Quantity) string {
-	return q.String();
-
-}
 
 func TestService(t *testing.T) {
 
@@ -114,7 +110,6 @@ func TestDeployment(t *testing.T) {
 	}
 
 	appConfig := NaisAppConfig{
-		Name:  appName,
 		Image: image,
 		Port: Port{
 			Name:       "http",
@@ -141,7 +136,6 @@ func TestDeployment(t *testing.T) {
 			},
 		},
 	}
-
 
 
 	deployment := createDeploymentDef(naisResources, appConfig, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, resourceVersion)
@@ -354,7 +348,6 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	appConfig := NaisAppConfig{
-		Name:  appName,
 		Image: image,
 		Port: Port{
 			Name:       "http",

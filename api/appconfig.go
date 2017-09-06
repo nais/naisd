@@ -28,7 +28,6 @@ type Resources struct {
 	Requests ContainerResource
 }
 type NaisAppConfig struct {
-	Name           string
 	Image          string
 	Port           Port
 	Healthcheck    Healthcheck
@@ -74,31 +73,35 @@ func createAppConfigUrl(appConfigUrl, application, version string) string {
 	}
 }
 
-func fetchAppConfig(url string) (naisAppConfig NaisAppConfig, err error) {
-	glog.Infof("Fetching manifest from URL %s\n", url)
-	response, err := http.Get(url)
-	if err != nil {
-		glog.Errorf("Could not fetch %s", err)
-		return NaisAppConfig{}, err
-	}
+func fetchAppConfig(url string, deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
 
-	defer response.Body.Close()
-
-	if response.StatusCode > 299 {
-		return NaisAppConfig{}, fmt.Errorf("got http status code %d\n", response.StatusCode)
-	}
-
-	var defaultAppConfig = GetDefaultAppConfig()
+	var defaultAppConfig = GetDefaultAppConfig(deploymentRequest)
 	var appConfig NaisAppConfig
 
-	if body, err := ioutil.ReadAll(response.Body); err != nil {
-		return NaisAppConfig{}, err
-	} else {
-		if err := yaml.Unmarshal(body, &appConfig); err != nil {
-			glog.Errorf("Could not unmarshal yaml %s", err)
+	if !deploymentRequest.NoAppConfig {
+
+		glog.Infof("Fetching manifest from URL %s\n", url)
+		response, err := http.Get(url)
+		if err != nil {
+			glog.Errorf("Could not fetch %s", err)
 			return NaisAppConfig{}, err
 		}
-		glog.Infof("Got manifest %s", appConfig)
+
+		defer response.Body.Close()
+
+		if response.StatusCode > 299 {
+			return NaisAppConfig{}, fmt.Errorf("got http status code %d\n", response.StatusCode)
+		}
+
+		if body, err := ioutil.ReadAll(response.Body); err != nil {
+			return NaisAppConfig{}, err
+		} else {
+			if err := yaml.Unmarshal(body, &appConfig); err != nil {
+				glog.Errorf("Could not unmarshal yaml %s", err)
+				return NaisAppConfig{}, err
+			}
+			glog.Infof("Got manifest %s", appConfig)
+		}
 	}
 
 	if err := mergo.Merge(&appConfig, defaultAppConfig); err != nil {

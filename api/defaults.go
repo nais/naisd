@@ -1,8 +1,9 @@
 package api
 
-func GetDefaultAppConfig() NaisAppConfig {
+func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig {
 
-	return NaisAppConfig{
+
+	defaultAppConfig := NaisAppConfig{
 		Replicas: Replicas{
 			Min:                    2,
 			Max:                    4,
@@ -33,4 +34,7 @@ func GetDefaultAppConfig() NaisAppConfig {
 			},
 		},
 	}
+	defaultAppConfig.Image = "docker.adeo.no:5000/" + deploymentRequest.Application + ":" + deploymentRequest.Version
+
+	return defaultAppConfig
 }

@@ -5,3 +5,4 @@ naisd.iml
 /naisd
 .glide/
 naisd-service-nodeport.yaml
+*.swp

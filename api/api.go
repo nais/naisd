@@ -26,6 +26,7 @@ type NaisDeploymentRequest struct {
 	Environment  string
 	Zone         string
 	AppConfigUrl string
+	NoAppConfig  bool
 	Username     string
 	Password     string
 	Namespace    string
@@ -75,12 +76,12 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
 	appConfigUrl := createAppConfigUrl(deploymentRequest.AppConfigUrl, deploymentRequest.Application, deploymentRequest.Version)
-	appConfig, err := fetchAppConfig(appConfigUrl)
+	appConfig, err :=fetchAppConfig(appConfigUrl, deploymentRequest)
 
 	if err != nil {
 		glog.Errorf("Unable to fetch manifest: %s\n", err)
 		w.WriteHeader(500)
-		w.Write([]byte("Could not fetch manifest\n"))
+		w.Write([]byte("Could not fetch manifest: " + err.Error()))
 		return
 	}
 

@@ -1,2 +1,1 @@
-name: k8s-testapp
 image: navikt/k8s-testapp:69

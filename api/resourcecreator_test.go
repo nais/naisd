@@ -19,6 +19,7 @@ const (
 	targetPort      = 234
 	livenessPath    = "isAlive"
 	readinessPath   = "isReady"
+	noAppConfig		= false
 )
 
 func TestService(t *testing.T) {
@@ -104,7 +105,6 @@ func TestDeployment(t *testing.T) {
 	}
 
 	appConfig := NaisAppConfig{
-		Name:  appName,
 		Image: image,
 		Port: Port{
 			Name:       "http",
@@ -324,7 +324,6 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	appConfig := NaisAppConfig{
-		Name:  appName,
 		Image: image,
 		Port: Port{
 			Name:       "http",

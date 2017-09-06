@@ -23,6 +23,16 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 				Path: "isReady",
 			},
 		},
+		Resources: ResourceRequirements{
+			Limits: ResourceList{
+				Cpu: "500m",
+				Memory: "512Mi",
+			},
+			Requests: ResourceList{
+				Cpu: "200m",
+				Memory: "256Mi",
+			},
+		},
 	}
 	defaultAppConfig.Image = "docker.adeo.no:5000/" + deploymentRequest.Application + ":" + deploymentRequest.Version
 

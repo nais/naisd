@@ -28,6 +28,10 @@ func TestAppConfigUnmarshal(t *testing.T) {
 	assert.Equal(t, 20, appConfig.Replicas.Max)
 	assert.Equal(t, 2, appConfig.Replicas.CpuThresholdPercentage)
 	assert.True(t, gock.IsDone(), "verifies that the appconfigUrl has been called")
+	assert.Equal(t, "100m", appConfig.Resources.Limits.Cpu)
+	assert.Equal(t, "100Mi", appConfig.Resources.Limits.Memory)
+	assert.Equal(t, "100m", appConfig.Resources.Requests.Cpu)
+	assert.Equal(t, "100Mi", appConfig.Resources.Requests.Memory)
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
@@ -51,6 +55,10 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, 2, appConfig.Replicas.Min)
 	assert.Equal(t, 4, appConfig.Replicas.Max)
 	assert.Equal(t, 50, appConfig.Replicas.CpuThresholdPercentage)
+	assert.Equal(t, "500m", appConfig.Resources.Limits.Cpu)
+	assert.Equal(t, "512Mi", appConfig.Resources.Limits.Memory)
+	assert.Equal(t, "200m", appConfig.Resources.Requests.Cpu)
+	assert.Equal(t, "256Mi", appConfig.Resources.Requests.Memory)
 }
 
 func TestAppConfigUsesPartialDefaultValues(t *testing.T) {

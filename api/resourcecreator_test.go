@@ -6,6 +6,7 @@ import (
 	"k8s.io/client-go/pkg/util/intstr"
 	"testing"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/resource"
 )
 
 const (
@@ -19,6 +20,10 @@ const (
 	targetPort      = 234
 	livenessPath    = "isAlive"
 	readinessPath   = "isReady"
+	cpuRequest      = "100m"
+	cpuLimit        = "200m"
+	memoryRequest   = "200Mi"
+	memoryLimit     = "400Mi"
 	noAppConfig		= false
 )
 
@@ -40,7 +45,7 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("when no service exists, it's created", func(t *testing.T) {
-		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, NaisAppConfig{Port: Port{TargetPort:targetPort}}, clientset)
+		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, NaisAppConfig{Port: Port{TargetPort: targetPort}}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
@@ -48,7 +53,7 @@ func TestService(t *testing.T) {
 		assert.Equal(t, map[string]string{"app": otherAppName}, service.Spec.Selector)
 	})
 	t.Run("when service exists, it's updated", func(t *testing.T) {
-		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, NaisAppConfig{Port: Port{TargetPort:targetPort}}, clientset)
+		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, NaisAppConfig{Port: Port{TargetPort: targetPort}}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, service.ObjectMeta.ResourceVersion)
@@ -120,9 +125,20 @@ func TestDeployment(t *testing.T) {
 				Path: livenessPath,
 			},
 		},
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
+				Memory: memoryRequest,
+				Cpu:    cpuRequest,
+			},
+			Limits: ResourceList{
+				Memory: memoryLimit,
+				Cpu:    cpuLimit,
+			},
+		},
 	}
 
-	deployment := createDeploymentDef(naisResources, image, version, port, livenessPath, readinessPath, resourceVersion, appName, namespace)
+
+	deployment := createDeploymentDef(naisResources, appConfig, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, resourceVersion)
 
 	clientset := fake.NewSimpleClientset(deployment)
 
@@ -153,6 +169,14 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, int32(port), container.Ports[0].ContainerPort)
 		assert.Equal(t, livenessPath, container.LivenessProbe.HTTPGet.Path)
 		assert.Equal(t, readinessPath, container.ReadinessProbe.HTTPGet.Path)
+
+		ptr := func(p resource.Quantity) *resource.Quantity {
+			return &p
+		}
+		assert.Equal(t, memoryRequest, ptr(container.Resources.Requests["memory"]).String())
+		assert.Equal(t, memoryLimit, ptr(container.Resources.Limits["memory"]).String())
+		assert.Equal(t, cpuRequest, ptr(container.Resources.Requests["cpu"]).String())
+		assert.Equal(t, cpuLimit, ptr(container.Resources.Limits["cpu"]).String())
 
 		env := container.Env
 		assert.Equal(t, 7, len(env))
@@ -330,6 +354,16 @@ func TestCreateK8sResources(t *testing.T) {
 			Port:       port,
 			Protocol:   "http",
 			TargetPort: targetPort,
+		},
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
+				Cpu:cpuRequest,
+				Memory:memoryRequest,
+			},
+			Limits: ResourceList{
+				Cpu:cpuLimit,
+				Memory:memoryLimit,
+			},
 		},
 	}
 

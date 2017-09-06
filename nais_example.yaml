@@ -16,6 +16,13 @@ healthcheck:
   readiness:
     http:
       path: isReady
+resources: # Optional. See: http://kubernetes.io/docs/user-guide/compute-resources/
+  limits:
+    cpu: 500m # app will have its cpu usage throttled if exceeding this limit
+    memory: 512Mi  # app will be killed if exceeding these limits
+  requests: # app will be scheduled on nodes with at least this amount resources available
+    cpu: 200m
+    memory: 256Mi
 fasitResources: # Resources fetched from Fasit
   used: #This will be injected into the application as environment variables
   - alias: mydb

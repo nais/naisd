@@ -18,11 +18,21 @@ type Healthcheck struct {
 	Readiness Probe
 }
 
+type ResourceList struct {
+	Cpu    string
+	Memory string
+}
+
+type ResourceRequirements struct {
+	Limits   ResourceList
+	Requests ResourceList
+}
 type NaisAppConfig struct {
 	Image          string
 	Port           Port
 	Healthcheck    Healthcheck
 	Replicas       Replicas
+	Resources      ResourceRequirements
 	FasitResources FasitResources `yaml:"fasitResources"`
 }
 
@@ -101,5 +111,3 @@ func fetchAppConfig(url string, deploymentRequest NaisDeploymentRequest) (naisAp
 
 	return appConfig, nil
 }
-
-

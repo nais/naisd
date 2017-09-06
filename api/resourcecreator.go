@@ -115,8 +115,12 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 							},
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
-									v1.ResourceCPU:    k8sresource.MustParse("100m"),
-									v1.ResourceMemory: k8sresource.MustParse("256Mi"),
+									v1.ResourceCPU:    k8sresource.MustParse(appConfig.Resources.Requests.Cpu),
+									v1.ResourceMemory: k8sresource.MustParse(appConfig.Resources.Requests.Memory),
+								},
+								Limits: v1.ResourceList{
+									v1.ResourceCPU:    k8sresource.MustParse(appConfig.Resources.Limits.Cpu),
+									v1.ResourceMemory: k8sresource.MustParse(appConfig.Resources.Limits.Memory),
 								},
 							},
 							Env: []v1.EnvVar{{

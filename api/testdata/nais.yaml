@@ -21,6 +21,9 @@ resources:
   requests:
     cpu: 100m
     memory: 100Mi
+prometheus: #Optional
+  enabled: true
+  path: /path
 fasitResources:
   used:
   - alias: mydb

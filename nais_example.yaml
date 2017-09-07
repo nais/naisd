@@ -9,6 +9,9 @@ port: # the port the application listens on. [] if no ports should be exposed. D
   port: 80 # port number that must be exposed
   targetPort: 8080 # the port number which is exposed by the container and should receive traffic routed to `port`
   protocol: http
+prometheus: #Optional
+  enabled: false # if true the pod will be scraped for metrics by prometheus
+  path: /metrics # Path to prometheus-metrics
 healthcheck:
   liveness:
     http:

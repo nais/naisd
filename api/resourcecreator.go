@@ -135,6 +135,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 							Port: intstr.FromInt(appConfig.Port),
 						},
 					},
+					InitialDelaySeconds: 20,
 				},
 				ReadinessProbe: &v1.Probe{
 					Handler: v1.Handler{
@@ -143,6 +144,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 							Port: intstr.FromInt(appConfig.Port),
 						},
 					},
+					InitialDelaySeconds: 20,
 				},
 				Env: createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,

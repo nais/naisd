@@ -23,11 +23,13 @@ const (
 	cpuLimit        = "200m"
 	memoryRequest   = "200Mi"
 	memoryLimit     = "400Mi"
+	clusterIP       = "1.2.3.4"
 )
 
 func TestService(t *testing.T) {
 	service := createOrUpdateServiceDef(port, nil, appName, namespace)
 	service.ObjectMeta.ResourceVersion = resourceVersion
+	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)
 
 	t.Run("Fetching nonexistant service yields nil and no error", func(t *testing.T) {
@@ -59,6 +61,7 @@ func TestService(t *testing.T) {
 		assert.Equal(t, appName, service.ObjectMeta.Name)
 		assert.Equal(t, int32(newPort), service.Spec.Ports[0].TargetPort.IntVal)
 		assert.Equal(t, map[string]string{"app": appName}, service.Spec.Selector)
+		assert.Equal(t, clusterIP, service.Spec.ClusterIP, "cluster ip is unchanged")
 	})
 }
 
@@ -178,6 +181,8 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, int32(port), container.Ports[0].ContainerPort)
 		assert.Equal(t, livenessPath, container.LivenessProbe.HTTPGet.Path)
 		assert.Equal(t, readinessPath, container.ReadinessProbe.HTTPGet.Path)
+		assert.Equal(t, int32(20), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.InitialDelaySeconds)
+		assert.Equal(t, int32(20), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.InitialDelaySeconds)
 
 		ptr := func(p resource.Quantity) *resource.Quantity {
 			return &p
@@ -360,6 +365,8 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 		assert.Equal(t, int32p(int32(cpuThreshold)), autoscaler.Spec.TargetCPUUtilizationPercentage)
 		assert.Equal(t, int32p(int32(minReplicas)), autoscaler.Spec.MinReplicas)
 		assert.Equal(t, int32(maxReplicas), autoscaler.Spec.MaxReplicas)
+		assert.Equal(t, appName, autoscaler.Spec.ScaleTargetRef.Name)
+		assert.Equal(t, "Deployment", autoscaler.Spec.ScaleTargetRef.Kind)
 	})
 }
 

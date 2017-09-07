@@ -7,11 +7,9 @@ replicas: # set min = max to disable autoscaling
 port: 8080 # the port number which is exposed by the container and should receive traffic
 healthcheck:
   liveness:
-    http:
-      path: isalive
+    path: isalive
   readiness:
-    http:
-      path: isready
+    path: isready
 prometheus: #Optional
   enabled: false # if true the pod will be scraped for metrics by prometheus
   path: /metrics # Path to prometheus-metrics

@@ -81,12 +81,19 @@ func TestDeployment(t *testing.T) {
 	secret2Key := "password"
 	secret2Value := "anothersecret"
 
-	invalidlyNamedResourceName := "dots.are.not.allowed"
-	invalidlyNamedResourceType := "restservice"
-	invalidlyNamedResourceKey := "key"
-	invalidlyNamedResourceValue := "value"
-	invalidlyNamedResourceSecretKey := "secretkey"
-	invalidlyNamedResourceSecretValue := "secretvalue"
+	invalidlyNamedResourceNameDot := "dots.are.not.allowed"
+	invalidlyNamedResourceTypeDot := "restservice"
+	invalidlyNamedResourceKeyDot := "key"
+	invalidlyNamedResourceValueDot := "value"
+	invalidlyNamedResourceSecretKeyDot := "secretkey"
+	invalidlyNamedResourceSecretValueDot := "secretvalue"
+
+	invalidlyNamedResourceNameColon := "colon:are:not:allowed"
+	invalidlyNamedResourceTypeColon := "restservice"
+	invalidlyNamedResourceKeyColon := "key"
+	invalidlyNamedResourceValueColon := "value"
+	invalidlyNamedResourceSecretKeyColon := "secretkey"
+	invalidlyNamedResourceSecretValueColon := "secretvalue"
 
 	naisResources := []NaisResource{
 		{
@@ -102,10 +109,16 @@ func TestDeployment(t *testing.T) {
 			map[string]string{secret2Key: secret2Value},
 		},
 		{
-			invalidlyNamedResourceName,
-			invalidlyNamedResourceType,
-			map[string]string{invalidlyNamedResourceKey: invalidlyNamedResourceValue},
-			map[string]string{invalidlyNamedResourceSecretKey: invalidlyNamedResourceSecretValue},
+			invalidlyNamedResourceNameDot,
+			invalidlyNamedResourceTypeDot,
+			map[string]string{invalidlyNamedResourceKeyDot: invalidlyNamedResourceValueDot},
+			map[string]string{invalidlyNamedResourceSecretKeyDot: invalidlyNamedResourceSecretValueDot},
+		},
+		{
+			invalidlyNamedResourceNameColon,
+			invalidlyNamedResourceTypeColon,
+			map[string]string{invalidlyNamedResourceKeyColon: invalidlyNamedResourceValueColon},
+			map[string]string{invalidlyNamedResourceSecretKeyColon: invalidlyNamedResourceSecretValueColon},
 		},
 	}
 
@@ -179,7 +192,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, cpuLimit, ptr(container.Resources.Limits["cpu"]).String())
 
 		env := container.Env
-		assert.Equal(t, 7, len(env))
+		assert.Equal(t, 9, len(env))
 		assert.Equal(t, version, env[0].Value)
 		assert.Equal(t, resource1Name+"_"+resource1Key, env[1].Name)
 		assert.Equal(t, "value1", env[1].Value)
@@ -191,6 +204,8 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[4].ValueFrom)
 		assert.Equal(t, "dots_are_not_allowed_key", env[5].Name)
 		assert.Equal(t, "dots_are_not_allowed_secretkey", env[6].Name)
+		assert.Equal(t, "colon_are_not_allowed_key", env[7].Name)
+		assert.Equal(t, "colon_are_not_allowed_secretkey", env[8].Name)
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {

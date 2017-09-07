@@ -52,7 +52,13 @@ func createServiceDef(targetPort int, existingServiceId, application, namespace 
 }
 
 func ResourceVariableName(resource NaisResource, key string) string {
-	return strings.Replace(resource.name, ".", "_", -1) + "_" + key
+	if strings.Contains(resource.name, ".") {
+		return strings.Replace(resource.name, ".", "_", -1) + "_" + key
+	}
+	if strings.Contains(resource.name, ":") {
+		return strings.Replace(resource.name, ":", "_", -1) + "_" + key
+	}
+	return resource.name + "_" + key
 }
 
 // Creates a Kubernetes Deployment object

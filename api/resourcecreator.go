@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
+	"strconv"
 )
 
 type DeploymentResult struct {
@@ -94,6 +95,11 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 				ObjectMeta: v1.ObjectMeta{
 					Name:   deploymentRequest.Application,
 					Labels: map[string]string{"app": deploymentRequest.Application},
+					Annotations: map[string]string{
+						"prometheus.io/scrape": strconv.FormatBool(appConfig.Prometheus.Enabled),
+						"prometheus.io/port":   DefaultPortName,
+						"prometheus.io/path":   appConfig.Prometheus.Path,
+					},
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{

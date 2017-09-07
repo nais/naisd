@@ -17,55 +17,52 @@ const (
 	port            = 6900
 	resourceVersion = "12369"
 	version         = "13"
-	targetPort      = 234
 	livenessPath    = "isAlive"
 	readinessPath   = "isReady"
 	cpuRequest      = "100m"
 	cpuLimit        = "200m"
 	memoryRequest   = "200Mi"
 	memoryLimit     = "400Mi"
-	noAppConfig     = false
 )
 
 func TestService(t *testing.T) {
-
-	service := createServiceDef(targetPort, resourceVersion, appName, namespace)
+	service := createOrUpdateServiceDef(port, nil, appName, namespace)
+	service.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(service)
 
-	t.Run("Nonexistant service yields empty string and no error", func(t *testing.T) {
-		id, err := getExistingServiceId("nonexisting", namespace, clientset)
+	t.Run("Fetching nonexistant service yields nil and no error", func(t *testing.T) {
+		nonExistantService, err := getExistingService("nonexisting", namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, "", id)
+		assert.Nil(t, nonExistantService)
 	})
 
-	t.Run("Existing service yields id and no error", func(t *testing.T) {
-		id, err := getExistingServiceId(appName, namespace, clientset)
+	t.Run("Fetching an existing service yields service and no error", func(t *testing.T) {
+		existingService, err := getExistingService(appName, namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, resourceVersion, id)
+		assert.Equal(t, service, existingService)
 	})
 
-	t.Run("when no service exists, it's created", func(t *testing.T) {
-		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, NaisAppConfig{Port: Port{TargetPort: targetPort}}, clientset)
+	t.Run("when no service exists, a new one is created", func(t *testing.T) {
+		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, NaisAppConfig{Port: port}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
-		assert.Equal(t, int32(targetPort), service.Spec.Ports[0].TargetPort.IntVal)
+		assert.Equal(t, int32(port), service.Spec.Ports[0].TargetPort.IntVal)
 		assert.Equal(t, map[string]string{"app": otherAppName}, service.Spec.Selector)
 	})
 	t.Run("when service exists, it's updated", func(t *testing.T) {
-		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, NaisAppConfig{Port: Port{TargetPort: targetPort}}, clientset)
-
+		newPort := 69
+		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, NaisAppConfig{Port: newPort}, clientset)
 		assert.NoError(t, err)
+
 		assert.Equal(t, resourceVersion, service.ObjectMeta.ResourceVersion)
 		assert.Equal(t, appName, service.ObjectMeta.Name)
-		assert.Equal(t, resourceVersion, service.ObjectMeta.ResourceVersion)
-		assert.Equal(t, int32(targetPort), service.Spec.Ports[0].TargetPort.IntVal)
+		assert.Equal(t, int32(newPort), service.Spec.Ports[0].TargetPort.IntVal)
 		assert.Equal(t, map[string]string{"app": appName}, service.Spec.Selector)
 	})
 }
 
 func TestDeployment(t *testing.T) {
-
 	newVersion := "14"
 	resource1Name := "r1"
 	resource1Type := "db"
@@ -124,12 +121,7 @@ func TestDeployment(t *testing.T) {
 
 	appConfig := NaisAppConfig{
 		Image: image,
-		Port: Port{
-			Name:       "http",
-			Port:       port,
-			Protocol:   "http",
-			TargetPort: targetPort,
-		},
+		Port:  port,
 		Healthcheck: Healthcheck{
 			Readiness: Probe{
 				Path: readinessPath,
@@ -154,20 +146,21 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	deployment := createDeploymentDef(naisResources, appConfig, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, resourceVersion)
+	deployment := createDeploymentDef(naisResources, appConfig, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
+	deployment.ObjectMeta.ResourceVersion = resourceVersion
 
 	clientset := fake.NewSimpleClientset(deployment)
 
 	t.Run("Nonexistant deployment yields empty string and no error", func(t *testing.T) {
-		id, err := getExistingDeploymentId("nonexisting", namespace, clientset)
+		nilValue, err := getExistingDeployment("nonexisting", namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, "", id)
+		assert.Nil(t, nilValue)
 	})
 
-	t.Run("Existing deployment yields id and no error", func(t *testing.T) {
-		id, err := getExistingDeploymentId(appName, namespace, clientset)
+	t.Run("Existing deployment yields def and no error", func(t *testing.T) {
+		id, err := getExistingDeployment(appName, namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, resourceVersion, id)
+		assert.Equal(t, resourceVersion, id.ObjectMeta.ResourceVersion)
 	})
 
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
@@ -234,23 +227,24 @@ func TestIngress(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
 	subDomain := "example.no"
-	ingress := createIngressDef(subDomain, resourceVersion, appName, namespace)
+	ingress := createIngressDef(subDomain, appName, namespace)
+	ingress.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(ingress)
 
-	t.Run("Nonexistant ingress yields empty string and no error", func(t *testing.T) {
-		id, err := getExistingIngressId("nonexisting", namespace, clientset)
+	t.Run("Nonexistant ingress yields nil and no error", func(t *testing.T) {
+		ingress, err := getExistingIngress("nonexisting", namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, "", id)
+		assert.Nil(t, ingress)
 	})
 
-	t.Run("Existing ingress yields id and no error", func(t *testing.T) {
-		id, err := getExistingIngressId(appName, namespace, clientset)
+	t.Run("Existing ingress yields def and no error", func(t *testing.T) {
+		existingIngress, err := getExistingIngress(appName, namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, resourceVersion, id)
+		assert.Equal(t, resourceVersion, existingIngress.ObjectMeta.ResourceVersion)
 	})
 
 	t.Run("when no ingress exists, a new one is created", func(t *testing.T) {
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
+		ingress, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, ingress.ObjectMeta.Name)
@@ -259,12 +253,10 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
 	})
 
-	t.Run("when an ingress exists, it's updated", func(t *testing.T) {
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: appName}, subDomain, clientset)
+	t.Run("when an ingress exists, nothing happens", func(t *testing.T) {
+		nilValue, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: appName}, subDomain, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, resourceVersion, ingress.ObjectMeta.ResourceVersion)
-		assert.Equal(t, namespace, ingress.ObjectMeta.Namespace)
-		assert.Equal(t, appName, ingress.ObjectMeta.Name)
+		assert.Nil(t, nilValue)
 	})
 }
 
@@ -288,19 +280,20 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}},
 		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}}}
 
-	secret := createSecretDef(naisResources, resourceVersion, appName, namespace)
+	secret := createSecretDef(naisResources, nil, appName, namespace)
+	secret.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(secret)
 
-	t.Run("Nonexistant secret yields empty string and no error", func(t *testing.T) {
-		id, err := getExistingSecretId("nonexisting", namespace, clientset)
+	t.Run("Nonexistant secret yields nil and no error", func(t *testing.T) {
+		nilValue, err := getExistingSecret("nonexisting", namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, "", id)
+		assert.Nil(t, nilValue)
 	})
 
-	t.Run("Existing secret yields id and no error", func(t *testing.T) {
-		id, err := getExistingSecretId(appName, namespace, clientset)
+	t.Run("Existing secret yields def and no error", func(t *testing.T) {
+		existingSecret, err := getExistingSecret(appName, namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, resourceVersion, id)
+		assert.Equal(t, resourceVersion, existingSecret.ObjectMeta.ResourceVersion)
 	})
 
 	t.Run("when no secret exists, a new one is created", func(t *testing.T) {
@@ -314,28 +307,32 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	})
 
 	t.Run("when a secret exists, it's updated", func(t *testing.T) {
-		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: appName}, naisResources, clientset)
+		updatedSecretValue := "newsecret"
+		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: appName}, []NaisResource{
+			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}}}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
+		assert.Equal(t, []byte(updatedSecretValue), secret.Data[resource1Name+"_"+secret1Key])
 	})
 }
 
 func TestCreateOrUpdateAutoscaler(t *testing.T) {
-	autoscaler := createAutoscalerDef(1, 2, 3, resourceVersion, appName, namespace)
+	autoscaler := createOrUpdateAutoscalerDef(1, 2, 3, nil, appName, namespace)
+	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(autoscaler)
 
 	t.Run("nonexistant autoscaler yields empty string and no error", func(t *testing.T) {
-		id, err := getExistingAutoscalerId("nonexisting", namespace, clientset)
+		nonExistingAutoscaler, err := getExistingAutoscaler("nonexisting", namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, "", id)
+		assert.Nil(t, nonExistingAutoscaler)
 	})
 
 	t.Run("existing autoscaler yields id and no error", func(t *testing.T) {
-		id, err := getExistingAutoscalerId(appName, namespace, clientset)
+		existingAutoscaler, err := getExistingAutoscaler(appName, namespace, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, resourceVersion, id)
+		assert.Equal(t, resourceVersion, existingAutoscaler.ObjectMeta.ResourceVersion)
 	})
 
 	t.Run("when no autoscaler exists, a new one is created", func(t *testing.T) {
@@ -352,11 +349,17 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 	})
 
 	t.Run("when autoscaler exists, it's updated", func(t *testing.T) {
-		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: appName}, NaisAppConfig{}, clientset)
+		cpuThreshold := 69
+		minReplicas := 6
+		maxReplicas := 9
+		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: appName}, NaisAppConfig{Replicas: Replicas{CpuThresholdPercentage: cpuThreshold, Min: minReplicas, Max: maxReplicas}}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, autoscaler.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
 		assert.Equal(t, appName, autoscaler.ObjectMeta.Name)
+		assert.Equal(t, int32p(int32(cpuThreshold)), autoscaler.Spec.TargetCPUUtilizationPercentage)
+		assert.Equal(t, int32p(int32(minReplicas)), autoscaler.Spec.MinReplicas)
+		assert.Equal(t, int32(maxReplicas), autoscaler.Spec.MaxReplicas)
 	})
 }
 
@@ -372,12 +375,7 @@ func TestCreateK8sResources(t *testing.T) {
 
 	appConfig := NaisAppConfig{
 		Image: image,
-		Port: Port{
-			Name:       "http",
-			Port:       port,
-			Protocol:   "http",
-			TargetPort: targetPort,
-		},
+		Port:  port,
 		Resources: ResourceRequirements{
 			Requests: ResourceList{
 				Cpu:    cpuRequest,
@@ -393,7 +391,8 @@ func TestCreateK8sResources(t *testing.T) {
 	naisResources := []NaisResource{
 		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}}}
 
-	service := createServiceDef(69, resourceVersion, appName, namespace)
+	service := createOrUpdateServiceDef(69, nil, appName, namespace)
+	service.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(service)
 
 	t.Run("creates all resources", func(t *testing.T) {

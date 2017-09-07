@@ -36,7 +36,7 @@ type PrometheusConfig struct {
 
 type NaisAppConfig struct {
 	Image          string
-	Port           Port
+	Port           int
 	Healthcheck    Healthcheck
 	Prometheus     PrometheusConfig
 	Replicas       Replicas
@@ -48,13 +48,6 @@ type Replicas struct {
 	Min                    int
 	Max                    int
 	CpuThresholdPercentage int `yaml:"cpuThresholdPercentage"`
-}
-
-type Port struct {
-	Name       string
-	Port       int
-	TargetPort int `yaml:"targetPort"`
-	Protocol   string
 }
 
 type FasitResources struct {

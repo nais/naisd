@@ -4,11 +4,7 @@ replicas:
   min: 10
   max: 20
   cpuThresholdPercentage: 2
-port:
-  name: http
-  port: 79
-  targetPort: 799
-  protocol: http
+port: 799
 healthcheck:
   liveness:
     path: isAlive2

@@ -12,17 +12,13 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 			Max:                    4,
 			CpuThresholdPercentage: 50,
 		},
-		Port: Port{
-			Name:       DefaultPortName,
-			Port:       80,
-			TargetPort: 8080,
-			Protocol:   "http",
-		},
+		Port: 8080,
 		Prometheus: PrometheusConfig{
 			Enabled: false,
 			Port:    DefaultPortName,
 			Path:    "/metrics",
 		},
+
 		Healthcheck: Healthcheck{
 			Liveness: Probe{
 				Path: "isAlive",

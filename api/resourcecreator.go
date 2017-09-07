@@ -110,6 +110,7 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 										Port: intstr.FromInt(appConfig.Port.Port),
 									},
 								},
+								InitialDelaySeconds: 20,
 							},
 							ReadinessProbe: &v1.Probe{
 								Handler: v1.Handler{
@@ -118,6 +119,7 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 										Port: intstr.FromInt(appConfig.Port.Port),
 									},
 								},
+								InitialDelaySeconds: 20,
 							},
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{

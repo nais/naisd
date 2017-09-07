@@ -12,6 +12,9 @@ healthcheck:
   readiness:
     http:
       path: isready
+prometheus: #Optional
+  enabled: false # if true the pod will be scraped for metrics by prometheus
+  path: /metrics # Path to prometheus-metrics
 resources: # Optional. See: http://kubernetes.io/docs/user-guide/compute-resources/
   limits:
     cpu: 500m # app will have its cpu usage throttled if exceeding this limit

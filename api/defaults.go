@@ -1,7 +1,10 @@
 package api
 
-func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig {
+const (
+	DefaultPortName = "http"
+)
 
+func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig {
 
 	defaultAppConfig := NaisAppConfig{
 		Replicas: Replicas{
@@ -10,6 +13,12 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 			CpuThresholdPercentage: 50,
 		},
 		Port: 8080,
+		Prometheus: PrometheusConfig{
+			Enabled: false,
+			Port:    DefaultPortName,
+			Path:    "/metrics",
+		},
+
 		Healthcheck: Healthcheck{
 			Liveness: Probe{
 				Path: "isAlive",
@@ -20,11 +29,11 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 		},
 		Resources: ResourceRequirements{
 			Limits: ResourceList{
-				Cpu: "500m",
+				Cpu:    "500m",
 				Memory: "512Mi",
 			},
 			Requests: ResourceList{
-				Cpu: "200m",
+				Cpu:    "200m",
 				Memory: "256Mi",
 			},
 		},

@@ -31,6 +31,9 @@ func TestAppConfigUnmarshal(t *testing.T) {
 	assert.Equal(t, "100Mi", appConfig.Resources.Limits.Memory)
 	assert.Equal(t, "100m", appConfig.Resources.Requests.Cpu)
 	assert.Equal(t, "100Mi", appConfig.Resources.Requests.Memory)
+	assert.Equal(t, true, appConfig.Prometheus.Enabled)
+	assert.Equal(t, DefaultPortName, appConfig.Prometheus.Port)
+	assert.Equal(t, "/path", appConfig.Prometheus.Path)
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
@@ -49,6 +52,9 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, "512Mi", appConfig.Resources.Limits.Memory)
 	assert.Equal(t, "200m", appConfig.Resources.Requests.Cpu)
 	assert.Equal(t, "256Mi", appConfig.Resources.Requests.Memory)
+	assert.Equal(t, false, appConfig.Prometheus.Enabled)
+	assert.Equal(t, DefaultPortName, appConfig.Prometheus.Port)
+	assert.Equal(t, "/metrics", appConfig.Prometheus.Path)
 }
 
 func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
@@ -73,7 +79,7 @@ func TestNoAppConfigFlagCreatesAppconfigFromDefaults(t *testing.T) {
 	gock.New(repopath).
 		Reply(200)
 
-	appConfig, err := fetchAppConfig(repopath, NaisDeploymentRequest{NoAppConfig:true, Application:appName, Version:version})
+	appConfig, err := fetchAppConfig(repopath, NaisDeploymentRequest{NoAppConfig: true, Application: appName, Version: version})
 
 	assert.NoError(t, err)
 	assert.Equal(t, image, appConfig.Image, "If no Image provided, a default is created")

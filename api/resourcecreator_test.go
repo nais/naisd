@@ -140,6 +140,10 @@ func TestDeployment(t *testing.T) {
 				Cpu:    cpuLimit,
 			},
 		},
+		Prometheus: PrometheusConfig{
+			Path:    "/path",
+			Enabled: true,
+		},
 	}
 
 	deployment := createDeploymentDef(naisResources, appConfig, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
@@ -182,6 +186,11 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, memoryLimit, ptr(container.Resources.Limits["memory"]).String())
 		assert.Equal(t, cpuRequest, ptr(container.Resources.Requests["cpu"]).String())
 		assert.Equal(t, cpuLimit, ptr(container.Resources.Limits["cpu"]).String())
+		assert.Equal(t, map[string]string{
+			"prometheus.io/scrape":"true",
+			"prometheus.io/path":"/path",
+			"prometheus.io/port":"http",
+		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
 		assert.Equal(t, 9, len(env))

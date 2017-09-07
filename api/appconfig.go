@@ -27,10 +27,18 @@ type ResourceRequirements struct {
 	Limits   ResourceList
 	Requests ResourceList
 }
+
+type PrometheusConfig struct {
+	Enabled bool
+	Port  	string
+	Path    string
+}
+
 type NaisAppConfig struct {
 	Image          string
 	Port           int
 	Healthcheck    Healthcheck
+	Prometheus     PrometheusConfig
 	Replicas       Replicas
 	Resources      ResourceRequirements
 	FasitResources FasitResources `yaml:"fasitResources"`

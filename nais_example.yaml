@@ -11,11 +11,9 @@ port: # the port the application listens on. [] if no ports should be exposed. D
   protocol: http
 healthcheck:
   liveness:
-    http:
-      path: isAlive
+    path: isAlive
   readiness:
-    http:
-      path: isReady
+    path: isReady
 resources: # Optional. See: http://kubernetes.io/docs/user-guide/compute-resources/
   limits:
     cpu: 500m # app will have its cpu usage throttled if exceeding this limit

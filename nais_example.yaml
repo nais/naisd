@@ -7,7 +7,7 @@ replicas: # set min = max to disable autoscaling
 port: # the port the application listens on. [] if no ports should be exposed. Default you get an http port
   name: http
   port: 80 # port number that must be exposed
-  targetPort: 80x80 # the port number which is exposed by the container and should receive traffic routed to `port`
+  targetPort: 8080 # the port number which is exposed by the container and should receive traffic routed to `port`
   protocol: http
 healthcheck:
   liveness:

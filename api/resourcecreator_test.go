@@ -118,6 +118,7 @@ func TestDeployment(t *testing.T) {
 	appConfig := NaisAppConfig{
 		Image: image,
 		Port:  port,
+		InitialDelay: 20,
 		Healthcheck: Healthcheck{
 			Readiness: Probe{
 				Path: readinessPath,

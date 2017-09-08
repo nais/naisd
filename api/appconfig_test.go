@@ -34,6 +34,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 	assert.Equal(t, true, appConfig.Prometheus.Enabled)
 	assert.Equal(t, DefaultPortName, appConfig.Prometheus.Port)
 	assert.Equal(t, "/path", appConfig.Prometheus.Path)
+	assert.Equal(t, 20, appConfig.InitialDelay)
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
@@ -55,6 +56,7 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, false, appConfig.Prometheus.Enabled)
 	assert.Equal(t, DefaultPortName, appConfig.Prometheus.Port)
 	assert.Equal(t, "/metrics", appConfig.Prometheus.Path)
+	assert.Equal(t, 20, appConfig.InitialDelay)
 }
 
 func TestAppConfigUsesPartialDefaultValues(t *testing.T) {

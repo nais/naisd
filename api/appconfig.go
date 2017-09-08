@@ -37,6 +37,7 @@ type PrometheusConfig struct {
 type NaisAppConfig struct {
 	Image          string
 	Port           int
+	InitialDelay   int
 	Healthcheck    Healthcheck
 	Prometheus     PrometheusConfig
 	Replicas       Replicas

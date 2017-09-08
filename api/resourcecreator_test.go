@@ -27,8 +27,7 @@ const (
 )
 
 func TestService(t *testing.T) {
-	service := createOrUpdateServiceDef(port, nil, appName, namespace)
-	service.ObjectMeta.ResourceVersion = resourceVersion
+	service := createServiceDef(appName, namespace)
 	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)
 
@@ -45,23 +44,17 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("when no service exists, a new one is created", func(t *testing.T) {
-		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, NaisAppConfig{Port: port}, clientset)
+		service, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
-		assert.Equal(t, int32(port), service.Spec.Ports[0].TargetPort.IntVal)
+		assert.Equal(t, DefaultPortName, service.Spec.Ports[0].TargetPort.StrVal)
 		assert.Equal(t, map[string]string{"app": otherAppName}, service.Spec.Selector)
 	})
-	t.Run("when service exists, it's updated", func(t *testing.T) {
-		newPort := 69
-		service, err := createOrUpdateService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, NaisAppConfig{Port: newPort}, clientset)
+	t.Run("when service exists, nothing happens", func(t *testing.T) {
+		nilValue, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, clientset)
 		assert.NoError(t, err)
-
-		assert.Equal(t, resourceVersion, service.ObjectMeta.ResourceVersion)
-		assert.Equal(t, appName, service.ObjectMeta.Name)
-		assert.Equal(t, int32(newPort), service.Spec.Ports[0].TargetPort.IntVal)
-		assert.Equal(t, map[string]string{"app": appName}, service.Spec.Selector)
-		assert.Equal(t, clusterIP, service.Spec.ClusterIP, "cluster ip is unchanged")
+		assert.Nil(t, nilValue)
 	})
 }
 
@@ -179,8 +172,11 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, otherAppName, container.Name)
 		assert.Equal(t, image+":"+version, container.Image)
 		assert.Equal(t, int32(port), container.Ports[0].ContainerPort)
+		assert.Equal(t, DefaultPortName, container.Ports[0].Name)
 		assert.Equal(t, livenessPath, container.LivenessProbe.HTTPGet.Path)
 		assert.Equal(t, readinessPath, container.ReadinessProbe.HTTPGet.Path)
+		assert.Equal(t, intstr.FromString(DefaultPortName), container.ReadinessProbe.HTTPGet.Port)
+		assert.Equal(t, intstr.FromString(DefaultPortName), container.LivenessProbe.HTTPGet.Port)
 		assert.Equal(t, int32(20), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.InitialDelaySeconds)
 		assert.Equal(t, int32(20), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.InitialDelaySeconds)
 
@@ -398,21 +394,23 @@ func TestCreateK8sResources(t *testing.T) {
 	naisResources := []NaisResource{
 		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}}}
 
-	service := createOrUpdateServiceDef(69, nil, appName, namespace)
-	service.ObjectMeta.ResourceVersion = resourceVersion
-	clientset := fake.NewSimpleClientset(service)
+	service := createServiceDef(appName, namespace)
+
+	autoscaler := createOrUpdateAutoscalerDef(6,9,6, nil, appName, namespace)
+	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
+	clientset := fake.NewSimpleClientset(autoscaler,service)
 
 	t.Run("creates all resources", func(t *testing.T) {
 		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, "nais.example.yo", clientset)
 		assert.NoError(t, error)
 
 		assert.NotEmpty(t, deploymentResult.Secret)
-		assert.NotEmpty(t, deploymentResult.Service)
+		assert.Nil(t, deploymentResult.Service, "nothing happens to service if it already exists")
 		assert.NotEmpty(t, deploymentResult.Deployment)
 		assert.NotEmpty(t, deploymentResult.Ingress)
 		assert.NotEmpty(t, deploymentResult.Autoscaler)
 
-		assert.Equal(t, resourceVersion, deploymentResult.Service.ObjectMeta.ResourceVersion, "service should have same id as the preexisting")
+		assert.Equal(t, resourceVersion, deploymentResult.Autoscaler.ObjectMeta.ResourceVersion, "autoscaler should have same id as the preexisting")
 		assert.Equal(t, "", deploymentResult.Secret.ObjectMeta.ResourceVersion, "secret should not have any id set")
 	})
 

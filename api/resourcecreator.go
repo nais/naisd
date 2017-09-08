@@ -24,36 +24,32 @@ type DeploymentResult struct {
 
 // Creates a Kubernetes Service object
 // If existingService is provided, we update the existing service object with port from the app config
-func createOrUpdateServiceDef(targetPort int, existingService *v1.Service, application, namespace string) *v1.Service {
-	if existingService != nil {
-		existingService.Spec.Ports[0].TargetPort.IntVal = int32(targetPort)
-		return existingService
-	} else {
-		return &v1.Service{
-			TypeMeta: unversioned.TypeMeta{
-				Kind:       "Service",
-				APIVersion: "v1",
-			},
-			ObjectMeta: v1.ObjectMeta{
-				Name:      application,
-				Namespace: namespace,
-			},
-			Spec: v1.ServiceSpec{
-				Type:     v1.ServiceTypeClusterIP,
-				Selector: map[string]string{"app": application},
-				Ports: []v1.ServicePort{
-					{
-						Protocol: v1.ProtocolTCP,
-						Port:     80,
-						TargetPort: intstr.IntOrString{
-							Type:   intstr.Int,
-							IntVal: int32(targetPort),
-						},
+func createServiceDef(application, namespace string) *v1.Service {
+	return &v1.Service{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      application,
+			Namespace: namespace,
+		},
+		Spec: v1.ServiceSpec{
+			Type:     v1.ServiceTypeClusterIP,
+			Selector: map[string]string{"app": application},
+			Ports: []v1.ServicePort{
+				{
+					Protocol: v1.ProtocolTCP,
+					Port:     80,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: DefaultPortName,
 					},
 				},
 			},
-		}
+		},
 	}
+
 }
 
 func ResourceVariableName(resource NaisResource, key string) string {
@@ -125,14 +121,14 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 				Name:  deploymentRequest.Application,
 				Image: fmt.Sprintf("%s:%s", appConfig.Image, deploymentRequest.Version),
 				Ports: []v1.ContainerPort{
-					{ContainerPort: int32(appConfig.Port), Protocol: v1.ProtocolTCP},
+					{ContainerPort: int32(appConfig.Port), Protocol: v1.ProtocolTCP, Name: DefaultPortName},
 				},
 				Resources: createResourceLimits(appConfig.Resources.Requests.Cpu, appConfig.Resources.Requests.Memory, appConfig.Resources.Limits.Cpu, appConfig.Resources.Limits.Memory),
 				LivenessProbe: &v1.Probe{
 					Handler: v1.Handler{
 						HTTPGet: &v1.HTTPGetAction{
 							Path: appConfig.Healthcheck.Liveness.Path,
-							Port: intstr.FromInt(appConfig.Port),
+							Port: intstr.FromString(DefaultPortName),
 						},
 					},
 					InitialDelaySeconds: 20,
@@ -141,12 +137,12 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 					Handler: v1.Handler{
 						HTTPGet: &v1.HTTPGetAction{
 							Path: appConfig.Healthcheck.Readiness.Path,
-							Port: intstr.FromInt(appConfig.Port),
+							Port: intstr.FromString(DefaultPortName),
 						},
 					},
 					InitialDelaySeconds: 20,
 				},
-				Env: createEnvironmentVariables(deploymentRequest, naisResources),
+				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
 			},
 		},
@@ -184,7 +180,7 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 	return envVars
 }
 
-func createDefaultEnvironmentVariables(version string) []v1.EnvVar{
+func createDefaultEnvironmentVariables(version string) []v1.EnvVar {
 	return []v1.EnvVar{{
 		Name:  "app_version",
 		Value: version,
@@ -217,8 +213,8 @@ func createSecretDef(naisResources []NaisResource, existingSecret *v1.Secret, ap
 				APIVersion: "v1",
 			},
 			ObjectMeta: v1.ObjectMeta{
-				Name:            application,
-				Namespace:       namespace,
+				Name:      application,
+				Namespace: namespace,
 			},
 			Data: createSecretData(naisResources),
 			Type: "Opaque",
@@ -299,7 +295,7 @@ func createOrUpdateAutoscalerDef(min, max, cpuTargetPercentage int, existingAuto
 	}
 }
 
-func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string) autoscalingv1.HorizontalPodAutoscalerSpec{
+func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string) autoscalingv1.HorizontalPodAutoscalerSpec {
 	return autoscalingv1.HorizontalPodAutoscalerSpec{
 		MinReplicas:                    int32p(int32(min)),
 		MaxReplicas:                    int32(max),
@@ -315,10 +311,9 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string)
 func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, resources []NaisResource, clusterSubdomain string, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
-	service, err := createOrUpdateService(deploymentRequest, appConfig, k8sClient)
-
+	service, err := createService(deploymentRequest, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating or updating service: %s", err)
+		return deploymentResult, fmt.Errorf("Failed while creating service: %s", err)
 	}
 	deploymentResult.Service = service
 
@@ -336,7 +331,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 
 	ingress, err := createIngress(deploymentRequest, clusterSubdomain, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating or updating ingress: %s", err)
+		return deploymentResult, fmt.Errorf("Failed while creating ingress: %s", err)
 	}
 	deploymentResult.Ingress = ingress
 
@@ -374,18 +369,22 @@ func createIngress(deploymentRequest NaisDeploymentRequest, clusterSubdomain str
 	}
 
 	ingressDef := createIngressDef(clusterSubdomain, deploymentRequest.Application, deploymentRequest.Namespace)
-	return createOrUpdateIngressResource(ingressDef, deploymentRequest.Namespace, k8sClient)
+	return createIngressResource(ingressDef, deploymentRequest.Namespace, k8sClient)
 }
 
-func createOrUpdateService(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, k8sClient kubernetes.Interface) (*v1.Service, error) {
+func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes.Interface) (*v1.Service, error) {
 	existingService, err := getExistingService(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get existing service: %s", err)
 	}
 
-	serviceDef := createOrUpdateServiceDef(appConfig.Port, existingService, deploymentRequest.Application, deploymentRequest.Namespace)
-	return createOrUpdateServiceResource(serviceDef, deploymentRequest.Namespace, k8sClient)
+	if existingService != nil {
+		return nil, nil // we have done nothing
+	}
+
+	serviceDef := createServiceDef(deploymentRequest.Application, deploymentRequest.Namespace)
+	return createServiceResource(serviceDef, deploymentRequest.Namespace, k8sClient)
 }
 
 func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource, k8sClient kubernetes.Interface) (*v1beta1.Deployment, error) {
@@ -490,12 +489,8 @@ func createOrUpdateAutoscalerResource(autoscalerSpec *autoscalingv1.HorizontalPo
 	}
 }
 
-func createOrUpdateIngressResource(ingressSpec *v1beta1.Ingress, namespace string, k8sClient kubernetes.Interface) (*v1beta1.Ingress, error) {
-	if ingressSpec.ObjectMeta.ResourceVersion != "" {
-		return k8sClient.ExtensionsV1beta1().Ingresses(namespace).Update(ingressSpec)
-	} else {
-		return k8sClient.ExtensionsV1beta1().Ingresses(namespace).Create(ingressSpec)
-	}
+func createIngressResource(ingressSpec *v1beta1.Ingress, namespace string, k8sClient kubernetes.Interface) (*v1beta1.Ingress, error) {
+	return k8sClient.ExtensionsV1beta1().Ingresses(namespace).Create(ingressSpec)
 }
 
 func createOrUpdateDeploymentResource(deploymentSpec *v1beta1.Deployment, namespace string, k8sClient kubernetes.Interface) (*v1beta1.Deployment, error) {
@@ -506,13 +501,8 @@ func createOrUpdateDeploymentResource(deploymentSpec *v1beta1.Deployment, namesp
 	}
 }
 
-func createOrUpdateServiceResource(serviceSpec *v1.Service, namespace string, k8sClient kubernetes.Interface) (*v1.Service, error) {
-	rv := serviceSpec.ObjectMeta.ResourceVersion
-	if rv != "" {
-		return k8sClient.CoreV1().Services(namespace).Update(serviceSpec)
-	} else {
-		return k8sClient.CoreV1().Services(namespace).Create(serviceSpec)
-	}
+func createServiceResource(serviceSpec *v1.Service, namespace string, k8sClient kubernetes.Interface) (*v1.Service, error) {
+	return k8sClient.CoreV1().Services(namespace).Create(serviceSpec)
 }
 
 func createOrUpdateSecretResource(secretSpec *v1.Secret, namespace string, k8sClient kubernetes.Interface) (*v1.Secret, error) {

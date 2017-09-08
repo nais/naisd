@@ -13,7 +13,6 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 			CpuThresholdPercentage: 50,
 		},
 		Port: 8080,
-		InitialDelay: 20,
 		Prometheus: PrometheusConfig{
 			Enabled: false,
 			Port:    DefaultPortName,
@@ -23,9 +22,11 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 		Healthcheck: Healthcheck{
 			Liveness: Probe{
 				Path: "isAlive",
+				InitialDelay: 20,
 			},
 			Readiness: Probe{
 				Path: "isReady",
+				InitialDelay: 20,
 			},
 		},
 		Resources: ResourceRequirements{

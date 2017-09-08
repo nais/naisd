@@ -10,7 +10,8 @@ import (
 )
 
 type Probe struct {
-	Path string
+	Path         string
+	InitialDelay int `yaml:"initialDelay"`
 }
 
 type Healthcheck struct {
@@ -30,14 +31,13 @@ type ResourceRequirements struct {
 
 type PrometheusConfig struct {
 	Enabled bool
-	Port  	string
+	Port    string
 	Path    string
 }
 
 type NaisAppConfig struct {
 	Image          string
 	Port           int
-	InitialDelay   int
 	Healthcheck    Healthcheck
 	Prometheus     PrometheusConfig
 	Replicas       Replicas

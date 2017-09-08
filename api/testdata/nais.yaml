@@ -5,12 +5,13 @@ replicas:
   max: 20
   cpuThresholdPercentage: 2
 port: 799
-initialDelay: 79
 healthcheck:
   liveness:
     path: isAlive2
+    initialDelay: 79
   readiness:
     path: isReady2
+    initialDelay: 79
 resources:
   limits:
     cpu: 100m

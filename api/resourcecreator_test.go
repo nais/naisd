@@ -26,6 +26,40 @@ const (
 	clusterIP       = "1.2.3.4"
 )
 
+func newDefaultAppConfig() NaisAppConfig {
+	appConfig := NaisAppConfig{
+		Image: image,
+		Port:  port,
+		Healthcheck: Healthcheck{
+			Readiness: Probe{
+				Path: readinessPath,
+				InitialDelay: 20,
+			},
+			Liveness: Probe{
+				Path: livenessPath,
+				InitialDelay: 20,
+			},
+		},
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
+				Memory: memoryRequest,
+				Cpu:    cpuRequest,
+			},
+			Limits: ResourceList{
+				Memory: memoryLimit,
+				Cpu:    cpuLimit,
+			},
+		},
+		Prometheus: PrometheusConfig{
+			Path:    "/path",
+			Enabled: true,
+		},
+	}
+
+	return  appConfig
+
+}
+
 func TestService(t *testing.T) {
 	service := createServiceDef(appName, namespace)
 	service.Spec.ClusterIP = clusterIP
@@ -115,36 +149,9 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	appConfig := NaisAppConfig{
-		Image: image,
-		Port:  port,
-		Healthcheck: Healthcheck{
-			Readiness: Probe{
-				Path: readinessPath,
-				InitialDelay: 20,
-			},
-			Liveness: Probe{
-				Path: livenessPath,
-				InitialDelay: 20,
-			},
-		},
-		Resources: ResourceRequirements{
-			Requests: ResourceList{
-				Memory: memoryRequest,
-				Cpu:    cpuRequest,
-			},
-			Limits: ResourceList{
-				Memory: memoryLimit,
-				Cpu:    cpuLimit,
-			},
-		},
-		Prometheus: PrometheusConfig{
-			Path:    "/path",
-			Enabled: true,
-		},
-	}
 
-	deployment := createDeploymentDef(naisResources, appConfig, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
+
+	deployment := createDeploymentDef(naisResources, newDefaultAppConfig(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
 	deployment.ObjectMeta.ResourceVersion = resourceVersion
 
 	clientset := fake.NewSimpleClientset(deployment)
@@ -162,7 +169,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, appConfig, naisResources, clientset)
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, newDefaultAppConfig(), naisResources, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, deployment.Name)
@@ -213,7 +220,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, appConfig, naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion, }, newDefaultAppConfig(), naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
@@ -223,6 +230,22 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, image+":"+newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Image)
 		assert.Equal(t, int32(port), updatedDeployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 		assert.Equal(t, newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Env[0].Value)
+	})
+
+	t.Run("Prometheus annotations are updated on an existing deployment", func(t *testing.T) {
+
+		appConfig := newDefaultAppConfig()
+		appConfig.Prometheus.Path = "/newPath"
+		appConfig.Prometheus.Enabled = false
+
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version, }, appConfig, naisResources, clientset)
+		assert.NoError(t, err)
+
+		assert.Equal(t, map[string]string{
+			"prometheus.io/scrape":"false",
+			"prometheus.io/path":"/newPath",
+			"prometheus.io/port":"http",
+		}, updatedDeployment.Spec.Template.Annotations)
 	})
 }
 

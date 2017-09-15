@@ -67,6 +67,7 @@ func ResourceVariableName(resource NaisResource, key string) string {
 func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
 	if existingDeployment != nil {
 		existingDeployment.Spec.Template.Spec = createPodSpec(deploymentRequest, appConfig, naisResources)
+		existingDeployment.Spec.Template.ObjectMeta = createOjectMeta(deploymentRequest,appConfig)
 		return existingDeployment
 	} else {
 		deployment := &v1beta1.Deployment{
@@ -95,23 +96,26 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 				},
 				RevisionHistoryLimit: int32p(10),
 				Template: v1.PodTemplateSpec{
-					ObjectMeta: v1.ObjectMeta{
-						Name:   deploymentRequest.Application,
-						Labels: map[string]string{"app": deploymentRequest.Application},
-						Annotations: map[string]string{
-							"prometheus.io/scrape": strconv.FormatBool(appConfig.Prometheus.Enabled),
-							"prometheus.io/port":   DefaultPortName,
-							"prometheus.io/path":   appConfig.Prometheus.Path,
-						},
-					},
+					ObjectMeta: createOjectMeta(deploymentRequest,appConfig),
 					Spec: createPodSpec(deploymentRequest, appConfig, naisResources),
 				},
 			},
 		}
-
 		return deployment
 	}
 
+}
+
+func createOjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
+	return v1.ObjectMeta{
+		Name:   deploymentRequest.Application,
+		Labels: map[string]string{"app": deploymentRequest.Application},
+		Annotations: map[string]string{
+			"prometheus.io/scrape": strconv.FormatBool(appConfig.Prometheus.Enabled),
+			"prometheus.io/port":   DefaultPortName,
+			"prometheus.io/path":   appConfig.Prometheus.Path,
+		},
+	}
 }
 
 func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1.PodSpec {

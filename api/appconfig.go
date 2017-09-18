@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"gopkg.in/yaml.v2"
 	"github.com/imdario/mergo"
+	"strconv"
 )
 
 type Probe struct {
@@ -67,6 +68,20 @@ type ExposedResource struct {
 	Path         string
 }
 
+type ValidationErrors struct {
+	Errors []ValidationError
+}
+
+type ValidationError struct {
+	ErrorMessage string
+	Fields       []Field
+}
+
+type Field struct {
+	Name  string
+	Value string
+}
+
 func createAppConfigUrl(appConfigUrl, application, version string) string {
 	if appConfigUrl != "" {
 		return appConfigUrl
@@ -75,7 +90,9 @@ func createAppConfigUrl(appConfigUrl, application, version string) string {
 	}
 }
 
-func fetchAppConfig(url string, deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
+func fetchAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
+
+	url := createAppConfigUrl(deploymentRequest.AppConfigUrl, deploymentRequest.Application, deploymentRequest.Version)
 
 	var defaultAppConfig = GetDefaultAppConfig(deploymentRequest)
 	var appConfig NaisAppConfig
@@ -111,5 +128,61 @@ func fetchAppConfig(url string, deploymentRequest NaisDeploymentRequest) (naisAp
 		return NaisAppConfig{}, err
 	}
 
+	validationErrors := validateAppConfig(appConfig);
+	if len(validationErrors.Errors) != 0 {
+		glog.Error("Invalid appconfig: ", validationErrors.Error())
+		return NaisAppConfig{}, &validationErrors
+	}
+
 	return appConfig, nil
+}
+
+func validateAppConfig(appConfig NaisAppConfig) ValidationErrors {
+
+	var validationErrors ValidationErrors
+
+	if appConfig.Replicas.Max == 0 {
+		validationErrors.Errors = append(validationErrors.Errors, ValidationError{
+			ErrorMessage: "Replicas.Max is not set.",
+			Fields: []Field{
+				{Name: "Replicas.Max", Value: strconv.Itoa(appConfig.Replicas.Max)},
+			}})
+	}
+
+	if appConfig.Replicas.Min == 0 {
+		validationErrors.Errors = append(validationErrors.Errors, ValidationError{
+			ErrorMessage: "Replicas.Min is not set.",
+			Fields: []Field{
+				{Name: "Replicas.Min", Value: strconv.Itoa(appConfig.Replicas.Min)},
+			}})
+	}
+
+	if appConfig.Replicas.Min > appConfig.Replicas.Max {
+		validationErrors.Errors = append(validationErrors.Errors, ValidationError{
+			ErrorMessage: "Replicas.Min is larger than Replicas.Max.",
+			Fields: []Field{
+				{Name: "Replicas.Min", Value: strconv.Itoa(appConfig.Replicas.Min)},
+				{Name: "Replicas.Max", Value: strconv.Itoa(appConfig.Replicas.Max)},
+			}})
+	}
+
+	if appConfig.Replicas.CpuThresholdPercentage < 10 || appConfig.Replicas.CpuThresholdPercentage > 90 {
+		validationErrors.Errors = append(validationErrors.Errors, ValidationError{
+			ErrorMessage: "CpuThreshold must be between 10 and 90",
+			Fields: []Field{
+				{Name: "Replicas.CpuThreshold", Value: strconv.Itoa(appConfig.Replicas.CpuThresholdPercentage)},
+			}})
+	}
+
+	return validationErrors
+}
+
+func (errors *ValidationErrors) Error() (s string) {
+	for _, error := range errors.Errors {
+		s += error.ErrorMessage + ".\n"
+		for _, field := range error.Fields {
+			s+= field.Name + ": " + field.Value  + ".\n"
+		}
+	}
+	return s
 }

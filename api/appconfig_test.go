@@ -98,6 +98,31 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 		File("testdata/nais_error.yaml")
 
 	_, err := fetchAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
-	assert.Error(t, err, "ValidationError")
+	assert.Error(t, err)
+}
 
+func TestIncalidCouThreshold(t *testing.T) {
+	invalidConfig := NaisAppConfig{
+		Replicas: Replicas{
+			CpuThresholdPercentage: 5,
+			Max:                    4,
+			Min:                    5,
+		},
+	}
+	errors := validateAppConfig(invalidConfig)
+	t.Log(errors)
+
+	assert.Equal(t, 2, len(errors.Errors))
+}
+func TestMinCannotBeZero(t *testing.T) {
+	invalidConfig := NaisAppConfig{
+		Replicas: Replicas{
+			CpuThresholdPercentage: 50,
+			Max:                    4,
+			Min:                    0,
+		},
+	}
+	errors := validateAppConfig(invalidConfig)
+
+	assert.Equal(t, 1, len(errors.Errors))
 }

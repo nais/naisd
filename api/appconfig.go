@@ -179,9 +179,9 @@ func validateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 
 func (errors *ValidationErrors) Error() (s string) {
 	for _, error := range errors.Errors {
-		s += error.ErrorMessage + ".\n"
+		s += error.ErrorMessage + "\n"
 		for _, field := range error.Fields {
-			s+= field.Name + ": " + field.Value  + ".\n"
+			s+= " - " +field.Name + ": " + field.Value  + ".\n"
 		}
 	}
 	return s

@@ -23,6 +23,9 @@ test:
 build:
 	${GO} build -o naisd
 
+build-cli:
+    ${GO} build -o nais ./cli/
+
 linux:
 	sudo docker run --rm -e GOOS=linux -e CGO_ENABLED=0 -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go build -a -installsuffix cgo -ldflags '-s' -o naisd
 

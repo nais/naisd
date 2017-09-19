@@ -1,8 +1,9 @@
 FROM alpine:3.5
 MAINTAINER Johnny Horvi <johnny.horvi@nav.no>
 
-RUN apk add --no-cache ca-certificates && \
-	update-ca-certificates
+COPY webproxy.crt /usr/local/share/ca-certificates/
+RUN apk add --no-cache ca-certificates
+RUN	update-ca-certificates
 
 WORKDIR /app
 

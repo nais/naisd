@@ -1,5 +1,5 @@
-hash: 2ed14a128b7f60812f5f157df4ae3bd385d55c8a12c7e6f764cbd1d658473516
-updated: 2017-08-15T10:09:37.222956416+02:00
+hash: 308a1ffb01ae4ea0ce3575aeca3112b918e36cc0d19a8559407598574b6c0706
+updated: 2017-09-19T08:36:08.06968674+02:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -67,6 +67,8 @@ imports:
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo
   version: 3e95a51e0639b4cf372f2ccf74c86749d747fbdc
+- name: github.com/Jeffail/gabs
+  version: 2a3aa15961d5fee6047b8151b67ac2f08ba2c48c
 - name: github.com/jonboulle/clockwork
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
 - name: github.com/jteeuwen/go-bindata
@@ -88,7 +90,7 @@ imports:
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/prometheus/client_golang
-  version: c5b7fccd204277076155f10851dad72b76a49317
+  version: 967789050ba94deca04a5e84cce8ad472ce313c1
   subpackages:
   - promehttp
   - prometheus

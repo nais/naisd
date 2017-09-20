@@ -100,8 +100,8 @@ func TestDeployment(t *testing.T) {
 	resource1Value := "value1"
 	secret1Key := "password"
 	secret1Value := "secret"
-	file1Key := "file1Key"
-	file1Value := []byte("file1Value")
+	cert1Key := "cert1Key"
+	cert1Value := []byte("cert1Value")
 
 	resource2Name := "r2"
 	resource2Type := "db"
@@ -109,8 +109,8 @@ func TestDeployment(t *testing.T) {
 	resource2Value := "value2"
 	secret2Key := "password"
 	secret2Value := "anothersecret"
-	file2Key := "file2Key"
-	file2Value := []byte("file2Value")
+	cert2Key := "cert2Key"
+	cert2Value := []byte("cert2Value")
 
 	invalidlyNamedResourceNameDot := "dots.are.not.allowed"
 	invalidlyNamedResourceTypeDot := "restservice"
@@ -132,14 +132,14 @@ func TestDeployment(t *testing.T) {
 			resource1Type,
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{secret1Key: secret1Value},
-			map[string][]byte{file1Key: file1Value},
+			map[string][]byte{cert1Key: cert1Value},
 		},
 		{
 			resource2Name,
 			resource2Type,
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{secret2Key: secret2Value},
-			map[string][]byte{file2Key: file2Value},
+			map[string][]byte{cert2Key: cert2Value},
 		},
 		{
 			invalidlyNamedResourceNameDot,
@@ -256,8 +256,8 @@ func TestDeployment(t *testing.T) {
 
 	t.Run("File secrets are mounted correctly for an updated deployment", func(t *testing.T) {
 
-		updatedFileKey := "updatedFileKey"
-		updatedFileValue := []byte("updatedFileValue")
+		updatedCertKey := "updatedCertKey"
+		updatedCertValue := []byte("updatedCertValue")
 
 		updatedResource := []NaisResource{
 			{
@@ -265,7 +265,7 @@ func TestDeployment(t *testing.T) {
 				resource1Type,
 				nil,
 				nil,
-				map[string][]byte{updatedFileKey: updatedFileValue},
+				map[string][]byte{updatedCertKey: updatedCertValue},
 			},
 		}
 
@@ -273,34 +273,34 @@ func TestDeployment(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
-		assert.Equal(t, updatedFileKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items))
-		assert.Equal(t, updatedFileKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
-		assert.Equal(t, updatedFileKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
+		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
+		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
-		assert.Equal(t, updatedFileKey, updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
 		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), naisResources, clientset)
 
 		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Volumes))
-		assert.Equal(t, file1Key, deployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Name)
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes[0].Secret.Items))
-		assert.Equal(t, file1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
-		assert.Equal(t, file1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
-		assert.Equal(t, file2Key, deployment.Spec.Template.Spec.Volumes[1].Name)
+		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
+		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Name)
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes[1].Secret.Items))
-		assert.Equal(t, file2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Key)
-		assert.Equal(t, file2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Path)
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Key)
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Path)
 
 		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
-		assert.Equal(t, file1Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
 		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].MountPath)
-		assert.Equal(t, file2Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].Name)
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].Name)
 
 	})
 }

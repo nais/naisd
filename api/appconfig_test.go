@@ -101,7 +101,7 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestIncalidCouThreshold(t *testing.T) {
+func TestInvalidCpuThreshold(t *testing.T) {
 	invalidConfig := NaisAppConfig{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
@@ -109,10 +109,10 @@ func TestIncalidCouThreshold(t *testing.T) {
 			Min:                    5,
 		},
 	}
-	errors := validateAppConfig(invalidConfig)
+	errors := validateCpuThreshold(invalidConfig)
 	t.Log(errors)
 
-	assert.Equal(t, 2, len(errors.Errors))
+	assert.Equal(t, 1, len(errors.Errors))
 }
 func TestMinCannotBeZero(t *testing.T) {
 	invalidConfig := NaisAppConfig{
@@ -122,7 +122,7 @@ func TestMinCannotBeZero(t *testing.T) {
 			Min:                    0,
 		},
 	}
-	errors := validateAppConfig(invalidConfig)
+	errors := validateReplicasMin(invalidConfig)
 
 	assert.Equal(t, 1, len(errors.Errors))
 }

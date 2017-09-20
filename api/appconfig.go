@@ -74,7 +74,7 @@ type ValidationErrors struct {
 
 type ValidationError struct {
 	ErrorMessage string
-	Fields       []Field
+	Fields       map[string]string
 }
 
 type Field struct {
@@ -128,10 +128,10 @@ func fetchAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig Nais
 		return NaisAppConfig{}, err
 	}
 
-	validationErrors := validateAppConfig(appConfig);
+	validationErrors := validateAppConfig(appConfig)
 	if len(validationErrors.Errors) != 0 {
 		glog.Error("Invalid appconfig: ", validationErrors.Error())
-		return NaisAppConfig{}, &validationErrors
+		return NaisAppConfig{}, validationErrors
 	}
 
 	return appConfig, nil
@@ -141,47 +141,70 @@ func validateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 
 	var validationErrors ValidationErrors
 
-	if appConfig.Replicas.Max == 0 {
-		validationErrors.Errors = append(validationErrors.Errors, ValidationError{
-			ErrorMessage: "Replicas.Max is not set.",
-			Fields: []Field{
-				{Name: "Replicas.Max", Value: strconv.Itoa(appConfig.Replicas.Max)},
-			}})
-	}
+	validationErrors = validateReplicasMax(appConfig)
 
-	if appConfig.Replicas.Min == 0 {
-		validationErrors.Errors = append(validationErrors.Errors, ValidationError{
-			ErrorMessage: "Replicas.Min is not set.",
-			Fields: []Field{
-				{Name: "Replicas.Min", Value: strconv.Itoa(appConfig.Replicas.Min)},
-			}})
-	}
+	validationErrors = validateReplicasMin(appConfig)
 
-	if appConfig.Replicas.Min > appConfig.Replicas.Max {
-		validationErrors.Errors = append(validationErrors.Errors, ValidationError{
-			ErrorMessage: "Replicas.Min is larger than Replicas.Max.",
-			Fields: []Field{
-				{Name: "Replicas.Min", Value: strconv.Itoa(appConfig.Replicas.Min)},
-				{Name: "Replicas.Max", Value: strconv.Itoa(appConfig.Replicas.Max)},
-			}})
-	}
+	validationErrors = validateMinIsSmallerThanMax(appConfig)
 
-	if appConfig.Replicas.CpuThresholdPercentage < 10 || appConfig.Replicas.CpuThresholdPercentage > 90 {
-		validationErrors.Errors = append(validationErrors.Errors, ValidationError{
-			ErrorMessage: "CpuThreshold must be between 10 and 90",
-			Fields: []Field{
-				{Name: "Replicas.CpuThreshold", Value: strconv.Itoa(appConfig.Replicas.CpuThresholdPercentage)},
-			}})
-	}
+	validationErrors = validateCpuThreshold(appConfig)
 
 	return validationErrors
 }
+func validateCpuThreshold(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+	if appConfig.Replicas.CpuThresholdPercentage < 10 || appConfig.Replicas.CpuThresholdPercentage > 90 {
+		error := new(ValidationError)
+		error.ErrorMessage = "CpuThreshold must be between 10 and 90."
+		error.Fields = make(map[string]string)
+		error.Fields["Replicas.CpuThreshold"] = strconv.Itoa(appConfig.Replicas.CpuThresholdPercentage)
+		validationErrors.Errors = append(validationErrors.Errors, *error)
 
-func (errors *ValidationErrors) Error() (s string) {
-	for _, error := range errors.Errors {
-		s += error.ErrorMessage + "\n"
-		for _, field := range error.Fields {
-			s+= " - " +field.Name + ": " + field.Value  + ".\n"
+	}
+	return validationErrors
+
+}
+func validateMinIsSmallerThanMax(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+	if appConfig.Replicas.Min > appConfig.Replicas.Max {
+		validationError := new(ValidationError)
+		validationError.ErrorMessage = "Replicas.Min is larger than Replicas.Max."
+		validationError.Fields = make(map[string]string)
+		validationError.Fields["Replicas.Max"] = strconv.Itoa(appConfig.Replicas.Max)
+		validationError.Fields["Replicas.Min"] = strconv.Itoa(appConfig.Replicas.Min)
+		validationErrors.Errors = append(validationErrors.Errors, *validationError)
+	}
+	return validationErrors
+
+}
+func validateReplicasMin(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+	if appConfig.Replicas.Min == 0 {
+		validationError := new(ValidationError)
+		validationError.ErrorMessage = "Replicas.Min is not set"
+		validationError.Fields = make(map[string]string)
+		validationError.Fields["Replicas.Min"] = strconv.Itoa(appConfig.Replicas.Min)
+		validationErrors.Errors = append(validationErrors.Errors, *validationError)
+
+	}
+	return validationErrors
+
+}
+func validateReplicasMax(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+	if appConfig.Replicas.Max == 0 {
+		validationError := new(ValidationError)
+		validationError.ErrorMessage = "Replicas.Max is not set"
+		validationError.Fields = make(map[string]string)
+		validationError.Fields["Replicas.Max"] = strconv.Itoa(appConfig.Replicas.Max)
+		validationErrors.Errors = append(validationErrors.Errors, *validationError)
+
+	}
+	return validationErrors
+
+}
+
+func (errors ValidationErrors) Error() (s string) {
+	for _, validationError := range errors.Errors {
+		s += validationError.ErrorMessage + "\n"
+		for k, v := range validationError.Fields {
+			s += " - " + k + ": " + v + ".\n"
 		}
 	}
 	return s

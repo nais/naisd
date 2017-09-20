@@ -34,7 +34,7 @@ type FasitResource struct {
 	ResourceType string `json:"type"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
-	Files        map[string]interface{}
+	Certificates map[string]interface{} `json:"files""`
 }
 
 type ResourceRequest struct {
@@ -130,12 +130,12 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 		resource.secret = secret
 	}
 
-	if fasitResource.ResourceType == "certificate" && len(fasitResource.Files) > 0 {
-		files, err := resolveCertificates(fasitResource.Files, fasitResource.Alias)
+	if fasitResource.ResourceType == "certificate" && len(fasitResource.Certificates) > 0 {
+		files, err := resolveCertificates(fasitResource.Certificates, fasitResource.Alias)
 
 		if err != nil {
 			errorCounter.WithLabelValues("resolve_file").Inc()
-			return NaisResource{}, fmt.Errorf("unable to resolve certificates: %s", err)
+			return NaisResource{}, fmt.Errorf("unable to resolve Certificates: %s", err)
 		}
 
 		resource.certificates = files

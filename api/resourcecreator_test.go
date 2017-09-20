@@ -32,11 +32,11 @@ func newDefaultAppConfig() NaisAppConfig {
 		Port:  port,
 		Healthcheck: Healthcheck{
 			Readiness: Probe{
-				Path: readinessPath,
+				Path:         readinessPath,
 				InitialDelay: 20,
 			},
 			Liveness: Probe{
-				Path: livenessPath,
+				Path:         livenessPath,
 				InitialDelay: 20,
 			},
 		},
@@ -56,7 +56,7 @@ func newDefaultAppConfig() NaisAppConfig {
 		},
 	}
 
-	return  appConfig
+	return appConfig
 
 }
 
@@ -100,6 +100,8 @@ func TestDeployment(t *testing.T) {
 	resource1Value := "value1"
 	secret1Key := "password"
 	secret1Value := "secret"
+	file1Key := "file1Key"
+	file1Value := []byte("file1Value")
 
 	resource2Name := "r2"
 	resource2Type := "db"
@@ -107,6 +109,8 @@ func TestDeployment(t *testing.T) {
 	resource2Value := "value2"
 	secret2Key := "password"
 	secret2Value := "anothersecret"
+	file2Key := "file2Key"
+	file2Value := []byte("file2Value")
 
 	invalidlyNamedResourceNameDot := "dots.are.not.allowed"
 	invalidlyNamedResourceTypeDot := "restservice"
@@ -128,14 +132,14 @@ func TestDeployment(t *testing.T) {
 			resource1Type,
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{secret1Key: secret1Value},
-			nil,
+			map[string][]byte{file1Key: file1Value},
 		},
 		{
 			resource2Name,
 			resource2Type,
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{secret2Key: secret2Value},
-			nil,
+			map[string][]byte{file2Key: file2Value},
 		},
 		{
 			invalidlyNamedResourceNameDot,
@@ -152,8 +156,6 @@ func TestDeployment(t *testing.T) {
 			nil,
 		},
 	}
-
-
 
 	deployment := createDeploymentDef(naisResources, newDefaultAppConfig(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
 	deployment.ObjectMeta.ResourceVersion = resourceVersion
@@ -201,9 +203,9 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, cpuRequest, ptr(container.Resources.Requests["cpu"]).String())
 		assert.Equal(t, cpuLimit, ptr(container.Resources.Limits["cpu"]).String())
 		assert.Equal(t, map[string]string{
-			"prometheus.io/scrape":"true",
-			"prometheus.io/path":"/path",
-			"prometheus.io/port":"http",
+			"prometheus.io/scrape": "true",
+			"prometheus.io/path":   "/path",
+			"prometheus.io/port":   "http",
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
@@ -224,7 +226,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion, }, newDefaultAppConfig(), naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion,}, newDefaultAppConfig(), naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
@@ -242,14 +244,64 @@ func TestDeployment(t *testing.T) {
 		appConfig.Prometheus.Path = "/newPath"
 		appConfig.Prometheus.Enabled = false
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version, }, appConfig, naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, appConfig, naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, map[string]string{
-			"prometheus.io/scrape":"false",
-			"prometheus.io/path":"/newPath",
-			"prometheus.io/port":"http",
+			"prometheus.io/scrape": "false",
+			"prometheus.io/path":   "/newPath",
+			"prometheus.io/port":   "http",
 		}, updatedDeployment.Spec.Template.Annotations)
+	})
+
+	t.Run("File secrets are mounted correctly for an updated deployment", func(t *testing.T) {
+
+		updatedFileKey := "updatedFileKey"
+		updatedFileValue := []byte("updatedFileValue")
+
+		updatedResource := []NaisResource{
+			{
+				resource1Name,
+				resource1Type,
+				nil,
+				nil,
+				map[string][]byte{updatedFileKey: updatedFileValue},
+			},
+		}
+
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), updatedResource, clientset)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
+		assert.Equal(t, updatedFileKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items))
+		assert.Equal(t, updatedFileKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
+		assert.Equal(t, updatedFileKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
+
+		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts))
+		assert.Equal(t, "/var/run/secrets/naisd.io/", updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
+		assert.Equal(t, updatedFileKey, updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+	})
+
+	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
+		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), naisResources, clientset)
+
+		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Volumes))
+		assert.Equal(t, file1Key, deployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes[0].Secret.Items))
+		assert.Equal(t, file1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
+		assert.Equal(t, file1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
+		assert.Equal(t, file2Key, deployment.Spec.Template.Spec.Volumes[1].Name)
+		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes[1].Secret.Items))
+		assert.Equal(t, file2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Key)
+		assert.Equal(t, file2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Path)
+
+		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts))
+		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
+		assert.Equal(t, file1Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].MountPath)
+		assert.Equal(t, file2Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].Name)
+
 	})
 }
 
@@ -309,11 +361,11 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	fileKey2 := "fileKey2"
 	fileValue1 := []byte("fileValue1")
 	fileValue2 := []byte("fileValue2")
-	files1 := map[string][]byte {fileKey1: fileValue1}
-	files2 := map[string][]byte {fileKey2: fileValue2}
+	files1 := map[string][]byte{fileKey1: fileValue1}
+	files2 := map[string][]byte{fileKey2: fileValue2}
 
 	naisResources := []NaisResource{
-		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value},files1},
+		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}, files1},
 		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, files2}}
 
 	secret := createSecretDef(naisResources, nil, appName, namespace)
@@ -435,9 +487,9 @@ func TestCreateK8sResources(t *testing.T) {
 
 	service := createServiceDef(appName, namespace)
 
-	autoscaler := createOrUpdateAutoscalerDef(6,9,6, nil, appName, namespace)
+	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, namespace)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
-	clientset := fake.NewSimpleClientset(autoscaler,service)
+	clientset := fake.NewSimpleClientset(autoscaler, service)
 
 	t.Run("creates all resources", func(t *testing.T) {
 		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, "nais.example.yo", clientset)

@@ -131,7 +131,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 	}
 
 	if len(fasitResource.Files) > 0 {
-		files, err := resolveFiles(fasitResource.Files)
+		files, err := resolveFiles(fasitResource.Files, fasitResource.Alias)
 
 		if err != nil {
 			errorCounter.WithLabelValues("resolve_file").Inc()
@@ -144,7 +144,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 
 	return resource, nil
 }
-func resolveFiles(files map[string]interface{}) (map[string][]byte, error) {
+func resolveFiles(files map[string]interface{}, resourceName string) (map[string][]byte, error) {
 	fileContent := make(map[string][]byte)
 
 	fileName, fileUrl, err := parseFilesObject(files)
@@ -165,7 +165,7 @@ func resolveFiles(files map[string]interface{}) (map[string][]byte, error) {
 		return fileContent, fmt.Errorf("error downloading file: %s", err)
 	}
 
-	fileContent[fileName] = bodyBytes
+	fileContent[resourceName + "_" + fileName] = bodyBytes
 	return fileContent, nil
 
 }

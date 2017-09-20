@@ -149,7 +149,7 @@ func TestResolveFile(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	assert.Equal(t, "Some binary format", string(resource.files["keystore"]))
+	assert.Equal(t, "Some binary format", string(resource.files["srvvarseloppgave_cert_keystore"]))
 }
 
 func TestParseFilesObject(t *testing.T) {

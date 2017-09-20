@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"gopkg.in/yaml.v2"
 	"github.com/imdario/mergo"
+	"strconv"
 )
 
 type Probe struct {
@@ -67,6 +68,20 @@ type ExposedResource struct {
 	Path         string
 }
 
+type ValidationErrors struct {
+	Errors []ValidationError
+}
+
+type ValidationError struct {
+	ErrorMessage string
+	Fields       map[string]string
+}
+
+type Field struct {
+	Name  string
+	Value string
+}
+
 func createAppConfigUrl(appConfigUrl, application, version string) string {
 	if appConfigUrl != "" {
 		return appConfigUrl
@@ -75,7 +90,9 @@ func createAppConfigUrl(appConfigUrl, application, version string) string {
 	}
 }
 
-func fetchAppConfig(url string, deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
+func fetchAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
+
+	url := createAppConfigUrl(deploymentRequest.AppConfigUrl, deploymentRequest.Application, deploymentRequest.Version)
 
 	var defaultAppConfig = GetDefaultAppConfig(deploymentRequest)
 	var appConfig NaisAppConfig
@@ -111,5 +128,84 @@ func fetchAppConfig(url string, deploymentRequest NaisDeploymentRequest) (naisAp
 		return NaisAppConfig{}, err
 	}
 
+	validationErrors := validateAppConfig(appConfig)
+	if len(validationErrors.Errors) != 0 {
+		glog.Error("Invalid appconfig: ", validationErrors.Error())
+		return NaisAppConfig{}, validationErrors
+	}
+
 	return appConfig, nil
+}
+
+func validateAppConfig(appConfig NaisAppConfig) ValidationErrors {
+
+	var validationErrors ValidationErrors
+
+	validationErrors = validateReplicasMax(appConfig)
+
+	validationErrors = validateReplicasMin(appConfig)
+
+	validationErrors = validateMinIsSmallerThanMax(appConfig)
+
+	validationErrors = validateCpuThreshold(appConfig)
+
+	return validationErrors
+}
+func validateCpuThreshold(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+	if appConfig.Replicas.CpuThresholdPercentage < 10 || appConfig.Replicas.CpuThresholdPercentage > 90 {
+		error := new(ValidationError)
+		error.ErrorMessage = "CpuThreshold must be between 10 and 90."
+		error.Fields = make(map[string]string)
+		error.Fields["Replicas.CpuThreshold"] = strconv.Itoa(appConfig.Replicas.CpuThresholdPercentage)
+		validationErrors.Errors = append(validationErrors.Errors, *error)
+
+	}
+	return validationErrors
+
+}
+func validateMinIsSmallerThanMax(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+	if appConfig.Replicas.Min > appConfig.Replicas.Max {
+		validationError := new(ValidationError)
+		validationError.ErrorMessage = "Replicas.Min is larger than Replicas.Max."
+		validationError.Fields = make(map[string]string)
+		validationError.Fields["Replicas.Max"] = strconv.Itoa(appConfig.Replicas.Max)
+		validationError.Fields["Replicas.Min"] = strconv.Itoa(appConfig.Replicas.Min)
+		validationErrors.Errors = append(validationErrors.Errors, *validationError)
+	}
+	return validationErrors
+
+}
+func validateReplicasMin(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+	if appConfig.Replicas.Min == 0 {
+		validationError := new(ValidationError)
+		validationError.ErrorMessage = "Replicas.Min is not set"
+		validationError.Fields = make(map[string]string)
+		validationError.Fields["Replicas.Min"] = strconv.Itoa(appConfig.Replicas.Min)
+		validationErrors.Errors = append(validationErrors.Errors, *validationError)
+
+	}
+	return validationErrors
+
+}
+func validateReplicasMax(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+	if appConfig.Replicas.Max == 0 {
+		validationError := new(ValidationError)
+		validationError.ErrorMessage = "Replicas.Max is not set"
+		validationError.Fields = make(map[string]string)
+		validationError.Fields["Replicas.Max"] = strconv.Itoa(appConfig.Replicas.Max)
+		validationErrors.Errors = append(validationErrors.Errors, *validationError)
+
+	}
+	return validationErrors
+
+}
+
+func (errors ValidationErrors) Error() (s string) {
+	for _, validationError := range errors.Errors {
+		s += validationError.ErrorMessage + "\n"
+		for k, v := range validationError.Fields {
+			s += " - " + k + ": " + v + ".\n"
+		}
+	}
+	return s
 }

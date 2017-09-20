@@ -3,7 +3,7 @@ image: navikt/k8s-testapp:69
 replicas:
   min: 10
   max: 20
-  cpuThresholdPercentage: 2
+  cpuThresholdPercentage: 20
 port: 799
 healthcheck:
   liveness:

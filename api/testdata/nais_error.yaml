@@ -1,5 +1,6 @@
 name: k8s-testapp
 image: navikt/k8s-testapp:69
 replicas:
-  max: 10
-  cpuThresholdPercentage: 15
+  min: 10
+  max: 5
+  cpuThresholdPercentage: 2

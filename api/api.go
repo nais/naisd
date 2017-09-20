@@ -75,8 +75,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
-	appConfigUrl := createAppConfigUrl(deploymentRequest.AppConfigUrl, deploymentRequest.Application, deploymentRequest.Version)
-	appConfig, err := fetchAppConfig(appConfigUrl, deploymentRequest)
+	appConfig, err := fetchAppConfig(deploymentRequest)
 
 	if err != nil {
 		glog.Errorf("Unable to fetch manifest: %s\n", err)
@@ -84,6 +83,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Could not fetch manifest: " + err.Error()))
 		return
 	}
+
 
 	naisResources, err := fetchFasitResources(api.FasitUrl, deploymentRequest, appConfig)
 

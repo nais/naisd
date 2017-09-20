@@ -47,7 +47,7 @@ type NaisResource struct {
 	resourceType string
 	properties   map[string]string
 	secret       map[string]string
-	files        map[string][]byte
+	certificates map[string][]byte
 }
 
 func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
@@ -130,21 +130,21 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 		resource.secret = secret
 	}
 
-	if len(fasitResource.Files) > 0 {
-		files, err := resolveFiles(fasitResource.Files, fasitResource.Alias)
+	if fasitResource.ResourceType == "certificate" && len(fasitResource.Files) > 0 {
+		files, err := resolveCertificates(fasitResource.Files, fasitResource.Alias)
 
 		if err != nil {
 			errorCounter.WithLabelValues("resolve_file").Inc()
-			return NaisResource{}, fmt.Errorf("unable to resolve files: %s", err)
+			return NaisResource{}, fmt.Errorf("unable to resolve certificates: %s", err)
 		}
 
-		resource.files = files
+		resource.certificates = files
 
 	}
 
 	return resource, nil
 }
-func resolveFiles(files map[string]interface{}, resourceName string) (map[string][]byte, error) {
+func resolveCertificates(files map[string]interface{}, resourceName string) (map[string][]byte, error) {
 	fileContent := make(map[string][]byte)
 
 	fileName, fileUrl, err := parseFilesObject(files)

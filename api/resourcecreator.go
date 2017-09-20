@@ -159,8 +159,8 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 func createVolumes(deploymentRequest NaisDeploymentRequest, resources []NaisResource) []v1.Volume {
 	var volumes []v1.Volume
 	for _, res := range resources {
-		if res.files != nil {
-			for k := range res.files {
+		if res.certificates != nil {
+			for k := range res.certificates {
 				volume := v1.Volume{
 					Name: 	     k,
 					VolumeSource: v1.VolumeSource{
@@ -186,8 +186,8 @@ func createVolumes(deploymentRequest NaisDeploymentRequest, resources []NaisReso
 func createVolumeMounts(resources []NaisResource) []v1.VolumeMount {
 	var volumeMounts []v1.VolumeMount
 	for _, res := range resources {
-		if res.files != nil {
-			for k := range res.files {
+		if res.certificates != nil {
+			for k := range res.certificates {
 				vm := v1.VolumeMount{
 					Name:      k,
 					MountPath: "/var/run/secrets/naisd.io/",
@@ -283,8 +283,8 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 				data[res.name+"_"+k] = []byte(v)
 			}
 		}
-		if res.files != nil {
-			for k, v := range res.files {
+		if res.certificates != nil {
+			for k, v := range res.certificates {
 				data[res.name+"_"+k] = v
 			}
 		}

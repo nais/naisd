@@ -132,24 +132,47 @@ func TestResolvingSecret(t *testing.T) {
 	assert.Equal(t, "hemmelig", resource.secret["password"])
 }
 
-func TestResolveFile(t *testing.T) {
+func TestResolveCertifcates(t *testing.T) {
 	fasit := FasitClient{"https://fasit.local", "", ""}
 
-	defer gock.Off()
-	gock.New("https://fasit.local").
-		Get("/api/v2/scopedresource").
-		MatchParam("alias", "alias").
-		Reply(200).File("testdata/fasitCertResponse.json")
-	gock.New("https://fasit.adeo.no").
-		Get("/api/v2/resources/3024713/file/keystore").
-		Reply(200).Body(bytes.NewReader([]byte("Some binary format")))
+	t.Run("Fetch certificate file for resources of type certificate", func(t *testing.T) {
+
+		defer gock.Off()
+		gock.New("https://fasit.local").
+			Get("/api/v2/scopedresource").
+			MatchParam("alias", "alias").
+			Reply(200).File("testdata/fasitCertResponse.json")
+		gock.New("https://fasit.adeo.no").
+			Get("/api/v2/resources/3024713/file/keystore").
+			Reply(200).Body(bytes.NewReader([]byte("Some binary format")))
 
 
-	resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
-	assert.NoError(t, err)
+		assert.NoError(t, err)
 
-	assert.Equal(t, "Some binary format", string(resource.files["srvvarseloppgave_cert_keystore"]))
+		assert.Equal(t, "Some binary format", string(resource.certificates["srvvarseloppgave_cert_keystore"]))
+
+	})
+
+	t.Run("Ignore non certificate resources with files ", func(t *testing.T) {
+
+		defer gock.Off()
+		gock.New("https://fasit.local").
+			Get("/api/v2/scopedresource").
+			MatchParam("alias", "alias").
+			Reply(200).File("testdata/fasitFilesNoCertifcateResponse.json").
+			Done()
+
+
+		resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+
+		assert.NoError(t, err)
+
+		assert.Equal(t, 0, len(resource.certificates))
+
+	})
+
 }
 
 func TestParseFilesObject(t *testing.T) {

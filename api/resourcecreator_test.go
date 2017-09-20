@@ -354,7 +354,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
 		assert.Equal(t, []byte(updatedSecretValue), secret.Data[resource1Name+"_"+secret1Key])
-		assert.Equal(t, []byte(updatedFileValue), secret.Data[resource1Name+"_"+fileKey1])
+		assert.Equal(t, updatedFileValue, secret.Data[resource1Name+"_"+fileKey1])
 	})
 }
 

@@ -119,7 +119,7 @@ func createOjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppC
 }
 
 func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1.PodSpec {
-	podSpec :=  v1.PodSpec{
+	return v1.PodSpec{
 		Containers: []v1.Container{
 			{
 				Name:  deploymentRequest.Application,
@@ -154,8 +154,6 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 		RestartPolicy: v1.RestartPolicyAlways,
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
-
-	return podSpec
 }
 
 func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) []v1.EnvVar {

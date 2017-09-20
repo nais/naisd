@@ -305,10 +305,16 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	resource2Value := "value2"
 	secret2Key := "password"
 	secret2Value := "anothersecret"
+	fileKey1 := "fileKey1"
+	fileKey2 := "fileKey2"
+	fileValue1 := []byte("fileValue1")
+	fileValue2 := []byte("fileValue2")
+	files1 := map[string][]byte {fileKey1: fileValue1}
+	files2 := map[string][]byte {fileKey2: fileValue2}
 
 	naisResources := []NaisResource{
-		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value},nil},
-		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, nil}}
+		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value},files1},
+		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, files2}}
 
 	secret := createSecretDef(naisResources, nil, appName, namespace)
 	secret.ObjectMeta.ResourceVersion = resourceVersion
@@ -331,20 +337,24 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "", secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, otherAppName, secret.ObjectMeta.Name)
-		assert.Equal(t, 2, len(secret.Data))
+		assert.Equal(t, 4, len(secret.Data))
 		assert.Equal(t, []byte(secret1Value), secret.Data[resource1Name+"_"+secret1Key])
 		assert.Equal(t, []byte(secret2Value), secret.Data[resource2Name+"_"+secret2Key])
+		assert.Equal(t, fileValue1, secret.Data[resource1Name+"_"+fileKey1])
+		assert.Equal(t, fileValue2, secret.Data[resource2Name+"_"+fileKey2])
 	})
 
 	t.Run("when a secret exists, it's updated", func(t *testing.T) {
 		updatedSecretValue := "newsecret"
+		updatedFileValue := []byte("newfile")
 		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: appName}, []NaisResource{
-			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}, nil}}, clientset)
+			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}, map[string][]byte{fileKey1: updatedFileValue}}}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
 		assert.Equal(t, []byte(updatedSecretValue), secret.Data[resource1Name+"_"+secret1Key])
+		assert.Equal(t, []byte(updatedFileValue), secret.Data[resource1Name+"_"+fileKey1])
 	})
 }
 

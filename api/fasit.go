@@ -148,7 +148,6 @@ func resolveFiles(files map[string]interface{}) (map[string][]byte, error) {
 	fileContent := make(map[string][]byte)
 
 	fileName, fileUrl, err := parseFilesObject(files)
-
 	if err != nil {
 		return fileContent, err
 	}
@@ -158,8 +157,8 @@ func resolveFiles(files map[string]interface{}) (map[string][]byte, error) {
 		errorCounter.WithLabelValues("contact_fasit").Inc()
 		return fileContent, fmt.Errorf("error contacting fasit when resolving file: %s", err)
 	}
-
 	defer response.Body.Close()
+
 	bodyBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		errorCounter.WithLabelValues("contact_fasit").Inc()
@@ -173,28 +172,24 @@ func resolveFiles(files map[string]interface{}) (map[string][]byte, error) {
 
 func parseFilesObject(files map[string]interface{}) (fileName string, fileUrl string, e error) {
 	json, err := gabs.Consume(files)
-
 	if err != nil {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return "", "", fmt.Errorf("Error parsing fasit json: %s ", files)
 	}
 
 	fileName, fileNameFound := json.Path("keystore.filename").Data().(string)
-
 	if !fileNameFound {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return "", "", fmt.Errorf("Error parsing fasit json. Filename not found: %s ", files)
 	}
 
 	fileUrl, fileUrlfound := json.Path("keystore.ref").Data().(string)
-
 	if !fileUrlfound {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return "", "", fmt.Errorf("Error parsing fasit json. Fileurl not found: %s ", files)
 	}
 
 	return fileName, fileUrl, nil
-
 }
 
 func resolveSecret(secrets map[string]map[string]string, username string, password string) (map[string]string, error) {

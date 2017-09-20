@@ -119,7 +119,7 @@ func createOjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppC
 }
 
 func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1.PodSpec {
-	return v1.PodSpec{
+	podSpec :=  v1.PodSpec{
 		Containers: []v1.Container{
 			{
 				Name:  deploymentRequest.Application,
@@ -148,11 +148,14 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 				},
 				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
+
 			},
 		},
 		RestartPolicy: v1.RestartPolicyAlways,
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
+
+	return podSpec
 }
 
 func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) []v1.EnvVar {
@@ -237,6 +240,11 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 		if res.secret != nil {
 			for k, v := range res.secret {
 				data[res.name+"_"+k] = []byte(v)
+			}
+		}
+		if res.files != nil {
+			for k, v := range res.files {
+				data[res.name+"_"+k] = v
 			}
 		}
 	}

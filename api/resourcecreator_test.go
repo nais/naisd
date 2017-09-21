@@ -307,7 +307,7 @@ func TestDeployment(t *testing.T) {
 
 func TestIngress(t *testing.T) {
 	appName := "appname"
-	namespace := "namespace"
+	namespace := "default"
 	subDomain := "example.no"
 	ingress := createIngressDef(subDomain, appName, namespace)
 	ingress.ObjectMeta.ResourceVersion = resourceVersion

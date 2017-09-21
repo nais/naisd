@@ -4,6 +4,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 	"testing"
+	"encoding/json"
+	"bytes"
 )
 
 func TestGettingResource(t *testing.T) {
@@ -128,4 +130,88 @@ func TestResolvingSecret(t *testing.T) {
 
 	assert.Equal(t, "1", resource.properties["a"])
 	assert.Equal(t, "hemmelig", resource.secret["password"])
+}
+
+func TestResolveCertifcates(t *testing.T) {
+	fasit := FasitClient{"https://fasit.local", "", ""}
+
+	t.Run("Fetch certificate file for resources of type certificate", func(t *testing.T) {
+
+		defer gock.Off()
+		gock.New("https://fasit.local").
+			Get("/api/v2/scopedresource").
+			MatchParam("alias", "alias").
+			Reply(200).File("testdata/fasitCertResponse.json")
+		gock.New("https://fasit.adeo.no").
+			Get("/api/v2/resources/3024713/file/keystore").
+			Reply(200).Body(bytes.NewReader([]byte("Some binary format")))
+
+
+		resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Some binary format", string(resource.certificates["srvvarseloppgave_cert_keystore"]))
+
+	})
+
+	t.Run("Ignore non certificate resources with files ", func(t *testing.T) {
+
+		defer gock.Off()
+		gock.New("https://fasit.local").
+			Get("/api/v2/scopedresource").
+			MatchParam("alias", "alias").
+			Reply(200).File("testdata/fasitFilesNoCertifcateResponse.json").
+			Done()
+
+
+		resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+
+		assert.NoError(t, err)
+
+		assert.Equal(t, 0, len(resource.certificates))
+
+	})
+
+}
+
+func TestParseFilesObject(t *testing.T) {
+
+	t.Run("Parse filename and fileurl correctly", func(t *testing.T) {
+		var jsonMap map[string]interface{}
+		json.Unmarshal([]byte(`{
+			"keystore": {
+				"filename": "keystore",
+				"ref": "https://file.url"
+			}}`), &jsonMap)
+		fileName, fileUrl, err := parseFilesObject(jsonMap)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "keystore", fileName)
+		assert.Equal(t, "https://file.url", fileUrl)
+
+	})
+
+	t.Run("Err if filename not found ", func(t *testing.T) {
+		var jsonMap map[string]interface{}
+		json.Unmarshal([]byte(`{
+			"keystore": {
+				"ref": "https://file.url"
+			}}`), &jsonMap)
+		_, _, err := parseFilesObject(jsonMap)
+
+		assert.Error(t, err)
+	})
+
+	t.Run("Err if fileurl not found ", func(t *testing.T) {
+		var jsonMap map[string]interface{}
+		json.Unmarshal([]byte(`{
+			"keystore": {
+				"filename": "keystore",
+			}}`), &jsonMap)
+		_, _, err := parseFilesObject(jsonMap)
+
+		assert.Error(t, err)
+	})
+
 }

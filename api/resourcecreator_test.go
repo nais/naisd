@@ -32,11 +32,11 @@ func newDefaultAppConfig() NaisAppConfig {
 		Port:  port,
 		Healthcheck: Healthcheck{
 			Readiness: Probe{
-				Path: readinessPath,
+				Path:         readinessPath,
 				InitialDelay: 20,
 			},
 			Liveness: Probe{
-				Path: livenessPath,
+				Path:         livenessPath,
 				InitialDelay: 20,
 			},
 		},
@@ -56,7 +56,7 @@ func newDefaultAppConfig() NaisAppConfig {
 		},
 	}
 
-	return  appConfig
+	return appConfig
 
 }
 
@@ -100,6 +100,8 @@ func TestDeployment(t *testing.T) {
 	resource1Value := "value1"
 	secret1Key := "password"
 	secret1Value := "secret"
+	cert1Key := "cert1Key"
+	cert1Value := []byte("cert1Value")
 
 	resource2Name := "r2"
 	resource2Type := "db"
@@ -107,6 +109,8 @@ func TestDeployment(t *testing.T) {
 	resource2Value := "value2"
 	secret2Key := "password"
 	secret2Value := "anothersecret"
+	cert2Key := "cert2Key"
+	cert2Value := []byte("cert2Value")
 
 	invalidlyNamedResourceNameDot := "dots.are.not.allowed"
 	invalidlyNamedResourceTypeDot := "restservice"
@@ -128,28 +132,30 @@ func TestDeployment(t *testing.T) {
 			resource1Type,
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{secret1Key: secret1Value},
+			map[string][]byte{cert1Key: cert1Value},
 		},
 		{
 			resource2Name,
 			resource2Type,
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{secret2Key: secret2Value},
+			map[string][]byte{cert2Key: cert2Value},
 		},
 		{
 			invalidlyNamedResourceNameDot,
 			invalidlyNamedResourceTypeDot,
 			map[string]string{invalidlyNamedResourceKeyDot: invalidlyNamedResourceValueDot},
 			map[string]string{invalidlyNamedResourceSecretKeyDot: invalidlyNamedResourceSecretValueDot},
+			nil,
 		},
 		{
 			invalidlyNamedResourceNameColon,
 			invalidlyNamedResourceTypeColon,
 			map[string]string{invalidlyNamedResourceKeyColon: invalidlyNamedResourceValueColon},
 			map[string]string{invalidlyNamedResourceSecretKeyColon: invalidlyNamedResourceSecretValueColon},
+			nil,
 		},
 	}
-
-
 
 	deployment := createDeploymentDef(naisResources, newDefaultAppConfig(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
 	deployment.ObjectMeta.ResourceVersion = resourceVersion
@@ -197,9 +203,9 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, cpuRequest, ptr(container.Resources.Requests["cpu"]).String())
 		assert.Equal(t, cpuLimit, ptr(container.Resources.Limits["cpu"]).String())
 		assert.Equal(t, map[string]string{
-			"prometheus.io/scrape":"true",
-			"prometheus.io/path":"/path",
-			"prometheus.io/port":"http",
+			"prometheus.io/scrape": "true",
+			"prometheus.io/path":   "/path",
+			"prometheus.io/port":   "http",
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
@@ -220,7 +226,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion, }, newDefaultAppConfig(), naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion,}, newDefaultAppConfig(), naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
@@ -238,14 +244,64 @@ func TestDeployment(t *testing.T) {
 		appConfig.Prometheus.Path = "/newPath"
 		appConfig.Prometheus.Enabled = false
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version, }, appConfig, naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, appConfig, naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, map[string]string{
-			"prometheus.io/scrape":"false",
-			"prometheus.io/path":"/newPath",
-			"prometheus.io/port":"http",
+			"prometheus.io/scrape": "false",
+			"prometheus.io/path":   "/newPath",
+			"prometheus.io/port":   "http",
 		}, updatedDeployment.Spec.Template.Annotations)
+	})
+
+	t.Run("File secrets are mounted correctly for an updated deployment", func(t *testing.T) {
+
+		updatedCertKey := "updatedCertKey"
+		updatedCertValue := []byte("updatedCertValue")
+
+		updatedResource := []NaisResource{
+			{
+				resource1Name,
+				resource1Type,
+				nil,
+				nil,
+				map[string][]byte{updatedCertKey: updatedCertValue},
+			},
+		}
+
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), updatedResource, clientset)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
+		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items))
+		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
+		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
+
+		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts))
+		assert.Equal(t, "/var/run/secrets/naisd.io/", updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
+		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+	})
+
+	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
+		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), naisResources, clientset)
+
+		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Volumes))
+		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes[0].Secret.Items))
+		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
+		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Name)
+		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes[1].Secret.Items))
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Key)
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Path)
+
+		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts))
+		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
+		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].MountPath)
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].Name)
+
 	})
 }
 
@@ -301,10 +357,16 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	resource2Value := "value2"
 	secret2Key := "password"
 	secret2Value := "anothersecret"
+	fileKey1 := "fileKey1"
+	fileKey2 := "fileKey2"
+	fileValue1 := []byte("fileValue1")
+	fileValue2 := []byte("fileValue2")
+	files1 := map[string][]byte{fileKey1: fileValue1}
+	files2 := map[string][]byte{fileKey2: fileValue2}
 
 	naisResources := []NaisResource{
-		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}},
-		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}}}
+		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}, files1},
+		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, files2}}
 
 	secret := createSecretDef(naisResources, nil, appName, namespace)
 	secret.ObjectMeta.ResourceVersion = resourceVersion
@@ -327,20 +389,24 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "", secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, otherAppName, secret.ObjectMeta.Name)
-		assert.Equal(t, 2, len(secret.Data))
+		assert.Equal(t, 4, len(secret.Data))
 		assert.Equal(t, []byte(secret1Value), secret.Data[resource1Name+"_"+secret1Key])
 		assert.Equal(t, []byte(secret2Value), secret.Data[resource2Name+"_"+secret2Key])
+		assert.Equal(t, fileValue1, secret.Data[resource1Name+"_"+fileKey1])
+		assert.Equal(t, fileValue2, secret.Data[resource2Name+"_"+fileKey2])
 	})
 
 	t.Run("when a secret exists, it's updated", func(t *testing.T) {
 		updatedSecretValue := "newsecret"
+		updatedFileValue := []byte("newfile")
 		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: appName}, []NaisResource{
-			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}}}, clientset)
+			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}, map[string][]byte{fileKey1: updatedFileValue}}}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
 		assert.Equal(t, []byte(updatedSecretValue), secret.Data[resource1Name+"_"+secret1Key])
+		assert.Equal(t, updatedFileValue, secret.Data[resource1Name+"_"+fileKey1])
 	})
 }
 
@@ -417,13 +483,13 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	naisResources := []NaisResource{
-		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}}}
+		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}, nil}}
 
 	service := createServiceDef(appName, namespace)
 
-	autoscaler := createOrUpdateAutoscalerDef(6,9,6, nil, appName, namespace)
+	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, namespace)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
-	clientset := fake.NewSimpleClientset(autoscaler,service)
+	clientset := fake.NewSimpleClientset(autoscaler, service)
 
 	t.Run("creates all resources", func(t *testing.T) {
 		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, "nais.example.yo", clientset)
@@ -440,7 +506,7 @@ func TestCreateK8sResources(t *testing.T) {
 	})
 
 	naisResourcesNoSecret := []NaisResource{
-		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{}}}
+		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{}, nil}}
 
 	t.Run("omits secret creation when no secret resources ex", func(t *testing.T) {
 		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())

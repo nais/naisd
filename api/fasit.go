@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"github.com/Jeffail/gabs"
 )
 
 func init() {
@@ -33,6 +34,7 @@ type FasitResource struct {
 	ResourceType string `json:"type"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
+	Certificates map[string]interface{} `json:"files""`
 }
 
 type ResourceRequest struct {
@@ -45,6 +47,7 @@ type NaisResource struct {
 	resourceType string
 	properties   map[string]string
 	secret       map[string]string
+	certificates map[string][]byte
 }
 
 func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
@@ -127,7 +130,66 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 		resource.secret = secret
 	}
 
+	if fasitResource.ResourceType == "certificate" && len(fasitResource.Certificates) > 0 {
+		files, err := resolveCertificates(fasitResource.Certificates, fasitResource.Alias)
+
+		if err != nil {
+			errorCounter.WithLabelValues("resolve_file").Inc()
+			return NaisResource{}, fmt.Errorf("unable to resolve Certificates: %s", err)
+		}
+
+		resource.certificates = files
+
+	}
+
 	return resource, nil
+}
+func resolveCertificates(files map[string]interface{}, resourceName string) (map[string][]byte, error) {
+	fileContent := make(map[string][]byte)
+
+	fileName, fileUrl, err := parseFilesObject(files)
+	if err != nil {
+		return fileContent, err
+	}
+
+	response, err := http.Get(fileUrl)
+	if err != nil {
+		errorCounter.WithLabelValues("contact_fasit").Inc()
+		return fileContent, fmt.Errorf("error contacting fasit when resolving file: %s", err)
+	}
+	defer response.Body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		errorCounter.WithLabelValues("contact_fasit").Inc()
+		return fileContent, fmt.Errorf("error downloading file: %s", err)
+	}
+
+	fileContent[resourceName + "_" + fileName] = bodyBytes
+	return fileContent, nil
+
+}
+
+func parseFilesObject(files map[string]interface{}) (fileName string, fileUrl string, e error) {
+	json, err := gabs.Consume(files)
+	if err != nil {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return "", "", fmt.Errorf("Error parsing fasit json: %s ", files)
+	}
+
+	fileName, fileNameFound := json.Path("keystore.filename").Data().(string)
+	if !fileNameFound {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return "", "", fmt.Errorf("Error parsing fasit json. Filename not found: %s ", files)
+	}
+
+	fileUrl, fileUrlfound := json.Path("keystore.ref").Data().(string)
+	if !fileUrlfound {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return "", "", fmt.Errorf("Error parsing fasit json. Fileurl not found: %s ", files)
+	}
+
+	return fileName, fileUrl, nil
 }
 
 func resolveSecret(secrets map[string]map[string]string, username string, password string) (map[string]string, error) {

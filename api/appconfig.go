@@ -86,7 +86,7 @@ func createAppConfigUrl(appConfigUrl, application, version string) string {
 	if appConfigUrl != "" {
 		return appConfigUrl
 	} else {
-		return fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/%s", application, version, fmt.Sprintf("%s-%s.yaml", application, version))
+		return fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/nais.yaml", application, version)
 	}
 }
 

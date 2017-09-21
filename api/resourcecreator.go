@@ -62,6 +62,10 @@ func ResourceVariableName(resource NaisResource, key string) string {
 	return resource.name + "_" + key
 }
 
+func ResourceEnvironmentVariableName(resource NaisResource, key string) string {
+	return strings.ToUpper(ResourceVariableName(resource, key))
+}
+
 // Creates a Kubernetes Deployment object
 // If existingDeployment is provided, this is updated with modifiable fields
 func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
@@ -160,24 +164,27 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 
 	for _, res := range naisResources {
 		for k, v := range res.properties {
-			envVar := v1.EnvVar{ResourceVariableName(res, k), v, nil}
-			envVars = append(envVars, envVar)
+			for _, variableName := range [2]string{ResourceVariableName(res, k), ResourceEnvironmentVariableName(res, k)} {
+				envVar := v1.EnvVar{variableName, v, nil}
+				envVars = append(envVars, envVar)
+			}
 		}
 		if res.secret != nil {
 			for k := range res.secret {
-				variableName := ResourceVariableName(res, k)
-				envVar := v1.EnvVar{
-					Name: variableName,
-					ValueFrom: &v1.EnvVarSource{
-						SecretKeyRef: &v1.SecretKeySelector{
-							LocalObjectReference: v1.LocalObjectReference{
-								Name: deploymentRequest.Application,
+				for _, variableName := range [2]string{ResourceVariableName(res, k), ResourceEnvironmentVariableName(res, k)} {
+					envVar := v1.EnvVar{
+						Name: variableName,
+						ValueFrom: &v1.EnvVarSource{
+							SecretKeyRef: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: deploymentRequest.Application,
+								},
+								Key: variableName,
 							},
-							Key: variableName,
 						},
-					},
+					}
+					envVars = append(envVars, envVar)
 				}
-				envVars = append(envVars, envVar)
 			}
 		}
 	}
@@ -187,6 +194,9 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 func createDefaultEnvironmentVariables(version string) []v1.EnvVar {
 	return []v1.EnvVar{{
 		Name:  "app_version",
+		Value: version,
+	}, {
+		Name:  "APP_VERSION",
 		Value: version,
 	}}
 }

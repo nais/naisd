@@ -100,7 +100,7 @@ func TestDeployment(t *testing.T) {
 	resource1Value := "value1"
 	secret1Key := "password"
 	secret1Value := "secret"
-	cert1Key := "cert1Key"
+	cert1Key := "cert1key"
 	cert1Value := []byte("cert1Value")
 
 	resource2Name := "r2"
@@ -109,7 +109,7 @@ func TestDeployment(t *testing.T) {
 	resource2Value := "value2"
 	secret2Key := "password"
 	secret2Value := "anothersecret"
-	cert2Key := "cert2Key"
+	cert2Key := "cert2key"
 	cert2Value := []byte("cert2Value")
 
 	invalidlyNamedResourceNameDot := "dots.are.not.allowed"
@@ -256,7 +256,7 @@ func TestDeployment(t *testing.T) {
 
 	t.Run("File secrets are mounted correctly for an updated deployment", func(t *testing.T) {
 
-		updatedCertKey := "updatedCertKey"
+		updatedCertKey := "updatedkey"
 		updatedCertValue := []byte("updatedCertValue")
 
 		updatedResource := []NaisResource{
@@ -458,7 +458,7 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 }
 
 func TestDNS1123ValidResourceNames(t *testing.T) {
-	key := "key_underscore"
+	key := "key_underscore_Upper"
 	value := []byte("value")
 
 	naisResource := []NaisResource{
@@ -475,7 +475,7 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 		volumeMounts := createVolumeMounts(naisResource)
 
 		assert.Equal(t, 1, len(volumeMounts))
-		assert.Equal(t, "key-underscore", volumeMounts[0].Name)
+		assert.Equal(t, "key-underscore-upper", volumeMounts[0].Name)
 
 	})
 
@@ -483,7 +483,7 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 		volume := createVolumes(NaisDeploymentRequest{Namespace: namespace, Application: appName}, naisResource)
 
 		assert.Equal(t, 1, len(volume))
-		assert.Equal(t, "key-underscore", volume[0].Name)
+		assert.Equal(t, "key-underscore-upper", volume[0].Name)
 
 	})
 

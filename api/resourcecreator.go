@@ -63,7 +63,8 @@ func ResourceVariableName(resource NaisResource, key string) string {
 }
 
 func validLabelName(str string) string {
-	return strings.Replace(str, "_", "-", -1 )
+	tmpStr := strings.Replace(str, "_", "-", -1)
+	return strings.ToLower(tmpStr)
 }
 
 // Creates a Kubernetes Deployment object

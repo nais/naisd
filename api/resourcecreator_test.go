@@ -457,6 +457,38 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 	})
 }
 
+func TestDNS1123ValidResourceNames(t *testing.T) {
+	key := "key_underscore"
+	value := []byte("value")
+
+	naisResource := []NaisResource{
+		{
+			"name",
+			"resourcrType",
+			nil,
+			nil,
+			map[string][]byte{key: value},
+		},
+	}
+
+	t.Run("Generate valid volume mount name", func(t *testing.T) {
+		volumeMounts := createVolumeMounts(naisResource)
+
+		assert.Equal(t, 1, len(volumeMounts))
+		assert.Equal(t, "key-underscore", volumeMounts[0].Name)
+
+	})
+
+	t.Run("Generate valid volume name", func(t *testing.T) {
+		volume := createVolumes(NaisDeploymentRequest{Namespace: namespace, Application: appName}, naisResource)
+
+		assert.Equal(t, 1, len(volume))
+		assert.Equal(t, "key-underscore", volume[0].Name)
+
+	})
+
+}
+
 func TestCreateK8sResources(t *testing.T) {
 	deploymentRequest := NaisDeploymentRequest{
 		Application:  appName,

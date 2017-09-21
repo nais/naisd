@@ -62,6 +62,10 @@ func ResourceVariableName(resource NaisResource, key string) string {
 	return resource.name + "_" + key
 }
 
+func validLabelName(str string) string {
+	return strings.Replace(str, "_", "-", -1 )
+}
+
 // Creates a Kubernetes Deployment object
 // If existingDeployment is provided, this is updated with modifiable fields
 func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
@@ -162,7 +166,7 @@ func createVolumes(deploymentRequest NaisDeploymentRequest, resources []NaisReso
 		if res.certificates != nil {
 			for k := range res.certificates {
 				volume := v1.Volume{
-					Name: 	     k,
+					Name: 	     validLabelName(k),
 					VolumeSource: v1.VolumeSource{
 						Secret: &v1.SecretVolumeSource{
 							SecretName: deploymentRequest.Application,
@@ -189,7 +193,7 @@ func createVolumeMounts(resources []NaisResource) []v1.VolumeMount {
 		if res.certificates != nil {
 			for k := range res.certificates {
 				vm := v1.VolumeMount{
-					Name:      k,
+					Name:      validLabelName(k),
 					MountPath: "/var/run/secrets/naisd.io/",
 				}
 				volumeMounts = append(volumeMounts, vm)

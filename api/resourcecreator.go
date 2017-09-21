@@ -311,7 +311,7 @@ func createIngressDef(subdomain, application, namespace string) *v1beta1.Ingress
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
 				{
-					Host: fmt.Sprintf("%s.%s", application, subdomain),
+					Host: createIngressHostname(application, namespace, subdomain),
 					IngressRuleValue: v1beta1.IngressRuleValue{
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
@@ -327,6 +327,14 @@ func createIngressDef(subdomain, application, namespace string) *v1beta1.Ingress
 				},
 			},
 		},
+	}
+}
+
+func createIngressHostname(application, namespace, subdomain string) string {
+	if namespace == "default" {
+		return fmt.Sprintf("%s.%s", application, subdomain)
+	} else {
+		return fmt.Sprintf("%s-%s.%s", application, namespace, subdomain)
 	}
 }
 

@@ -335,6 +335,13 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
 	})
 
+	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {
+		namespace := "nondefault"
+		ingress, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
+		assert.NoError(t, err)
+		assert.Equal(t, otherAppName+"-" +namespace+ "."+subDomain, ingress.Spec.Rules[0].Host)
+	})
+
 	t.Run("when an ingress exists, nothing happens", func(t *testing.T) {
 		nilValue, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: appName}, subDomain, clientset)
 		assert.NoError(t, err)

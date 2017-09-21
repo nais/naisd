@@ -1,15 +1,16 @@
-name: appname # mandatory
-image: navikt/k8s-testapp # mandatory. Ref to docker container
+image: navikt/nais-testapp # Optional. Defaults to docker.adeo.no:5000/appname
 replicas: # set min = max to disable autoscaling
-  min: 2 # minimum number of replicas
+  min: 2 # minimum number of replicas.
   max: 4 # maximum number of replicas
   cpuThresholdPercentage: 50 # total cpu percentage threshold on deployment, at which point it will increase number of pods if current < max
 port: 8080 # the port number which is exposed by the container and should receive traffic
-healthcheck:
+healthcheck: #Optional
   liveness:
     path: isalive
+    initialDelay: 20
   readiness:
     path: isready
+    initialDelay: 20
 prometheus: #Optional
   enabled: false # if true the pod will be scraped for metrics by prometheus
   path: /metrics # Path to prometheus-metrics
@@ -26,7 +27,7 @@ fasitResources: # resources fetched from Fasit
     resourceType: datasource
   - alias: someservice
     resourceType: restservice
-  exposed:
+  exposed: # Will be registered as exposed services on an application instane in Fasit
   - alias: myservice
     resourceType: restservice
     path: /api

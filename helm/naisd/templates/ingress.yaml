@@ -2,7 +2,6 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: naisd
-  namespace: kube-system
 spec:
   rules:
   - host: "{{ .Values.ingress }}"

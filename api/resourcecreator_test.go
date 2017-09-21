@@ -392,8 +392,8 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, 4, len(secret.Data))
 		assert.Equal(t, []byte(secret1Value), secret.Data[resource1Name+"_"+secret1Key])
 		assert.Equal(t, []byte(secret2Value), secret.Data[resource2Name+"_"+secret2Key])
-		assert.Equal(t, fileValue1, secret.Data[resource1Name+"_"+fileKey1])
-		assert.Equal(t, fileValue2, secret.Data[resource2Name+"_"+fileKey2])
+		assert.Equal(t, fileValue1, secret.Data[fileKey1])
+		assert.Equal(t, fileValue2, secret.Data[fileKey2])
 	})
 
 	t.Run("when a secret exists, it's updated", func(t *testing.T) {
@@ -406,7 +406,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
 		assert.Equal(t, []byte(updatedSecretValue), secret.Data[resource1Name+"_"+secret1Key])
-		assert.Equal(t, updatedFileValue, secret.Data[resource1Name+"_"+fileKey1])
+		assert.Equal(t, updatedFileValue, secret.Data[fileKey1])
 	})
 }
 

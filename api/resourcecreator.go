@@ -157,55 +157,53 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 				},
 				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
-				VolumeMounts:    createVolumeMounts(naisResources),
+				VolumeMounts:    []v1.VolumeMount{createCertificateVolumeMount(deploymentRequest, naisResources)},
 			},
 		},
-		Volumes:       createVolumes(deploymentRequest, naisResources),
+		Volumes:       []v1.Volume{createCertificateVolume(deploymentRequest, naisResources)},
 		RestartPolicy: v1.RestartPolicyAlways,
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
 }
-func createVolumes(deploymentRequest NaisDeploymentRequest, resources []NaisResource) []v1.Volume {
-	var volumes []v1.Volume
+func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources []NaisResource) v1.Volume {
+	var items []v1.KeyToPath
 	for _, res := range resources {
 		if res.certificates != nil {
 			for k := range res.certificates {
-				volume := v1.Volume{
-					Name: 	     validLabelName(k),
-					VolumeSource: v1.VolumeSource{
-						Secret: &v1.SecretVolumeSource{
-							SecretName: deploymentRequest.Application,
-							Items: []v1.KeyToPath{
-								{
-									Key:  k,
-									Path: k,
-								},
-							},
-
-						},
-					},
+				item := v1.KeyToPath{
+					Key: k,
 				}
-				volumes = append(volumes, volume)
+				items = append(items, item)
 			}
 		}
 	}
-	return volumes
+
+	if len(items) > 0 {
+		return v1.Volume{
+			Name: validLabelName(deploymentRequest.Application),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: deploymentRequest.Application,
+					Items:      items,
+				},
+			},
+		}
+	}
+
+	return v1.Volume{}
+
 }
 
-func createVolumeMounts(resources []NaisResource) []v1.VolumeMount {
-	var volumeMounts []v1.VolumeMount
+func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resources []NaisResource) v1.VolumeMount {
 	for _, res := range resources {
 		if res.certificates != nil {
-			for k := range res.certificates {
-				vm := v1.VolumeMount{
-					Name:      validLabelName(k),
-					MountPath: "/var/run/secrets/naisd.io/",
-				}
-				volumeMounts = append(volumeMounts, vm)
+			return v1.VolumeMount{
+				Name:      validLabelName(deploymentRequest.Application),
+				MountPath: "/var/run/secrets/naisd.io/",
 			}
 		}
 	}
-	return volumeMounts
+	return v1.VolumeMount{}
 }
 
 func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) []v1.EnvVar {

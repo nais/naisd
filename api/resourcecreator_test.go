@@ -310,34 +310,27 @@ func TestDeployment(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
-		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, appName, updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items))
 		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
-		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
-		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, appName, updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
 		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), naisResources, clientset)
 
-		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Volumes))
-		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Name)
-		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes[0].Secret.Items))
+		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
+		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Volumes[0].Secret.Items))
 		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
-		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
-		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Name)
-		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes[1].Secret.Items))
-		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Key)
-		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[1].Secret.Items[0].Path)
+		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[1].Key)
 
-		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts))
+		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
-		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].MountPath)
-		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[1].Name)
+		assert.Equal(t, appName, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
 
 	})
 }
@@ -502,32 +495,26 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 }
 
 func TestDNS1123ValidResourceNames(t *testing.T) {
-	key := "key_underscore_Upper"
-	value := []byte("value")
-
+	name := "key_underscore_Upper"
 	naisResource := []NaisResource{
 		{
 			"name",
 			"resourcrType",
 			nil,
 			nil,
-			map[string][]byte{key: value},
+			map[string][]byte{"key": []byte("value")},
 		},
 	}
 
 	t.Run("Generate valid volume mount name", func(t *testing.T) {
-		volumeMounts := createVolumeMounts(naisResource)
-
-		assert.Equal(t, 1, len(volumeMounts))
-		assert.Equal(t, "key-underscore-upper", volumeMounts[0].Name)
+		volumeMount := createCertificateVolumeMount(NaisDeploymentRequest{Namespace: namespace, Application: name}, naisResource)
+		assert.Equal(t, "key-underscore-upper", volumeMount.Name)
 
 	})
 
 	t.Run("Generate valid volume name", func(t *testing.T) {
-		volume := createVolumes(NaisDeploymentRequest{Namespace: namespace, Application: appName}, naisResource)
-
-		assert.Equal(t, 1, len(volume))
-		assert.Equal(t, "key-underscore-upper", volume[0].Name)
+		volume := createCertificateVolume(NaisDeploymentRequest{Namespace: namespace, Application: name}, naisResource)
+		assert.Equal(t, "key-underscore-upper", volume.Name)
 
 	})
 

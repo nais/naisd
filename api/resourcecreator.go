@@ -171,7 +171,7 @@ func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources 
 		if res.certificates != nil {
 			for k := range res.certificates {
 				item := v1.KeyToPath{
-					Key: k,
+					Key:  k,
 					Path: k,
 				}
 				items = append(items, item)
@@ -219,20 +219,31 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 		}
 		if res.secret != nil {
 			for k := range res.secret {
-				for _, variableName := range [2]string{ResourceVariableName(res, k), ResourceEnvironmentVariableName(res, k)} {
-					envVar := v1.EnvVar{
-						Name: variableName,
-						ValueFrom: &v1.EnvVarSource{
-							SecretKeyRef: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: deploymentRequest.Application,
-								},
-								Key: variableName,
+				variableName := ResourceVariableName(res, k)
+				envVar := v1.EnvVar{
+					Name: variableName,
+					ValueFrom: &v1.EnvVarSource{
+						SecretKeyRef: &v1.SecretKeySelector{
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: deploymentRequest.Application,
 							},
+							Key: variableName,
 						},
-					}
-					envVars = append(envVars, envVar)
+					},
 				}
+				envarUpper := v1.EnvVar{
+					Name: strings.ToUpper(variableName),
+					ValueFrom: &v1.EnvVarSource{
+						SecretKeyRef: &v1.SecretKeySelector{
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: deploymentRequest.Application,
+							},
+							Key: variableName,
+						},
+					},
+				}
+				envVars = append(envVars, envVar)
+				envVars = append(envVars, envarUpper)
 			}
 		}
 	}

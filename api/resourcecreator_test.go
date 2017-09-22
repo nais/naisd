@@ -237,7 +237,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, resource1Name+"_"+secret1Key, env[4].Name)
 		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[4].ValueFrom)
 		assert.Equal(t, strings.ToUpper(resource1Name+"_"+secret1Key), env[5].Name)
-		assert.Equal(t, createSecretRef(otherAppName, strings.ToUpper(secret1Key), strings.ToUpper(resource1Name)), env[5].ValueFrom)
+		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[5].ValueFrom)
 
 		assert.Equal(t, resource2Name+"_"+resource2Key, env[6].Name)
 		assert.Equal(t, "value2", env[6].Value)
@@ -247,7 +247,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, resource2Name+"_"+secret2Key, env[8].Name)
 		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[8].ValueFrom)
 		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[9].Name)
-		assert.Equal(t, createSecretRef(otherAppName, strings.ToUpper(secret2Key), strings.ToUpper(resource2Name)), env[9].ValueFrom)
+		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[9].ValueFrom)
 
 		assert.Equal(t, "dots_are_not_allowed_key", env[10].Name)
 		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[11].Name)

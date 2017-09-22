@@ -335,6 +335,27 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
 
 	})
+
+	t.Run("No volume or volume mounts are added when application does not depende on a Fasit Certificate", func(t *testing.T) {
+		resources := []NaisResource{
+			{
+				resource1Name,
+				resource1Type,
+				nil,
+				nil,
+				nil,
+			},
+		}
+
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), resources, clientset)
+
+		assert.NoError(t, err)
+
+		spec := deployment.Spec.Template.Spec
+		assert.Empty(t, spec.Volumes,"Unexpected volume length: %d", len(spec.Volumes))
+		assert.Empty(t, spec.Containers[0].VolumeMounts,"Unexpected volume  mount length: %d", len(spec.Containers[0].VolumeMounts))
+
+	})
 }
 
 func TestIngress(t *testing.T) {

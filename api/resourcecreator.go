@@ -172,6 +172,7 @@ func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources 
 			for k := range res.certificates {
 				item := v1.KeyToPath{
 					Key: k,
+					Path: k,
 				}
 				items = append(items, item)
 			}

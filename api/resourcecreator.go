@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
 	"strconv"
+	"github.com/golang/glog"
 )
 
 type DeploymentResult struct {
@@ -124,11 +125,18 @@ func createOjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppC
 }
 
 func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1.PodSpec {
+	image := appConfig.Image
+
+	if ! strings.Contains(image, ":") {
+		glog.Infof("Image is specified without version, using %s\n", deploymentRequest.Version)
+		image = image + ":" + deploymentRequest.Version
+	}
+
 	return v1.PodSpec{
 		Containers: []v1.Container{
 			{
 				Name:  deploymentRequest.Application,
-				Image: fmt.Sprintf("%s:%s", appConfig.Image, deploymentRequest.Version),
+				Image: image,
 				Ports: []v1.ContainerPort{
 					{ContainerPort: int32(appConfig.Port), Protocol: v1.ProtocolTCP, Name: DefaultPortName},
 				},

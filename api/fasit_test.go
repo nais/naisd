@@ -6,6 +6,7 @@ import (
 	"testing"
 	"encoding/json"
 	"bytes"
+	"strings"
 )
 
 func TestGettingResource(t *testing.T) {
@@ -35,6 +36,19 @@ func TestGettingResource(t *testing.T) {
 	assert.Equal(t, resourceType, resource.resourceType)
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
 	assert.Equal(t, "basta", resource.properties["username"])
+}
+
+func TestResourceError(t *testing.T) {
+	defer gock.Off()
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
+		Reply(404).BodyString("not found")
+
+	resource, err := fetchFasitResources("https://fasit.local", NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}, NaisAppConfig{FasitResources: FasitResources{Used: []UsedResource{{Alias: "resourcealias", ResourceType: "baseurl"}}}})
+
+	assert.Error(t, err)
+	assert.Empty(t, resource)
+	assert.True(t, strings.Contains(err.Error(), "not found (404)"))
 }
 
 func TestGettingListOfResources(t *testing.T) {
@@ -146,7 +160,6 @@ func TestResolveCertifcates(t *testing.T) {
 			Get("/api/v2/resources/3024713/file/keystore").
 			Reply(200).Body(bytes.NewReader([]byte("Some binary format")))
 
-
 		resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
 		assert.NoError(t, err)
@@ -163,7 +176,6 @@ func TestResolveCertifcates(t *testing.T) {
 			MatchParam("alias", "alias").
 			Reply(200).File("testdata/fasitFilesNoCertifcateResponse.json").
 			Done()
-
 
 		resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 

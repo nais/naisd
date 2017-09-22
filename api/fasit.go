@@ -54,7 +54,7 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 	for _, request := range resourcesRequests {
 		resource, err := fasit.getResource(request, environment, application, zone)
 		if err != nil {
-			return []NaisResource{}, fmt.Errorf("failed to get resource for "+request.Alias, err)
+			return []NaisResource{}, fmt.Errorf("Failed to get resource: %s. %s", request.Alias, err)
 		}
 		resources = append(resources, resource)
 	}
@@ -82,15 +82,6 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if err != nil {
-		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return NaisResource{}, fmt.Errorf("Error contacting fasit: %s", err)
-	}
-	httpReqsCounter.WithLabelValues(string(resp.StatusCode), "GET").Inc()
-	if resp.StatusCode > 299 {
-		errorCounter.WithLabelValues("error_fasit").Inc()
-		return NaisResource{}, fmt.Errorf("Fasit gave errormessage: %s" + strconv.Itoa(resp.StatusCode))
-	}
 
 	defer resp.Body.Close()
 
@@ -99,6 +90,18 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 		errorCounter.WithLabelValues("read_body").Inc()
 		return NaisResource{}, fmt.Errorf("Could not read body: %s", err)
 	}
+
+	if err != nil {
+		errorCounter.WithLabelValues("contact_fasit").Inc()
+		return NaisResource{}, fmt.Errorf("Error contacting fasit: %s", err)
+	}
+
+	httpReqsCounter.WithLabelValues(string(resp.StatusCode), "GET").Inc()
+	if resp.StatusCode > 299 {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return NaisResource{}, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+	}
+
 	var fasitResource FasitResource
 
 	err = json.Unmarshal(body, &fasitResource)

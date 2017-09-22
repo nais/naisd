@@ -352,8 +352,8 @@ func TestDeployment(t *testing.T) {
 		assert.NoError(t, err)
 
 		spec := deployment.Spec.Template.Spec
-		assert.Empty(t, spec.Volumes,"Unexpected volume length: %d", len(spec.Volumes))
-		assert.Empty(t, spec.Containers[0].VolumeMounts,"Unexpected volume  mount length: %d", len(spec.Containers[0].VolumeMounts))
+		assert.Empty(t, spec.Volumes,"Unexpected volumes")
+		assert.Empty(t, spec.Containers[0].VolumeMounts,"Unexpected volume mounts.")
 
 	})
 }

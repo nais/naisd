@@ -128,7 +128,7 @@ func createOjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppC
 }
 
 func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1.PodSpec {
-	return v1.PodSpec{
+	podSpec := v1.PodSpec{
 		Containers: []v1.Container{
 			{
 				Name:  deploymentRequest.Application,
@@ -157,14 +157,30 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 				},
 				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
-				VolumeMounts:    []v1.VolumeMount{createCertificateVolumeMount(deploymentRequest, naisResources)},
 			},
 		},
-		Volumes:       []v1.Volume{createCertificateVolume(deploymentRequest, naisResources)},
 		RestartPolicy: v1.RestartPolicyAlways,
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
+
+	if hasCertificate(naisResources) {
+		podSpec.Volumes = append(podSpec.Volumes, createCertificateVolume(deploymentRequest, naisResources))
+		container := &podSpec.Containers[0]
+		container.VolumeMounts = append(container.VolumeMounts, createCertificateVolumeMount(deploymentRequest, naisResources))
+	}
+
+	return podSpec
 }
+
+func hasCertificate(naisResources []NaisResource) bool {
+	for _, resource := range naisResources {
+		if len(resource.certificates) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources []NaisResource) v1.Volume {
 	var items []v1.KeyToPath
 	for _, res := range resources {

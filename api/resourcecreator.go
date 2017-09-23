@@ -12,7 +12,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/errors"
 	"strconv"
-	"github.com/golang/glog"
 )
 
 type DeploymentResult struct {
@@ -61,6 +60,10 @@ func ResourceVariableName(resource NaisResource, key string) string {
 		return strings.Replace(resource.name, ":", "_", -1) + "_" + key
 	}
 	return resource.name + "_" + key
+}
+
+func ResourceEnvironmentVariableName(resource NaisResource, key string) string {
+	return strings.ToUpper(ResourceVariableName(resource, key))
 }
 
 func validLabelName(str string) string {
@@ -125,18 +128,11 @@ func createOjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppC
 }
 
 func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1.PodSpec {
-	image := appConfig.Image
-
-	if ! strings.Contains(image, ":") {
-		glog.Infof("Image is specified without version, using %s\n", deploymentRequest.Version)
-		image = image + ":" + deploymentRequest.Version
-	}
-
-	return v1.PodSpec{
+	podSpec := v1.PodSpec{
 		Containers: []v1.Container{
 			{
 				Name:  deploymentRequest.Application,
-				Image: image,
+				Image: fmt.Sprintf("%s:%s", appConfig.Image, deploymentRequest.Version),
 				Ports: []v1.ContainerPort{
 					{ContainerPort: int32(appConfig.Port), Protocol: v1.ProtocolTCP, Name: DefaultPortName},
 				},
@@ -161,55 +157,70 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 				},
 				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
-				VolumeMounts:    createVolumeMounts(naisResources),
 			},
 		},
-		Volumes:       createVolumes(deploymentRequest, naisResources),
 		RestartPolicy: v1.RestartPolicyAlways,
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
+
+	if hasCertificate(naisResources) {
+		podSpec.Volumes = append(podSpec.Volumes, createCertificateVolume(deploymentRequest, naisResources))
+		container := &podSpec.Containers[0]
+		container.VolumeMounts = append(container.VolumeMounts, createCertificateVolumeMount(deploymentRequest, naisResources))
+	}
+
+	return podSpec
 }
-func createVolumes(deploymentRequest NaisDeploymentRequest, resources []NaisResource) []v1.Volume {
-	var volumes []v1.Volume
+
+func hasCertificate(naisResources []NaisResource) bool {
+	for _, resource := range naisResources {
+		if len(resource.certificates) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources []NaisResource) v1.Volume {
+	var items []v1.KeyToPath
 	for _, res := range resources {
 		if res.certificates != nil {
 			for k := range res.certificates {
-				volume := v1.Volume{
-					Name: 	     validLabelName(k),
-					VolumeSource: v1.VolumeSource{
-						Secret: &v1.SecretVolumeSource{
-							SecretName: deploymentRequest.Application,
-							Items: []v1.KeyToPath{
-								{
-									Key:  k,
-									Path: k,
-								},
-							},
-
-						},
-					},
+				item := v1.KeyToPath{
+					Key:  k,
+					Path: k,
 				}
-				volumes = append(volumes, volume)
+				items = append(items, item)
 			}
 		}
 	}
-	return volumes
+
+	if len(items) > 0 {
+		return v1.Volume{
+			Name: validLabelName(deploymentRequest.Application),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: deploymentRequest.Application,
+					Items:      items,
+				},
+			},
+		}
+	}
+
+	return v1.Volume{}
+
 }
 
-func createVolumeMounts(resources []NaisResource) []v1.VolumeMount {
-	var volumeMounts []v1.VolumeMount
+func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resources []NaisResource) v1.VolumeMount {
 	for _, res := range resources {
 		if res.certificates != nil {
-			for k := range res.certificates {
-				vm := v1.VolumeMount{
-					Name:      validLabelName(k),
-					MountPath: "/var/run/secrets/naisd.io/",
-				}
-				volumeMounts = append(volumeMounts, vm)
+			return v1.VolumeMount{
+				Name:      validLabelName(deploymentRequest.Application),
+				MountPath: "/var/run/secrets/naisd.io/",
 			}
 		}
 	}
-	return volumeMounts
+	return v1.VolumeMount{}
 }
 
 func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) []v1.EnvVar {
@@ -217,8 +228,10 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 
 	for _, res := range naisResources {
 		for k, v := range res.properties {
-			envVar := v1.EnvVar{ResourceVariableName(res, k), v, nil}
-			envVars = append(envVars, envVar)
+			for _, variableName := range [2]string{ResourceVariableName(res, k), ResourceEnvironmentVariableName(res, k)} {
+				envVar := v1.EnvVar{variableName, v, nil}
+				envVars = append(envVars, envVar)
+			}
 		}
 		if res.secret != nil {
 			for k := range res.secret {
@@ -234,7 +247,19 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 						},
 					},
 				}
+				envarUpper := v1.EnvVar{
+					Name: strings.ToUpper(variableName),
+					ValueFrom: &v1.EnvVarSource{
+						SecretKeyRef: &v1.SecretKeySelector{
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: deploymentRequest.Application,
+							},
+							Key: variableName,
+						},
+					},
+				}
 				envVars = append(envVars, envVar)
+				envVars = append(envVars, envarUpper)
 			}
 		}
 	}
@@ -244,6 +269,9 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 func createDefaultEnvironmentVariables(version string) []v1.EnvVar {
 	return []v1.EnvVar{{
 		Name:  "app_version",
+		Value: version,
+	}, {
+		Name:  "APP_VERSION",
 		Value: version,
 	}}
 }
@@ -319,7 +347,7 @@ func createIngressDef(subdomain, application, namespace string) *v1beta1.Ingress
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
 				{
-					Host: fmt.Sprintf("%s.%s", application, subdomain),
+					Host: createIngressHostname(application, namespace, subdomain),
 					IngressRuleValue: v1beta1.IngressRuleValue{
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
@@ -335,6 +363,14 @@ func createIngressDef(subdomain, application, namespace string) *v1beta1.Ingress
 				},
 			},
 		},
+	}
+}
+
+func createIngressHostname(application, namespace, subdomain string) string {
+	if namespace == "default" {
+		return fmt.Sprintf("%s.%s", application, subdomain)
+	} else {
+		return fmt.Sprintf("%s-%s.%s", application, namespace, subdomain)
 	}
 }
 

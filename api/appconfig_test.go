@@ -42,7 +42,7 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	appConfig, err := fetchAppConfig(NaisDeploymentRequest{NoAppConfig: true})
 
 	assert.NoError(t, err)
-	assert.Equal(t, "docker.adeo.no:5000/:", appConfig.Image)
+	assert.Equal(t, "docker.adeo.no:5000/", appConfig.Image)
 	assert.Equal(t, 8080, appConfig.Port)
 	assert.Equal(t, "isAlive", appConfig.Healthcheck.Liveness.Path)
 	assert.Equal(t, "isReady", appConfig.Healthcheck.Readiness.Path)
@@ -78,7 +78,7 @@ func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
 }
 
 func TestNoAppConfigFlagCreatesAppconfigFromDefaults(t *testing.T) {
-	image := "docker.adeo.no:5000/" + appName + ":" + version
+	image := "docker.adeo.no:5000/" + appName
 	const repopath = "https://appconfig.repo"
 	defer gock.Off()
 	gock.New(repopath).

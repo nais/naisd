@@ -1,9 +1,9 @@
 package api
 
 import (
-	"testing"
-	"gopkg.in/h2non/gock.v1"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/h2non/gock.v1"
+	"testing"
 )
 
 func TestAppConfigUnmarshal(t *testing.T) {
@@ -105,24 +105,24 @@ func TestInvalidCpuThreshold(t *testing.T) {
 	invalidConfig := NaisAppConfig{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max:                    4,
-			Min:                    5,
+			Max: 4,
+			Min: 5,
 		},
 	}
 	errors := validateCpuThreshold(invalidConfig)
 	t.Log(errors)
 
-	assert.Equal(t, 1, len(errors.Errors))
+	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.ErrorMessage)
 }
 func TestMinCannotBeZero(t *testing.T) {
 	invalidConfig := NaisAppConfig{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
-			Max:                    4,
-			Min:                    0,
+			Max: 4,
+			Min: 0,
 		},
 	}
 	errors := validateReplicasMin(invalidConfig)
 
-	assert.Equal(t, 1, len(errors.Errors))
+	assert.Equal(t, "Replicas.Min is not set", errors.ErrorMessage)
 }

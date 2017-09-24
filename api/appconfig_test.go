@@ -101,6 +101,21 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMultipleInvalidAppConfigFields(t *testing.T) {
+	invalidConfig := NaisAppConfig{
+		Replicas: Replicas{
+			CpuThresholdPercentage: 5,
+			Max: 4,
+			Min: 5,
+		},
+	}
+	errors := validateAppConfig(invalidConfig)
+
+	assert.Equal(t, 2, len(errors.Errors))
+	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[0].ErrorMessage)
+	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[1].ErrorMessage)
+}
+
 func TestInvalidCpuThreshold(t *testing.T) {
 	invalidConfig := NaisAppConfig{
 		Replicas: Replicas{

@@ -2,16 +2,16 @@ package api
 
 import (
 	"fmt"
-	"strings"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/errors"
 	k8sresource "k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	autoscalingv1 "k8s.io/client-go/pkg/apis/autoscaling/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/errors"
 	"strconv"
+	"strings"
 )
 
 type DeploymentResult struct {

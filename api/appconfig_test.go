@@ -1,10 +1,10 @@
 package api
 
 import (
-	"testing"
-	"gopkg.in/h2non/gock.v1"
 	"github.com/stretchr/testify/assert"
 	"fmt"
+	"gopkg.in/h2non/gock.v1"
+	"testing"
 )
 
 func TestAppConfigUnmarshal(t *testing.T) {
@@ -43,6 +43,7 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	appConfig, err := generateAppConfig(NaisDeploymentRequest{NoAppConfig: true})
 
 	assert.NoError(t, err)
+	assert.Equal(t, "docker.adeo.no:5000/", appConfig.Image)
 	assert.Equal(t, 8080, appConfig.Port)
 	assert.Equal(t, "isAlive", appConfig.Healthcheck.Liveness.Path)
 	assert.Equal(t, "isReady", appConfig.Healthcheck.Readiness.Path)
@@ -114,7 +115,7 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 }
 
 func TestNoAppConfigFlagCreatesAppconfigFromDefaults(t *testing.T) {
-	image := "docker.adeo.no:5000/" + appName + ":" + version
+	image := "docker.adeo.no:5000/" + appName
 	const repopath = "https://appconfig.repo"
 	defer gock.Off()
 	gock.New(repopath).
@@ -138,28 +139,43 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMultipleInvalidAppConfigFields(t *testing.T) {
+	invalidConfig := NaisAppConfig{
+		Replicas: Replicas{
+			CpuThresholdPercentage: 5,
+			Max: 4,
+			Min: 5,
+		},
+	}
+	errors := validateAppConfig(invalidConfig)
+
+	assert.Equal(t, 2, len(errors.Errors))
+	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[0].ErrorMessage)
+	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[1].ErrorMessage)
+}
+
 func TestInvalidCpuThreshold(t *testing.T) {
 	invalidConfig := NaisAppConfig{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max:                    4,
-			Min:                    5,
+			Max: 4,
+			Min: 5,
 		},
 	}
 	errors := validateCpuThreshold(invalidConfig)
 	t.Log(errors)
 
-	assert.Equal(t, 1, len(errors.Errors))
+	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.ErrorMessage)
 }
 func TestMinCannotBeZero(t *testing.T) {
 	invalidConfig := NaisAppConfig{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
-			Max:                    4,
-			Min:                    0,
+			Max: 4,
+			Min: 0,
 		},
 	}
 	errors := validateReplicasMin(invalidConfig)
 
-	assert.Equal(t, 1, len(errors.Errors))
+	assert.Equal(t, "Replicas.Min is not set", errors.ErrorMessage)
 }

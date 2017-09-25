@@ -40,7 +40,7 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 			},
 		},
 	}
-	defaultAppConfig.Image = "docker.adeo.no:5000/" + deploymentRequest.Application + ":" + deploymentRequest.Version
+	defaultAppConfig.Image = "docker.adeo.no:5000/" + deploymentRequest.Application
 
 	return defaultAppConfig
 }

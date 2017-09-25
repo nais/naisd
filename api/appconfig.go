@@ -2,11 +2,11 @@ package api
 
 import (
 	"fmt"
-	"io/ioutil"
 	"github.com/golang/glog"
-	"net/http"
-	"gopkg.in/yaml.v2"
 	"github.com/imdario/mergo"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 )
 
@@ -162,62 +162,70 @@ func validateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 
 	var validationErrors ValidationErrors
 
-	validationErrors = validateReplicasMax(appConfig)
+	if error := validateReplicasMax(appConfig); error != nil {
+		validationErrors.Errors = append(validationErrors.Errors, *error)
+	}
 
-	validationErrors = validateReplicasMin(appConfig)
+	if error := validateReplicasMin(appConfig); error != nil {
+		validationErrors.Errors = append(validationErrors.Errors, *error)
+	}
 
-	validationErrors = validateMinIsSmallerThanMax(appConfig)
+	if error := validateMinIsSmallerThanMax(appConfig); error != nil {
+		validationErrors.Errors = append(validationErrors.Errors, *error)
+	}
 
-	validationErrors = validateCpuThreshold(appConfig)
+	if error := validateCpuThreshold(appConfig); error != nil {
+		validationErrors.Errors = append(validationErrors.Errors, *error)
+	}
 
 	return validationErrors
 }
-func validateCpuThreshold(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+
+func validateCpuThreshold(appConfig NaisAppConfig) *ValidationError {
 	if appConfig.Replicas.CpuThresholdPercentage < 10 || appConfig.Replicas.CpuThresholdPercentage > 90 {
 		error := new(ValidationError)
 		error.ErrorMessage = "CpuThreshold must be between 10 and 90."
 		error.Fields = make(map[string]string)
 		error.Fields["Replicas.CpuThreshold"] = strconv.Itoa(appConfig.Replicas.CpuThresholdPercentage)
-		validationErrors.Errors = append(validationErrors.Errors, *error)
+		return error
 
 	}
-	return validationErrors
+	return nil
 
 }
-func validateMinIsSmallerThanMax(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+func validateMinIsSmallerThanMax(appConfig NaisAppConfig) *ValidationError {
 	if appConfig.Replicas.Min > appConfig.Replicas.Max {
 		validationError := new(ValidationError)
 		validationError.ErrorMessage = "Replicas.Min is larger than Replicas.Max."
 		validationError.Fields = make(map[string]string)
 		validationError.Fields["Replicas.Max"] = strconv.Itoa(appConfig.Replicas.Max)
 		validationError.Fields["Replicas.Min"] = strconv.Itoa(appConfig.Replicas.Min)
-		validationErrors.Errors = append(validationErrors.Errors, *validationError)
+		return validationError
 	}
-	return validationErrors
+	return nil
 
 }
-func validateReplicasMin(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+func validateReplicasMin(appConfig NaisAppConfig) *ValidationError {
 	if appConfig.Replicas.Min == 0 {
 		validationError := new(ValidationError)
 		validationError.ErrorMessage = "Replicas.Min is not set"
 		validationError.Fields = make(map[string]string)
 		validationError.Fields["Replicas.Min"] = strconv.Itoa(appConfig.Replicas.Min)
-		validationErrors.Errors = append(validationErrors.Errors, *validationError)
+		return validationError
 
 	}
-	return validationErrors
+	return nil
 
 }
-func validateReplicasMax(appConfig NaisAppConfig) (validationErrors ValidationErrors) {
+func validateReplicasMax(appConfig NaisAppConfig) *ValidationError {
 	if appConfig.Replicas.Max == 0 {
 		validationError := new(ValidationError)
 		validationError.ErrorMessage = "Replicas.Max is not set"
 		validationError.Fields = make(map[string]string)
 		validationError.Fields["Replicas.Max"] = strconv.Itoa(appConfig.Replicas.Max)
-		validationErrors.Errors = append(validationErrors.Errors, *validationError)
-
+		return validationError
 	}
-	return validationErrors
+	return nil
 
 }
 

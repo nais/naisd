@@ -4,7 +4,7 @@ const (
 	DefaultPortName = "http"
 )
 
-func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig {
+func GetDefaultAppConfig(application string) NaisAppConfig {
 
 	defaultAppConfig := NaisAppConfig{
 		Replicas: Replicas{
@@ -21,11 +21,11 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 
 		Healthcheck: Healthcheck{
 			Liveness: Probe{
-				Path: "isAlive",
+				Path:         "isAlive",
 				InitialDelay: 20,
 			},
 			Readiness: Probe{
-				Path: "isReady",
+				Path:         "isReady",
 				InitialDelay: 20,
 			},
 		},
@@ -40,7 +40,7 @@ func GetDefaultAppConfig(deploymentRequest NaisDeploymentRequest) NaisAppConfig 
 			},
 		},
 	}
-	defaultAppConfig.Image = "docker.adeo.no:5000/" + deploymentRequest.Application
+	defaultAppConfig.Image = "docker.adeo.no:5000/" + application
 
 	return defaultAppConfig
 }

@@ -82,16 +82,31 @@ type Field struct {
 	Value string
 }
 
-func createAppConfigUrls(application, version string) [2]string {
-	var urls = [2]string{}
-		baseUrl := "http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais"
-		urls[0] = fmt.Sprintf("%s/%s/%s/nais.yaml", baseUrl, application, version)
-		urls[1] = fmt.Sprintf("%s/%s/%s/%s.yaml", baseUrl, application, version, application+"-"+version)
-		return urls
+
+func GenerateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
+
+	appConfig, err := downloadAppConfig(deploymentRequest)
+	if err != nil {
+		glog.Errorf("could not download appconfig", err)
+		return NaisAppConfig{}, err
+	}
+
+	if err := AddDefaultAppconfigValues(&appConfig, deploymentRequest.Application); err != nil {
+		glog.Errorf("Could not merge appconfig %s", err)
+		return NaisAppConfig{}, err
+	}
+
+	validationErrors := ValidateAppConfig(appConfig)
+	if len(validationErrors.Errors) != 0 {
+		glog.Error("Invalid appconfig: ", validationErrors.Error())
+		return NaisAppConfig{}, validationErrors
+	}
+
+	return appConfig, nil
 }
 
-func generateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
-	var defaultAppConfig = GetDefaultAppConfig(deploymentRequest)
+func downloadAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
+
 	var appConfig NaisAppConfig
 
 	if !deploymentRequest.NoAppConfig {
@@ -114,19 +129,19 @@ func generateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig N
 			}
 		}
 	}
-
-	if err := mergo.Merge(&appConfig, defaultAppConfig); err != nil {
-		glog.Errorf("Could not merge appconfig %s", err)
-		return NaisAppConfig{}, err
-	}
-
-	validationErrors := validateAppConfig(appConfig)
-	if len(validationErrors.Errors) != 0 {
-		glog.Error("Invalid appconfig: ", validationErrors.Error())
-		return NaisAppConfig{}, validationErrors
-	}
-
 	return appConfig, nil
+}
+
+func createAppConfigUrls(application, version string) [2]string {
+	var urls = [2]string{}
+	baseUrl := "http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais"
+	urls[0] = fmt.Sprintf("%s/%s/%s/nais.yaml", baseUrl, application, version)
+	urls[1] = fmt.Sprintf("%s/%s/%s/%s.yaml", baseUrl, application, version, application+"-"+version)
+	return urls
+}
+
+func AddDefaultAppconfigValues(config *NaisAppConfig, application string) error {
+	return mergo.Merge(config, GetDefaultAppConfig(application))
 }
 func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error) {
 
@@ -158,24 +173,24 @@ func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error)
 }
 
 
-func validateAppConfig(appConfig NaisAppConfig) ValidationErrors {
+func ValidateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 
 	var validationErrors ValidationErrors
 
-	if error := validateReplicasMax(appConfig); error != nil {
-		validationErrors.Errors = append(validationErrors.Errors, *error)
+	if valError := validateReplicasMax(appConfig); valError != nil {
+		validationErrors.Errors = append(validationErrors.Errors, *valError)
 	}
 
-	if error := validateReplicasMin(appConfig); error != nil {
-		validationErrors.Errors = append(validationErrors.Errors, *error)
+	if valError := validateReplicasMin(appConfig); valError != nil {
+		validationErrors.Errors = append(validationErrors.Errors, *valError)
 	}
 
-	if error := validateMinIsSmallerThanMax(appConfig); error != nil {
-		validationErrors.Errors = append(validationErrors.Errors, *error)
+	if valError := validateMinIsSmallerThanMax(appConfig); valError != nil {
+		validationErrors.Errors = append(validationErrors.Errors, *valError)
 	}
 
-	if error := validateCpuThreshold(appConfig); error != nil {
-		validationErrors.Errors = append(validationErrors.Errors, *error)
+	if valError := validateCpuThreshold(appConfig); valError != nil {
+		validationErrors.Errors = append(validationErrors.Errors, *valError)
 	}
 
 	return validationErrors

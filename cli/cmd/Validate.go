@@ -43,7 +43,6 @@ var validateCmd = &cobra.Command{
 		}
 
 		if output {
-			//yaml.Marshal(appConfig)
 			conf, _  := yaml.Marshal(appConfig)
 			fmt.Println(string(conf))
 		}

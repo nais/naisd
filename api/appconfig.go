@@ -82,44 +82,36 @@ type Field struct {
 	Value string
 }
 
-func createAppConfigUrl(appConfigUrl, application, version string) string {
-	if appConfigUrl != "" {
-		return appConfigUrl
-	} else {
-		return fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/nais.yaml", application, version)
-	}
+func createAppConfigUrls(application, version string) [2]string {
+	var urls = [2]string{}
+		baseUrl := "http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais"
+		urls[0] = fmt.Sprintf("%s/%s/%s/nais.yaml", baseUrl, application, version)
+		urls[1] = fmt.Sprintf("%s/%s/%s/%s.yaml", baseUrl, application, version, application+"-"+version)
+		return urls
 }
 
-func fetchAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
-
-	url := createAppConfigUrl(deploymentRequest.AppConfigUrl, deploymentRequest.Application, deploymentRequest.Version)
-
+func generateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
 	var defaultAppConfig = GetDefaultAppConfig(deploymentRequest)
 	var appConfig NaisAppConfig
 
 	if !deploymentRequest.NoAppConfig {
-
-		glog.Infof("Fetching manifest from URL %s\n", url)
-		response, err := http.Get(url)
-		if err != nil {
-			glog.Errorf("Could not fetch %s", err)
-			return NaisAppConfig{}, err
-		}
-
-		defer response.Body.Close()
-
-		if response.StatusCode > 299 {
-			return NaisAppConfig{}, fmt.Errorf("got http status code %d\n", response.StatusCode)
-		}
-
-		if body, err := ioutil.ReadAll(response.Body); err != nil {
-			return NaisAppConfig{}, err
-		} else {
-			if err := yaml.Unmarshal(body, &appConfig); err != nil {
-				glog.Errorf("Could not unmarshal yaml %s", err)
+		if len(deploymentRequest.AppConfigUrl) > 0 {
+			appConfig, err = fetchAppConfig(deploymentRequest.AppConfigUrl, &appConfig)
+			if err != nil {
 				return NaisAppConfig{}, err
 			}
-			glog.Infof("Got manifest %s", appConfig)
+		} else {
+			urls := createAppConfigUrls(deploymentRequest.Application, deploymentRequest.Version)
+
+			appConfig, err = fetchAppConfig(urls[0], &appConfig)
+			if err != nil {
+				glog.Infof("No manifest found on URL %s\n", urls[0])
+				appConfig, err = fetchAppConfig(urls[1], &appConfig)
+				if err != nil {
+					return NaisAppConfig{}, err
+				}
+
+			}
 		}
 	}
 
@@ -136,6 +128,35 @@ func fetchAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig Nais
 
 	return appConfig, nil
 }
+func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error) {
+
+
+	glog.Infof("Fetching manifest from URL %s\n", url)
+	response, err := http.Get(url)
+	if err != nil {
+		glog.Errorf("Could not fetch %s", err)
+		return NaisAppConfig{}, err
+	}
+
+
+	defer response.Body.Close()
+
+	if response.StatusCode > 299 {
+		return NaisAppConfig{}, fmt.Errorf("got http status code %d\n", response.StatusCode)
+	}
+
+	if body, err := ioutil.ReadAll(response.Body); err != nil {
+		return NaisAppConfig{}, err
+	} else {
+		if err := yaml.Unmarshal(body, &appConfig); err != nil {
+			glog.Errorf("Could not unmarshal yaml %s", err)
+			return NaisAppConfig{}, err
+		}
+		glog.Infof("Got manifest %s", appConfig)
+	}
+	return *appConfig, err
+}
+
 
 func validateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 

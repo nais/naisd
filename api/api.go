@@ -75,7 +75,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
-	appConfig, err := fetchAppConfig(deploymentRequest)
+	appConfig, err := generateAppConfig(deploymentRequest)
 
 	if err != nil {
 		glog.Errorf("Unable to fetch manifest: %s\n", err)

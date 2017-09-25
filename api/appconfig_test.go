@@ -4,6 +4,7 @@ import (
 	"testing"
 	"gopkg.in/h2non/gock.v1"
 	"github.com/stretchr/testify/assert"
+	"fmt"
 )
 
 func TestAppConfigUnmarshal(t *testing.T) {
@@ -14,7 +15,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 		Reply(200).
 		File("testdata/nais.yaml")
 
-	appConfig, err := fetchAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	appConfig, err := generateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
 
 	assert.NoError(t, err)
 
@@ -39,7 +40,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
-	appConfig, err := fetchAppConfig(NaisDeploymentRequest{NoAppConfig: true})
+	appConfig, err := generateAppConfig(NaisDeploymentRequest{NoAppConfig: true})
 
 	assert.NoError(t, err)
 	assert.Equal(t, 8080, appConfig.Port)
@@ -68,12 +69,48 @@ func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_partial.yaml")
 
-	appConfig, err := fetchAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	appConfig, err := generateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, appConfig.Replicas.Min)
 	assert.Equal(t, 10, appConfig.Replicas.Max)
 	assert.Equal(t, 15, appConfig.Replicas.CpuThresholdPercentage)
+}
+
+func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
+	baseUrl := "http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais"
+	application := "appName"
+	version := "42"
+
+	var firstRepoPath = fmt.Sprintf("%s/%s/%s/nais.yaml", baseUrl, application, version)
+	var secondRepoPath = fmt.Sprintf("%s/%s/%s/%s.yaml", baseUrl, application, version, application+"-"+version)
+	t.Run("When no manifest found at first default URL, the second is called", func(t *testing.T) {
+		defer gock.Off()
+		gock.New(firstRepoPath).
+			Reply(404)
+		gock.New(secondRepoPath).
+			Reply(200).
+			JSON(map[string]string{"image": application})
+
+		appConfig, err := generateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
+		assert.NoError(t, err)
+		assert.Equal(t, application, appConfig.Image)
+		assert.True(t, gock.IsDone())
+	})
+	t.Run("When manifest found at first default URL, the second is not called", func(t *testing.T) {
+		defer gock.Off()
+		gock.New(firstRepoPath).
+			Reply(200).
+			JSON(map[string]string{"image": application})
+		gock.New(secondRepoPath).
+			Reply(200).
+			JSON(map[string]string{"image": "incorrect"})
+
+		appConfig, err := generateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
+		assert.NoError(t, err)
+		assert.Equal(t, application, appConfig.Image)
+		assert.True(t, gock.IsPending())
+	})
 }
 
 func TestNoAppConfigFlagCreatesAppconfigFromDefaults(t *testing.T) {
@@ -83,7 +120,7 @@ func TestNoAppConfigFlagCreatesAppconfigFromDefaults(t *testing.T) {
 	gock.New(repopath).
 		Reply(200)
 
-	appConfig, err := fetchAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath, NoAppConfig: true, Application: appName, Version: version})
+	appConfig, err := generateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath, NoAppConfig: true, Application: appName, Version: version})
 
 	assert.NoError(t, err)
 	assert.Equal(t, image, appConfig.Image, "If no Image provided, a default is created")
@@ -97,7 +134,7 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_error.yaml")
 
-	_, err := fetchAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	_, err := generateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
 	assert.Error(t, err)
 }
 

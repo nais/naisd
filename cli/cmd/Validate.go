@@ -10,8 +10,8 @@ import (
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validates nais.yml",
-	Long:  `Validates nais.yml`,
+	Short: "Validates nais.yaml",
+	Long:  `Validates nais.yaml`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		file, err := cmd.Flags().GetString("file")
@@ -57,6 +57,6 @@ var validateCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(validateCmd)
-	validateCmd.Flags().StringP("file", "f", "nais.yml", "path to appconfig")
+	validateCmd.Flags().StringP("file", "f", "nais.yaml", "path to appconfig")
 	validateCmd.Flags().BoolP("output", "o", false, "prints full appconfig including defaults if tr")
 }

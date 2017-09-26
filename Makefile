@@ -3,7 +3,7 @@ NAME    := navikt/naisd
 LATEST  := ${NAME}:latest
 GLIDE   := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd navikt/glide glide
 GO_IMG  := golang:1.8
-GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go
+GO      := sudo docker run --rm -v ${PWD}\:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go
 
 dockerhub-release: install test linux bump tag docker-build push-dockerhub
 minikube: linux docker-minikube-build helm-upgrade
@@ -20,11 +20,11 @@ install:
 test:
 	${GO} test ./api/ ./cli
 
+cli:
+    ${GO} build -o nais ./cli
+
 build:
 	${GO} build -o naisd
-
-cli:
-    ${GO} build -o nais ./cli/
 
 linux:
 	sudo docker run --rm -e GOOS=linux -e CGO_ENABLED=0 -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go build -a -installsuffix cgo -ldflags '-s' -o naisd

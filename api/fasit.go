@@ -3,11 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"github.com/Jeffail/gabs"
 )
 
 func init() {
@@ -96,7 +96,7 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 		return NaisResource{}, fmt.Errorf("Error contacting fasit: %s", err)
 	}
 
-	httpReqsCounter.WithLabelValues(string(resp.StatusCode), "GET").Inc()
+	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return NaisResource{}, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
@@ -168,7 +168,7 @@ func resolveCertificates(files map[string]interface{}, resourceName string) (map
 		return fileContent, fmt.Errorf("error downloading file: %s", err)
 	}
 
-	fileContent[resourceName + "_" + fileName] = bodyBytes
+	fileContent[resourceName+"_"+fileName] = bodyBytes
 	return fileContent, nil
 
 }
@@ -212,7 +212,7 @@ func resolveSecret(secrets map[string]map[string]string, username string, passwo
 		return map[string]string{}, fmt.Errorf("Error contacting fasit when resolving secret: %s", err)
 	}
 
-	httpReqsCounter.WithLabelValues(string(resp.StatusCode), "GET").Inc()
+	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return map[string]string{}, fmt.Errorf("Fasit gave errormessage when resolving secret: %s" + strconv.Itoa(resp.StatusCode))

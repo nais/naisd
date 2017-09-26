@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type Probe struct {
@@ -82,7 +83,6 @@ type Field struct {
 	Value string
 }
 
-
 func GenerateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
 
 	appConfig, err := downloadAppConfig(deploymentRequest)
@@ -145,14 +145,12 @@ func AddDefaultAppconfigValues(config *NaisAppConfig, application string) error 
 }
 func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error) {
 
-
 	glog.Infof("Fetching manifest from URL %s\n", url)
 	response, err := http.Get(url)
 	if err != nil {
 		glog.Errorf("Could not fetch %s", err)
 		return NaisAppConfig{}, err
 	}
-
 
 	defer response.Body.Close()
 
@@ -172,28 +170,33 @@ func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error)
 	return *appConfig, err
 }
 
-
 func ValidateAppConfig(appConfig NaisAppConfig) ValidationErrors {
+	validations := []func(NaisAppConfig) *ValidationError{
+		validateImage,
+		validateReplicasMax,
+		validateReplicasMin,
+		validateMinIsSmallerThanMax,
+		validateCpuThreshold,
+	}
 
 	var validationErrors ValidationErrors
-
-	if valError := validateReplicasMax(appConfig); valError != nil {
-		validationErrors.Errors = append(validationErrors.Errors, *valError)
-	}
-
-	if valError := validateReplicasMin(appConfig); valError != nil {
-		validationErrors.Errors = append(validationErrors.Errors, *valError)
-	}
-
-	if valError := validateMinIsSmallerThanMax(appConfig); valError != nil {
-		validationErrors.Errors = append(validationErrors.Errors, *valError)
-	}
-
-	if valError := validateCpuThreshold(appConfig); valError != nil {
-		validationErrors.Errors = append(validationErrors.Errors, *valError)
+	for _, valfunc := range validations {
+		if valError := valfunc(appConfig); valError != nil {
+			validationErrors.Errors = append(validationErrors.Errors, *valError)
+		}
 	}
 
 	return validationErrors
+}
+
+func validateImage(appConfig NaisAppConfig) *ValidationError {
+	if strings.LastIndex(appConfig.Image, ":") > strings.LastIndex(appConfig.Image, "/") {
+		return &ValidationError{
+			"Image cannot contain tag",
+			map[string]string{"Image": appConfig.Image},
+		}
+	}
+	return nil
 }
 
 func validateCpuThreshold(appConfig NaisAppConfig) *ValidationError {

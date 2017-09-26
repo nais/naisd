@@ -30,3 +30,4 @@ import:
   version: ^0.2.2
 - package: github.com/Jeffail/gabs
   version: ^1.0.0
+- package: github.com/spf13/cobra

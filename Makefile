@@ -7,7 +7,7 @@ GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/s
 
 dockerhub-release: install test linux bump tag docker-build push-dockerhub
 minikube: linux docker-minikube-build helm-upgrade
-
+cli: build-cli
 bump:
 	/bin/bash bump.sh
 
@@ -18,10 +18,13 @@ install:
 	${GLIDE} install --strip-vendor
 
 test:
-	${GO} test ./api/
+	${GO} test ./api/ ./cli
 
 build:
 	${GO} build -o naisd
+
+build-cli:
+    ${GO} build -o nais ./cli/
 
 linux:
 	sudo docker run --rm -e GOOS=linux -e CGO_ENABLED=0 -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go build -a -installsuffix cgo -ldflags '-s' -o naisd

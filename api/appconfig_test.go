@@ -15,7 +15,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 		Reply(200).
 		File("testdata/nais.yaml")
 
-	appConfig, err := generateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
 
 	assert.NoError(t, err)
 
@@ -40,7 +40,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
-	appConfig, err := generateAppConfig(NaisDeploymentRequest{NoAppConfig: true})
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{NoAppConfig: true})
 
 	assert.NoError(t, err)
 	assert.Equal(t, "docker.adeo.no:5000/", appConfig.Image)
@@ -70,7 +70,7 @@ func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_partial.yaml")
 
-	appConfig, err := generateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, appConfig.Replicas.Min)
@@ -93,7 +93,7 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"image": application})
 
-		appConfig, err := generateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
+		appConfig, err := GenerateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
 		assert.NoError(t, err)
 		assert.Equal(t, application, appConfig.Image)
 		assert.True(t, gock.IsDone())
@@ -107,7 +107,7 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"image": "incorrect"})
 
-		appConfig, err := generateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
+		appConfig, err := GenerateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
 		assert.NoError(t, err)
 		assert.Equal(t, application, appConfig.Image)
 		assert.True(t, gock.IsPending())
@@ -121,7 +121,7 @@ func TestNoAppConfigFlagCreatesAppconfigFromDefaults(t *testing.T) {
 	gock.New(repopath).
 		Reply(200)
 
-	appConfig, err := generateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath, NoAppConfig: true, Application: appName, Version: version})
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath, NoAppConfig: true, Application: appName, Version: version})
 
 	assert.NoError(t, err)
 	assert.Equal(t, image, appConfig.Image, "If no Image provided, a default is created")
@@ -135,7 +135,7 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_error.yaml")
 
-	_, err := generateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	_, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
 	assert.Error(t, err)
 }
 
@@ -147,7 +147,7 @@ func TestMultipleInvalidAppConfigFields(t *testing.T) {
 			Min: 5,
 		},
 	}
-	errors := validateAppConfig(invalidConfig)
+	errors := ValidateAppConfig(invalidConfig)
 
 	assert.Equal(t, 2, len(errors.Errors))
 	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[0].ErrorMessage)

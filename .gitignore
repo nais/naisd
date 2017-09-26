@@ -3,6 +3,8 @@ vendor/
 /scratch.yaml
 naisd.iml
 /naisd
+/cli/nais
+/nais
 .glide/
 naisd-service-nodeport.yaml
 *.swp

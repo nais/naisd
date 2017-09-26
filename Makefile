@@ -7,7 +7,7 @@ GO      := sudo docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/s
 
 dockerhub-release: install test linux bump tag docker-build push-dockerhub
 minikube: linux docker-minikube-build helm-upgrade
-cli: build-cli
+
 bump:
 	/bin/bash bump.sh
 
@@ -23,7 +23,7 @@ test:
 build:
 	${GO} build -o naisd
 
-build-cli:
+cli:
     ${GO} build -o nais ./cli/
 
 linux:

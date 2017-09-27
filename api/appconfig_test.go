@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/stretchr/testify/assert"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 	"testing"
 )
@@ -141,6 +141,7 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 
 func TestMultipleInvalidAppConfigFields(t *testing.T) {
 	invalidConfig := NaisAppConfig{
+		Image: "myapp:1",
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
 			Max: 4,
@@ -149,9 +150,10 @@ func TestMultipleInvalidAppConfigFields(t *testing.T) {
 	}
 	errors := ValidateAppConfig(invalidConfig)
 
-	assert.Equal(t, 2, len(errors.Errors))
-	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[0].ErrorMessage)
-	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[1].ErrorMessage)
+	assert.Equal(t, 3, len(errors.Errors))
+	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
+	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[1].ErrorMessage)
+	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[2].ErrorMessage)
 }
 
 func TestInvalidCpuThreshold(t *testing.T) {
@@ -163,8 +165,6 @@ func TestInvalidCpuThreshold(t *testing.T) {
 		},
 	}
 	errors := validateCpuThreshold(invalidConfig)
-	t.Log(errors)
-
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.ErrorMessage)
 }
 func TestMinCannotBeZero(t *testing.T) {
@@ -178,4 +178,35 @@ func TestMinCannotBeZero(t *testing.T) {
 	errors := validateReplicasMin(invalidConfig)
 
 	assert.Equal(t, "Replicas.Min is not set", errors.ErrorMessage)
+}
+
+func TestValidateImage(t *testing.T) {
+	type TestCase struct {
+		name  string
+		valid bool
+	}
+
+	images := []TestCase{
+		{"myapp", true},
+		{"myapp:1", false},
+		{"registry-1.docker.io:5000/myapp", true},
+		{"registry-1.docker.io:5000/myapp:1", false},
+	}
+
+	for _, v := range images {
+		t.Run("test "+v.name, func(t *testing.T) {
+			appConfig := NaisAppConfig{
+				Image: v.name,
+			}
+
+			err := validateImage(appConfig)
+
+			if v.valid {
+				assert.Nil(t, err)
+			} else {
+				assert.Equal(t, "Image cannot contain tag", err.ErrorMessage)
+				assert.Equal(t, v.name, err.Fields["Image"])
+			}
+		})
+	}
 }

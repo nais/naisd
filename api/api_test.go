@@ -69,7 +69,7 @@ func TestNoManifestGivesError(t *testing.T) {
 func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
-	image := "name/Container:latest"
+	image := "name/Container"
 	version := "123"
 	resourceAlias := "alias1"
 	resourceType := "db"
@@ -90,7 +90,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	config := NaisAppConfig{
 		Image: image,
-		Port: 321,
+		Port:  321,
 		FasitResources: FasitResources{
 			Used: []UsedResource{{resourceAlias, resourceType}},
 		},

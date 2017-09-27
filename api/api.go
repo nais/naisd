@@ -67,7 +67,7 @@ func (api Api) NewApi() http.Handler {
 	mux.Handle(pat.Get("/isalive"), appHandler(api.isAlive))
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
-
+	mux.Handle(pat.Get("/deploystatus"), deploymentStatusHandler(api.Clientset))
 	return mux
 }
 

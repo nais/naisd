@@ -34,67 +34,31 @@ var deployCmd = &cobra.Command{
 			Password: os.Getenv("NAIS_PASSWORD"),
 		}
 
-		if app, err := cmd.Flags().GetString("app"); err != nil {
-			fmt.Printf("Error when getting flag: %s. %v", "app", err)
-			os.Exit(1)
-		} else {
-			deployRequest.Application = app
+		var cluster string
+		strings := map[string]*string{
+			"app":         &deployRequest.Application,
+			"version":     &deployRequest.Version,
+			"environment": &deployRequest.Environment,
+			"zone":        &deployRequest.Zone,
+			"namespace":   &deployRequest.Namespace,
+			"username":    &deployRequest.Username,
+			"password":    &deployRequest.Password,
+			"cluster":     &cluster,
 		}
 
-		if version, err := cmd.Flags().GetString("version"); err != nil {
-			fmt.Printf("Error when getting flag: %s. %v", "version", err)
-			os.Exit(1)
-		} else {
-			deployRequest.Version = version
-		}
-
-		if environment, err := cmd.Flags().GetString("environment"); err != nil {
-			fmt.Printf("Error when getting flag: %s. %v", "environment", err)
-			os.Exit(1)
-		} else {
-			deployRequest.Environment = environment
-		}
-
-		if zone, err := cmd.Flags().GetString("zone"); err != nil {
-			fmt.Printf("Error when getting flag: %s. %v", "zone", err)
-			os.Exit(1)
-		} else {
-			deployRequest.Zone = zone
-		}
-
-		if namespace, err := cmd.Flags().GetString("namespace"); err != nil {
-			fmt.Printf("Error when getting flag: %s. %v", "namespace", err)
-			os.Exit(1)
-		} else {
-			deployRequest.Namespace = namespace
-		}
-
-		if username, err := cmd.Flags().GetString("username"); err != nil {
-			fmt.Printf("Error when getting flag: %s. %v", "username", err)
-			os.Exit(1)
-		} else if len(username) > 0 {
-			deployRequest.Username = username
-		}
-
-		if password, err := cmd.Flags().GetString("password"); err != nil {
-			fmt.Printf("Error when getting flag: %s. %v", "password", err)
-			os.Exit(1)
-		} else if len(password) > 0 {
-			deployRequest.Password = password
-		}
-
-		cluster, err := cmd.Flags().GetString("cluster")
-
-		if err != nil {
-			fmt.Printf("Error when getting flag: %s. %v", "environment", err)
-			os.Exit(1)
+		for key, pointer := range strings {
+			if value, err := cmd.Flags().GetString(key); err != nil {
+				fmt.Printf("Error when getting flag: %s. %v\n", key, err)
+				os.Exit(1)
+			} else {
+				*pointer = value
+			}
 		}
 
 		cluster = clusters[cluster]
-
 		url := "https://daemon." + cluster + "/deploy"
 
-		err = mergo.Merge(&deployRequest, api.NaisDeploymentRequest{
+		err := mergo.Merge(&deployRequest, api.NaisDeploymentRequest{
 			Environment: "t0",
 			Zone:        "fss",
 			Namespace:   "default",

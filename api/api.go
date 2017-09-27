@@ -8,10 +8,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
 	"goji.io/pat"
+	"io"
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
-	"io"
 )
 
 type Api struct {
@@ -21,15 +21,15 @@ type Api struct {
 }
 
 type NaisDeploymentRequest struct {
-	Application  string
-	Version      string
-	Environment  string
-	Zone         string
-	AppConfigUrl string
-	NoAppConfig  bool
-	Username     string
-	Password     string
-	Namespace    string
+	Application  string `json:"application"`
+	Version      string `json:"version"`
+	Environment  string `json:"environment"`
+	Zone         string `json:"zone"`
+	AppConfigUrl string `json:"appconfigurl,omitempty"`
+	NoAppConfig  bool   `json:"-"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	Namespace    string `json:"namespace"`
 }
 
 var (
@@ -83,7 +83,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Could not fetch manifest: " + err.Error()))
 		return
 	}
-
 
 	naisResources, err := fetchFasitResources(api.FasitUrl, deploymentRequest, appConfig)
 

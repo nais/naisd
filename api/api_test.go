@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 	"gopkg.in/yaml.v2"
@@ -127,4 +128,30 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
 	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n", string(rr.Body.Bytes()))
+}
+
+func TestValidateDeploymentRequest(t *testing.T) {
+	t.Run("Empty fields should be marked invalid", func(t *testing.T) {
+		invalid := NaisDeploymentRequest{
+			Application: "",
+			Version:     "",
+			Environment: "",
+			Zone:        "",
+			Namespace:   "",
+			Username:    "",
+			Password:    "",
+		}
+
+		err := invalid.Validate()
+
+		assert.NotNil(t, err)
+		assert.Contains(t, err, errors.New("Application is required and is empty"))
+		assert.Contains(t, err, errors.New("Version is required and is empty"))
+		assert.Contains(t, err, errors.New("Environment is required and is empty"))
+		assert.Contains(t, err, errors.New("Zone is required and is empty"))
+		assert.Contains(t, err, errors.New("Zone can only be fss or sbs"))
+		assert.Contains(t, err, errors.New("Namespace is required and is empty"))
+		assert.Contains(t, err, errors.New("Username is required and is empty"))
+		assert.Contains(t, err, errors.New("Password is required and is empty"))
+	})
 }

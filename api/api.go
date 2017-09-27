@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
@@ -143,14 +144,18 @@ func (r NaisDeploymentRequest) Validate() []error {
 		"Namespace":   &r.Namespace,
 	}
 
-	var errors []error
+	var errs []error
 	for key, pointer := range required {
 		if len(*pointer) == 0 {
-			errors = append(errors, fmt.Errorf("%s is required and is empty", key))
+			errs = append(errs, fmt.Errorf("%s is required and is empty", key))
 		}
 	}
 
-	return errors
+	if r.Zone != "fss" && r.Zone != "sbs" {
+		errs = append(errs, errors.New("Zone can only be fss or sbs"))
+	}
+
+	return errs
 }
 
 func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, error) {

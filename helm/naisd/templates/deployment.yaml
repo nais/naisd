@@ -12,6 +12,7 @@ spec:
         app: naisd
       annotations:
         prometheus.io/scrape: "true"
+        nais.io/logformat: glog
     spec:
       serviceAccount: naisd
       containers:

@@ -29,7 +29,10 @@ var deployCmd = &cobra.Command{
 			"prod-sbs":     "nais.oera.no",
 		}
 
-		deployRequest := api.NaisDeploymentRequest{}
+		deployRequest := api.NaisDeploymentRequest{
+			Username: os.Getenv("NAIS_USERNAME"),
+			Password: os.Getenv("NAIS_PASSWORD"),
+		}
 
 		if app, err := cmd.Flags().GetString("app"); err != nil {
 			fmt.Printf("Error when getting flag: %s. %v", "app", err)
@@ -69,14 +72,14 @@ var deployCmd = &cobra.Command{
 		if username, err := cmd.Flags().GetString("username"); err != nil {
 			fmt.Printf("Error when getting flag: %s. %v", "username", err)
 			os.Exit(1)
-		} else {
+		} else if len(username) > 0 {
 			deployRequest.Username = username
 		}
 
 		if password, err := cmd.Flags().GetString("password"); err != nil {
 			fmt.Printf("Error when getting flag: %s. %v", "password", err)
 			os.Exit(1)
-		} else {
+		} else if len(password) > 0 {
 			deployRequest.Password = password
 		}
 

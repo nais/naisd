@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/imdario/mergo"
 	"github.com/nais/naisd/api"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -55,19 +54,13 @@ var deployCmd = &cobra.Command{
 			}
 		}
 
-		cluster = clusters[cluster]
-		url := "https://daemon." + cluster + "/deploy"
-
-		err := mergo.Merge(&deployRequest, api.NaisDeploymentRequest{
-			Environment: "t0",
-			Zone:        "fss",
-			Namespace:   "default",
-		})
-
-		if err != nil {
-			fmt.Printf("Error while merging default config: %v\n", err)
+		if err := deployRequest.Validate(); err != nil {
+			fmt.Printf("DeploymentRequest is not valid: %v\n", err)
 			os.Exit(1)
 		}
+
+		cluster = clusters[cluster]
+		url := "https://daemon." + cluster + "/deploy"
 
 		jsonStr, err := json.Marshal(deployRequest)
 

@@ -132,6 +132,27 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 	return []byte(response)
 }
 
+func (r NaisDeploymentRequest) Validate() []error {
+	required := map[string]*string{
+		"Application": &r.Application,
+		"Version":     &r.Version,
+		"Environment": &r.Environment,
+		"Zone":        &r.Zone,
+		"Username":    &r.Username,
+		"Password":    &r.Password,
+		"Namespace":   &r.Namespace,
+	}
+
+	var errors []error
+	for key, pointer := range required {
+		if len(*pointer) == 0 {
+			errors = append(errors, fmt.Errorf("%s is required and is empty", key))
+		}
+	}
+
+	return errors
+}
+
 func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, error) {
 	requestBody, err := ioutil.ReadAll(body)
 	if err != nil {

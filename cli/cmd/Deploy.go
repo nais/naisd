@@ -50,7 +50,7 @@ var deployCmd = &cobra.Command{
 			if value, err := cmd.Flags().GetString(key); err != nil {
 				fmt.Printf("Error when getting flag: %s. %v\n", key, err)
 				os.Exit(1)
-			} else {
+			} else if len(value) > 0 {
 				*pointer = value
 			}
 		}

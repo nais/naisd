@@ -35,14 +35,15 @@ var deployCmd = &cobra.Command{
 
 		var cluster string
 		strings := map[string]*string{
-			"app":         &deployRequest.Application,
-			"version":     &deployRequest.Version,
-			"environment": &deployRequest.Environment,
-			"zone":        &deployRequest.Zone,
-			"namespace":   &deployRequest.Namespace,
-			"username":    &deployRequest.Username,
-			"password":    &deployRequest.Password,
-			"cluster":     &cluster,
+			"app":          &deployRequest.Application,
+			"version":      &deployRequest.Version,
+			"environment":  &deployRequest.Environment,
+			"zone":         &deployRequest.Zone,
+			"namespace":    &deployRequest.Namespace,
+			"username":     &deployRequest.Username,
+			"password":     &deployRequest.Password,
+			"manifest-url": &deployRequest.AppConfigUrl,
+			"cluster":      &cluster,
 		}
 
 		for key, pointer := range strings {
@@ -103,4 +104,5 @@ func init() {
 	deployCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")
 	deployCmd.Flags().StringP("username", "u", "", "the username")
 	deployCmd.Flags().StringP("password", "p", "", "the password")
+	deployCmd.Flags().StringP("manifest-url", "m", "", "alternative URL to the nais manifest")
 }

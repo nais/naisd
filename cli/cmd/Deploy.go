@@ -59,7 +59,15 @@ var deployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		cluster = clusters[cluster]
+		cluster, exists := clusters[cluster]
+		if !exists {
+			fmt.Print("Cluster is not valid, please choose one of: ")
+			for key := range clusters {
+				fmt.Printf("%s, ", key)
+			}
+			fmt.Print("\n")
+			os.Exit(1)
+		}
 		url := "https://daemon." + cluster + "/deploy"
 
 		jsonStr, err := json.Marshal(deployRequest)

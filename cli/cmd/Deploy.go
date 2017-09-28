@@ -89,7 +89,7 @@ func init() {
 
 	deployCmd.Flags().StringP("app", "a", "", "name of your app")
 	deployCmd.Flags().StringP("version", "v", "", "version you want to deploy")
-	deployCmd.Flags().StringP("cluster", "c", "nais-dev", "the cluster you want to deploy to")
+	deployCmd.Flags().StringP("cluster", "c", "preprod-fss", "the cluster you want to deploy to")
 	deployCmd.Flags().StringP("environment", "e", "t0", "environment you want to use")
 	deployCmd.Flags().StringP("zone", "z", "fss", "the zone the app will be in")
 	deployCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")

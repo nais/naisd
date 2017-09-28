@@ -149,7 +149,7 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.Contains(t, err, errors.New("Version is required and is empty"))
 		assert.Contains(t, err, errors.New("Environment is required and is empty"))
 		assert.Contains(t, err, errors.New("Zone is required and is empty"))
-		assert.Contains(t, err, errors.New("Zone can only be fss or sbs"))
+		assert.Contains(t, err, errors.New("Zone can only be fss, sbs or iapp"))
 		assert.Contains(t, err, errors.New("Namespace is required and is empty"))
 		assert.Contains(t, err, errors.New("Username is required and is empty"))
 		assert.Contains(t, err, errors.New("Password is required and is empty"))

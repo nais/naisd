@@ -159,8 +159,8 @@ func TestDeployment(t *testing.T) {
 			"resource3",
 			"applicationproperties",
 			map[string]string{
-				"key1": "value1",
-				"key2": "dc=preprod,dc=local",
+				"key1":          "value1",
+				"key2.property": "dc=preprod,dc=local",
 			},
 			map[string]string{},
 			nil,
@@ -262,8 +262,8 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, "key1", env[10].Name)
 		assert.Equal(t, "KEY1", env[11].Name)
 
-		assert.Equal(t, "key2", env[12].Name)
-		assert.Equal(t, "KEY2", env[13].Name)
+		assert.Equal(t, "key2_property", env[12].Name)
+		assert.Equal(t, "KEY2_PROPERTY", env[13].Name)
 
 		assert.Equal(t, "dots_are_not_allowed_key", env[14].Name)
 		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[15].Name)

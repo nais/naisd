@@ -53,17 +53,20 @@ func createServiceDef(application, namespace string) *v1.Service {
 }
 
 func ResourceVariableName(resource NaisResource, key string) string {
+	name := resource.name + "_" + key
+
 	if resource.resourceType == "applicationproperties" {
-		return key
+		name = key
 	}
 
-	if strings.Contains(resource.name, ".") {
-		return strings.Replace(resource.name, ".", "_", -1) + "_" + key
+	if strings.Contains(name, ".") {
+		return strings.Replace(name, ".", "_", -1)
 	}
-	if strings.Contains(resource.name, ":") {
-		return strings.Replace(resource.name, ":", "_", -1) + "_" + key
+
+	if strings.Contains(name, ":") {
+		return strings.Replace(name, ":", "_", -1)
 	}
-	return resource.name + "_" + key
+	return name
 }
 
 func ResourceEnvironmentVariableName(resource NaisResource, key string) string {

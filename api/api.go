@@ -31,6 +31,20 @@ type NaisDeploymentRequest struct {
 	Password     string
 	Namespace    string
 }
+type appError struct {
+	Error   error
+	Message string
+	Code    int
+}
+
+type appHandler func(w http.ResponseWriter, r *http.Request) *appError
+
+func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if e := fn(w, r); e != nil { // e is *appError, not os.Error.
+		glog.Errorf(e.Message+": %s\n", e.Error)
+		http.Error(w, e.Message, e.Code)
+	}
+}
 
 var (
 	requests = prometheus.NewCounterVec(
@@ -49,67 +63,51 @@ func init() {
 func (api Api) NewApi() http.Handler {
 	mux := goji.NewMux()
 
-	mux.HandleFunc(pat.Get("/isalive"), api.isAlive)
-	mux.HandleFunc(pat.Post("/deploy"), api.deploy)
+	mux.Handle(pat.Get("/isalive"), appHandler(api.isAlive))
+	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 
 	return mux
 }
 
-func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) {
+func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "isAlive"}).Inc()
 	fmt.Fprint(w, "")
+	return nil
 }
 
-func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
+func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 
 	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
-
 	if err != nil {
-		glog.Errorf("Unable to unmarshal deployment request: %s", err)
-		w.WriteHeader(400)
-		w.Write([]byte("Unable to understand deployment request: " + err.Error()))
-		return
+		return &appError{err, "Unable to unmarshal deployment request", http.StatusBadRequest}
 	}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
 	appConfig, err := GenerateAppConfig(deploymentRequest)
-
 	if err != nil {
-		glog.Errorf("Unable to fetch manifest: %s\n", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Could not fetch manifest: " + err.Error()))
-		return
+		return &appError{err, "Unable to fetch manifest", http.StatusInternalServerError}
 	}
 
-
 	naisResources, err := fetchFasitResources(api.FasitUrl, deploymentRequest, appConfig)
-
 	if err != nil {
-		glog.Errorf("Error getting fasit resources: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Error getting fasit resources: " + err.Error()))
-		return
+		return &appError{err, "Unable to fetch fasit resources", http.StatusInternalServerError}
 	}
 
 	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, api.ClusterSubdomain, api.Clientset)
-
 	if err != nil {
-		glog.Errorf("Failed while creating or updating resources: %s\n Created this %s", err, deploymentResult)
-		w.WriteHeader(500)
-		w.Write([]byte("Failed while creating or updating resources: " + err.Error()))
-		return
+		return &appError{err, "Failed while creating or updating k8s-resources", http.StatusInternalServerError}
 	}
 
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
 	w.WriteHeader(200)
-
-	response := createResponse(deploymentResult)
-	w.Write(response)
+	w.Write(createResponse(deploymentResult))
+	return nil
 }
+
 func createResponse(deploymentResult DeploymentResult) []byte {
 
 	response := "result: \n"

@@ -23,7 +23,7 @@ func TestAnIncorrectPayloadGivesError(t *testing.T) {
 		panic("could not create req")
 	}
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.deploy)
+	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
 
@@ -59,7 +59,7 @@ func TestNoManifestGivesError(t *testing.T) {
 		panic("could not create req")
 	}
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.deploy)
+	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
 
@@ -120,7 +120,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/deploy", body)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.deploy)
+	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
 

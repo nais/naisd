@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func init() {
@@ -143,6 +144,12 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 
 		resource.certificates = files
 
+	} else if fasitResource.ResourceType == "applicationproperties" {
+		for _, prop := range strings.Split(fasitResource.Properties["applicationProperties"], "\r\n") {
+			parts := strings.SplitN(prop, "=", 2)
+			resource.properties[parts[0]] = parts[1]
+		}
+		delete(resource.properties, "applicationProperties")
 	}
 
 	return resource, nil

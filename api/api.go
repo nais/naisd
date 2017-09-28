@@ -105,11 +105,17 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
+	ingressHostname := deploymentResult.Ingress.Spec.Rules[0].Host
+	if err := updateFasit(naisResources, appConfig, ingressHostname); err != nil {
+
+	}
+
 	w.WriteHeader(200)
 
 	response := createResponse(deploymentResult)
 	w.Write(response)
 }
+
 func createResponse(deploymentResult DeploymentResult) []byte {
 
 	response := "result: \n"

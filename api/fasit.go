@@ -50,6 +50,8 @@ type NaisResource struct {
 	certificates map[string][]byte
 }
 
+
+
 func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
 		resource, err := fasit.getResource(request, environment, application, zone)
@@ -70,6 +72,35 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
 
 	return fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+}
+
+// Updates Fasit with information
+func updateFasit(resources []NaisResource, appConfig NaisAppConfig, hostname string) error {
+	exposedResourceIds, err := createResources(appConfig.FasitResources.Exposed, hostname)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(exposedResourceIds)
+
+	// createApplicationInstance(resources, exposedResourceIds)
+
+	return nil
+}
+
+func createResources(resources []ExposedResource, hostname string) ([]int, error) {
+	var resourceIds []int
+	for i,res := range resources {
+		fmt.Println("alias", res.Alias)
+		fmt.Println("path", res.Path)
+		fmt.Println("type", res.ResourceType)
+		fmt.Println("hostname", hostname)
+		//create resource
+		resourceIds = append(resourceIds, i)
+	}
+
+	return resourceIds, nil
 }
 
 func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {

@@ -51,8 +51,15 @@ func TestResourceError(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "not found (404)"))
 }
 
-func TestGettingListOfResources(t *testing.T) {
+func TestUpdateFasit(t *testing.T) {
+	exposedResources := []ExposedResource{{ResourceType:"rest", Alias:"alias", Path:"/path"}, {ResourceType:"rest", Alias:"alias1", Path:"/path1"}}
+	resourceIds, err := createResources(exposedResources, "bla.bla.no")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(resourceIds))
+	//updateFasit()
+}
 
+func TestGettingListOfResources(t *testing.T) {
 	alias := "alias1"
 	alias2 := "alias2"
 	alias3 := "alias3"

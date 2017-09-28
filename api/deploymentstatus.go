@@ -1,65 +1,135 @@
 package api
 
 import (
-	"net/http"
-	"net/url"
 	"k8s.io/client-go/kubernetes"
-	"path"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"fmt"
+	"k8s.io/client-go/pkg/api/v1"
+	"github.com/golang/glog"
 )
 
-func deploymentStatusHandler(clientset kubernetes.Interface) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		namespace, appName := parseURLPath(r.URL)
-		if dep, err := clientset.ExtensionsV1beta1().Deployments(namespace).Get(appName); err != nil {
-			_, deployFinished, err := isDeploymentFinished(dep)
+type DeployStatus int
 
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			if deployFinished {
-				w.WriteHeader(http.StatusOK)
-			} else {
-				w.WriteHeader(http.StatusAccepted)
-			}
+func (d DeployStatus) String() string {
+	switch d {
+	case InProgress:
+		return "InProgress"
+	case Failed:
+		return "Failed"
+	case Success:
+		return "Success"
+	}
+}
 
-		}
+const (
+	Success    DeployStatus = iota
+	InProgress
+	Failed
+)
 
-	})
+type DeploymentStatusViewer interface {
+	DeploymentStatusView(namespace string, deployName string) (DeployStatus, DeploymentStatusView, error)
+}
+
+type deploymentStatusViewerImpl struct {
+	client kubernetes.Interface
+}
+
+func NewDeploymentStatusViewer(clientset kubernetes.Interface) DeploymentStatusViewer {
+	return &deploymentStatusViewerImpl{
+		clientset,
+	}
+}
+
+func (d deploymentStatusViewerImpl) DeploymentStatusView(namespace string, deployName string) (DeployStatus, DeploymentStatusView, error) {
+	dep, err := d.client.ExtensionsV1beta1().Deployments(namespace).Get(deployName)
+	if err != nil {
+		errMess := fmt.Sprintf("did not find deployment: %s in namespace: %s", deployName, namespace)
+		glog.Error(errMess)
+		return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s in namespace: %s", deployName, namespace)
+	}
+
+	status, view := deploymentStatusAndView(*dep)
+	return status, view, nil
 
 }
-func isDeploymentFinished(deployment *v1beta1.Deployment) (string, bool, error) {
-	if deployment.Generation <= deployment.Status.ObservedGeneration {
-		if deploymentExceededProgressDeadline(deployment.Status) {
-			return "", false, fmt.Errorf("deployment %q exceeded its progress deadline", deployment.Name)
-		}
-		if deployment.Status.UpdatedReplicas < *deployment.Spec.Replicas {
-			return fmt.Sprintf("Waiting for rollout to finish: %d out of %d new replicas have been updated.", deployment.Status.UpdatedReplicas, deployment.Spec.Replicas), false, nil
-		}
-		if deployment.Status.Replicas > deployment.Status.UpdatedReplicas {
-			return fmt.Sprintf("Waiting for rollout to finish: %d old replicas are pending termination.", deployment.Status.Replicas-deployment.Status.UpdatedReplicas), false, nil
-		}
-		if deployment.Status.AvailableReplicas < deployment.Status.UpdatedReplicas {
-			return fmt.Sprintf("Waiting for rollout to finish: %d of %d updated replicas are available.", deployment.Status.AvailableReplicas, deployment.Status.UpdatedReplicas), false, nil
-		}
-		return fmt.Sprintf("deployment %q successfully rolled out.", deployment.Name), true, nil
+
+type DeploymentStatusView struct {
+	Name       string
+	Desired    int32
+	Current    int32
+	UpToDate   int32
+	Available  int32
+	Containers []string
+	Images     []string
+	Status     DeployStatus
+	Reason     string
+}
+
+func deploymentStatusViewFrom(status DeployStatus, reason string, deployment v1beta1.Deployment) DeploymentStatusView {
+	containers, images := findContainerImages(deployment.Spec.Template.Spec.Containers)
+
+	return DeploymentStatusView{
+		Name:       deployment.Name,
+		Desired:    *deployment.Spec.Replicas,
+		Current:    deployment.Status.Replicas,
+		UpToDate:   deployment.Status.UpdatedReplicas,
+		Available:  deployment.Status.AvailableReplicas,
+		Containers: containers,
+		Images:     images,
+		Status:     status,
+		Reason:     reason,
 	}
-	return fmt.Sprintf("Waiting for deployment spec update to be observed."), false, nil
+
+}
+
+func findContainerImages(containers []v1.Container) ([]string, []string) {
+	names, images := []string{}, []string{}
+
+	for _, container := range containers {
+		names = append(names, container.Name)
+		images = append(images, container.Image)
+	}
+	return names, images
+}
+
+func deploymentStatusAndView(deployment v1beta1.Deployment) (DeployStatus, DeploymentStatusView) {
+	if deployment.Generation <= deployment.Status.ObservedGeneration {
+		switch {
+
+		case deploymentExceededProgressDeadline(deployment.Status):
+			reason := fmt.Sprintf("deployment %s exceeded its progress deadline", deployment.Name)
+			return Failed, deploymentStatusViewFrom(Failed, reason, deployment)
+
+		case deployment.Status.UpdatedReplicas < *deployment.Spec.Replicas:
+			reason := fmt.Sprintf("Waiting for rollout to finish: %d out of %d new replicas have been updated.", deployment.Status.UpdatedReplicas, deployment.Spec.Replicas)
+			return InProgress, deploymentStatusViewFrom(InProgress, reason, deployment)
+
+		case deployment.Status.Replicas > deployment.Status.UpdatedReplicas:
+			reason := fmt.Sprintf("Waiting for rollout to finish: %d old replicas are pending termination.", deployment.Status.Replicas-deployment.Status.UpdatedReplicas)
+			return InProgress, deploymentStatusViewFrom(InProgress, reason, deployment)
+
+		case deployment.Status.AvailableReplicas < deployment.Status.UpdatedReplicas:
+			reason := fmt.Sprintf("Waiting for rollout to finish: %d of %d updated replicas are available.", deployment.Status.AvailableReplicas, deployment.Status.UpdatedReplicas)
+			return InProgress, deploymentStatusViewFrom(InProgress, reason, deployment)
+
+		default:
+			reason := fmt.Sprintf("deployment %q successfully rolled out.", deployment.Name)
+			return Success, deploymentStatusViewFrom(Success, reason, deployment)
+
+		}
+
+	}
+	reason := fmt.Sprintf("Waiting for deployment spec update to be observed.")
+	return InProgress, deploymentStatusViewFrom(InProgress, reason, deployment)
 }
 
 func deploymentExceededProgressDeadline(status v1beta1.DeploymentStatus) bool {
 	for i := range status.Conditions {
 		c := status.Conditions[i]
-		if c.Type == v1beta1.DeploymentProgressing && c.Reason == "ProgressDeadlineExceeded"{
+		if c.Type == v1beta1.DeploymentProgressing && c.Reason == "ProgressDeadlineExceeded" {
 			return true
 		}
 	}
 	return false
-}
-
-func parseURLPath(url *url.URL) (namespace string, appName string) {
-	dir, file := path.Split(url.Path)
-	return path.Base(dir), file
 }

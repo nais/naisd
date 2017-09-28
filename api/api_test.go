@@ -78,7 +78,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk"}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", nil}
 
 	depReq := NaisDeploymentRequest{
 		Application:  appName,

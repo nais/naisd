@@ -2,16 +2,17 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
 	"goji.io/pat"
+	"io"
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
-	"io"
 )
 
 type Api struct {
@@ -21,15 +22,15 @@ type Api struct {
 }
 
 type NaisDeploymentRequest struct {
-	Application  string
-	Version      string
-	Environment  string
-	Zone         string
-	AppConfigUrl string
-	NoAppConfig  bool
-	Username     string
-	Password     string
-	Namespace    string
+	Application  string `json:"application"`
+	Version      string `json:"version"`
+	Environment  string `json:"environment"`
+	Zone         string `json:"zone"`
+	AppConfigUrl string `json:"appconfigurl,omitempty"`
+	NoAppConfig  bool   `json:"-"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	Namespace    string `json:"namespace"`
 }
 type appError struct {
 	Error   error
@@ -129,6 +130,31 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 	}
 
 	return []byte(response)
+}
+
+func (r NaisDeploymentRequest) Validate() []error {
+	required := map[string]*string{
+		"Application": &r.Application,
+		"Version":     &r.Version,
+		"Environment": &r.Environment,
+		"Zone":        &r.Zone,
+		"Username":    &r.Username,
+		"Password":    &r.Password,
+		"Namespace":   &r.Namespace,
+	}
+
+	var errs []error
+	for key, pointer := range required {
+		if len(*pointer) == 0 {
+			errs = append(errs, fmt.Errorf("%s is required and is empty", key))
+		}
+	}
+
+	if r.Zone != "fss" && r.Zone != "sbs" && r.Zone != "iapp" {
+		errs = append(errs, errors.New("Zone can only be fss, sbs or iapp"))
+	}
+
+	return errs
 }
 
 func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, error) {

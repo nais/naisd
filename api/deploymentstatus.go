@@ -18,6 +18,8 @@ func (d DeployStatus) String() string {
 		return "Failed"
 	case Success:
 		return "Success"
+	default:
+		return ""
 	}
 }
 
@@ -62,7 +64,7 @@ type DeploymentStatusView struct {
 	Available  int32
 	Containers []string
 	Images     []string
-	Status     DeployStatus
+	Status     string
 	Reason     string
 }
 
@@ -77,7 +79,7 @@ func deploymentStatusViewFrom(status DeployStatus, reason string, deployment v1b
 		Available:  deployment.Status.AvailableReplicas,
 		Containers: containers,
 		Images:     images,
-		Status:     status,
+		Status:     status.String(),
 		Reason:     reason,
 	}
 

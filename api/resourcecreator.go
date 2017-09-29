@@ -53,13 +53,20 @@ func createServiceDef(application, namespace string) *v1.Service {
 }
 
 func ResourceVariableName(resource NaisResource, key string) string {
-	if strings.Contains(resource.name, ".") {
-		return strings.Replace(resource.name, ".", "_", -1) + "_" + key
+	name := resource.name + "_" + key
+
+	if resource.resourceType == "applicationproperties" {
+		name = key
 	}
-	if strings.Contains(resource.name, ":") {
-		return strings.Replace(resource.name, ":", "_", -1) + "_" + key
+
+	if strings.Contains(name, ".") {
+		return strings.Replace(name, ".", "_", -1)
 	}
-	return resource.name + "_" + key
+
+	if strings.Contains(name, ":") {
+		return strings.Replace(name, ":", "_", -1)
+	}
+	return name
 }
 
 func ResourceEnvironmentVariableName(resource NaisResource, key string) string {
@@ -103,8 +110,8 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 						},
 					},
 				},
-				ProgressDeadlineSeconds:int32p(600),
-				RevisionHistoryLimit: int32p(10),
+				ProgressDeadlineSeconds: int32p(600),
+				RevisionHistoryLimit:    int32p(10),
 				Template: v1.PodTemplateSpec{
 					ObjectMeta: createOjectMeta(deploymentRequest, appConfig),
 					Spec:       createPodSpec(deploymentRequest, appConfig, naisResources),

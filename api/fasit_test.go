@@ -1,12 +1,12 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
-	"testing"
-	"encoding/json"
-	"bytes"
 	"strings"
+	"testing"
 )
 
 func TestGettingResource(t *testing.T) {
@@ -56,6 +56,7 @@ func TestGettingListOfResources(t *testing.T) {
 	alias := "alias1"
 	alias2 := "alias2"
 	alias3 := "alias3"
+	alias4 := "alias4"
 
 	resourceType := "datasource"
 	environment := "environment"
@@ -92,18 +93,32 @@ func TestGettingListOfResources(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse3.json")
 
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
+		MatchParam("alias", alias4).
+		MatchParam("type", "applicationproperties").
+		MatchParam("environment", environment).
+		MatchParam("application", application).
+		MatchParam("zone", zone).
+		Reply(200).File("testdata/fasitResponse4.json")
+
 	resources := []ResourceRequest{}
 	resources = append(resources, ResourceRequest{alias, resourceType})
 	resources = append(resources, ResourceRequest{alias2, resourceType})
 	resources = append(resources, ResourceRequest{alias3, resourceType})
+	resources = append(resources, ResourceRequest{alias4, "applicationproperties"})
 
 	resourcesReplies, err := fasit.GetResources(resources, environment, application, zone)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(resourcesReplies))
+	assert.Equal(t, 4, len(resourcesReplies))
 	assert.Equal(t, alias, resourcesReplies[0].name)
 	assert.Equal(t, alias2, resourcesReplies[1].name)
 	assert.Equal(t, alias3, resourcesReplies[2].name)
+	assert.Equal(t, alias4, resourcesReplies[3].name)
+	assert.Equal(t, 2, len(resourcesReplies[3].properties))
+	assert.Equal(t, "value1", resourcesReplies[3].properties["key1"])
+	assert.Equal(t, "dc=preprod,dc=local", resourcesReplies[3].properties["key2"])
 }
 
 func TestResourceWithArbitraryPropertyKeys(t *testing.T) {

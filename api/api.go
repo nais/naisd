@@ -100,11 +100,11 @@ func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *
 		w.WriteHeader(http.StatusOK)
 	}
 
-	b, err := json.Marshal(view)
-	if err != nil {
-		return &appError{err, fmt.Sprintf("Unable to marshal deploy status view: %+v", view), http.StatusNotFound}
+	if b, err := json.Marshal(view); err == nil {
+		w.Write(b)
+	} else {
+		glog.Errorf("Unable to marshal deploy status view: %+v", view)
 	}
-	w.Write(b)
 
 	return nil
 }

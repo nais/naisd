@@ -68,7 +68,7 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Get("/isalive"), appHandler(api.isAlive))
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
-	mux.HandleFunc(pat.Get("/deploystatus"), api.deploymentStatusHandler)
+	mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
 	return mux
 }
 
@@ -81,15 +81,14 @@ func NewApi(clientset kubernetes.Interface, fasitUrl string, clusterDomain strin
 	}
 }
 
-func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) {
+func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
 	namespace := pat.Param(r, "namespace")
 	deployName := pat.Param(r, "deployName")
 
 	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(namespace, deployName)
 
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
+		return &appError{err, "Deployment not found ", http.StatusNotFound}
 	}
 
 	switch status {
@@ -101,8 +100,13 @@ func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
 
-	b, _ := json.Marshal(view)
+	b, err := json.Marshal(view)
+	if err != nil {
+		return &appError{err, fmt.Sprintf("Unable to marshal deploy status view: %+v", view), http.StatusNotFound}
+	}
 	w.Write(b)
+
+	return nil
 }
 
 func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {

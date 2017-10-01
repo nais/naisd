@@ -122,8 +122,7 @@ func deploymentStatusAndView(deployment v1beta1.Deployment) (DeployStatus, Deplo
 		}
 
 	}
-	reason := fmt.Sprintf("Waiting for deployment spec update to be observed.")
-	return InProgress, deploymentStatusViewFrom(InProgress, reason, deployment)
+	return InProgress, deploymentStatusViewFrom(InProgress, "Waiting for deployment spec update to be observed", deployment)
 }
 
 func deploymentExceededProgressDeadline(status v1beta1.DeploymentStatus) bool {

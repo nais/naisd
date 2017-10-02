@@ -63,6 +63,20 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 	return resources, nil
 }
 
+func (fasit FasitClient) createOrUpdateResources(){
+
+}
+
+func environmentExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest)(error) {
+	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+	return fasit.fetchFasitEnvironment(deploymentRequest.Namespace)
+}
+
+func applicationExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest)(error) {
+	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+	return fasit.fetchFasitApplication(deploymentRequest.Application)
+}
+
 func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) ([]NaisResource, error) {
 	var resourceRequests []ResourceRequest
 	for _, resource := range appConfig.FasitResources.Used {
@@ -75,8 +89,9 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 }
 
 // Updates Fasit with information
-func updateFasit(resources []NaisResource, appConfig NaisAppConfig, hostname string) error {
-	exposedResourceIds, err := createResources(appConfig.FasitResources.Exposed, hostname)
+func updateFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest, resources []NaisResource, appConfig NaisAppConfig, hostname string) error {
+	//fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+	exposedResourceIds, err := createOrUpdateResources(appConfig.FasitResources.Exposed, hostname)
 
 	if err != nil {
 		panic(err)
@@ -89,7 +104,7 @@ func updateFasit(resources []NaisResource, appConfig NaisAppConfig, hostname str
 	return nil
 }
 
-func createResources(resources []ExposedResource, hostname string) ([]int, error) {
+func createOrUpdateResources(resources []ExposedResource, hostname string) ([]int, error) {
 	var resourceIds []int
 	for i,res := range resources {
 		fmt.Println("alias", res.Alias)
@@ -105,7 +120,7 @@ func createResources(resources []ExposedResource, hostname string) ([]int, error
 
 func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
 	requestCounter.With(nil).Inc()
-	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)
+	req, err := buildResourceRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return NaisResource{}, fmt.Errorf("Could not create request: %s", err)
@@ -148,6 +163,50 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 	}
 
 	return resource, nil
+}
+
+func (fasit FasitClient) fetchFasitEnvironment(environmentName string) (error){
+	requestCounter.With(nil).Inc()
+	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/environments/"+environmentName, nil)
+	if err != nil {
+		return fmt.Errorf("Could not create request: %s", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	defer resp.Body.Close()
+
+	if err != nil {
+		return fmt.Errorf("Error contacting Fasit: %s", err)
+	}
+
+	if resp.StatusCode == 200 {
+		return nil
+	}
+	return fmt.Errorf("Could not find environment %s in Fasit", environmentName)
+}
+
+func (fasit FasitClient) fetchFasitApplication(application string) (error){
+	requestCounter.With(nil).Inc()
+	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/applications/"+application, nil)
+	if err != nil {
+		return fmt.Errorf("Could not create request: %s", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	defer resp.Body.Close()
+
+	if err != nil {
+		return fmt.Errorf("Error contacting Fasit: %s", err)
+	}
+
+	if resp.StatusCode == 200 {
+		return nil
+	}
+	return fmt.Errorf("Could not find application %s in Fasit", application)
 }
 
 func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resource NaisResource, err error) {
@@ -265,7 +324,7 @@ func getFirstKey(m map[string]map[string]string) string {
 	return ""
 }
 
-func buildRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
+func buildResourceRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", fasit+"/api/v2/scopedresource", nil)
 
 	q := req.URL.Query()

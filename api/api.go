@@ -86,7 +86,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
 	appConfig, err := GenerateAppConfig(deploymentRequest)
 
@@ -100,6 +99,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	if err := validateDeploymentRequirements(api.FasitUrl, deploymentRequest); err != nil {
 		glog.Errorf("Validating requirements for deployment failed: %s", err)
 	}
+
+	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
 	naisResources, err := fetchFasitResources(api.FasitUrl, deploymentRequest, appConfig)
 

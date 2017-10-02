@@ -16,9 +16,10 @@ import (
 )
 
 type Api struct {
-	Clientset        kubernetes.Interface
-	FasitUrl         string
-	ClusterSubdomain string
+	Clientset              kubernetes.Interface
+	FasitUrl               string
+	ClusterSubdomain       string
+	DeploymentStatusViewer DeploymentStatusViewer
 }
 
 type NaisDeploymentRequest struct {
@@ -61,14 +62,51 @@ func init() {
 	prometheus.MustRegister(deploys)
 }
 
-func (api Api) NewApi() http.Handler {
+func (api Api) Handler() http.Handler {
 	mux := goji.NewMux()
 
 	mux.Handle(pat.Get("/isalive"), appHandler(api.isAlive))
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
-
+	mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
 	return mux
+}
+
+func NewApi(clientset kubernetes.Interface, fasitUrl string, clusterDomain string, d DeploymentStatusViewer) Api {
+	return Api{
+		Clientset:              clientset,
+		FasitUrl:               fasitUrl,
+		ClusterSubdomain:       clusterDomain,
+		DeploymentStatusViewer: d,
+	}
+}
+
+func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
+	namespace := pat.Param(r, "namespace")
+	deployName := pat.Param(r, "deployName")
+
+	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(namespace, deployName)
+
+	if err != nil {
+		return &appError{err, "Deployment not found ", http.StatusNotFound}
+	}
+
+	switch status {
+	case InProgress:
+		w.WriteHeader(http.StatusAccepted)
+	case Failed:
+		w.WriteHeader(http.StatusInternalServerError)
+	case Success:
+		w.WriteHeader(http.StatusOK)
+	}
+
+	if b, err := json.Marshal(view); err == nil {
+		w.Write(b)
+	} else {
+		glog.Errorf("Unable to marshal deploy status view: %+v", view)
+	}
+
+	return nil
 }
 
 func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {

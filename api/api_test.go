@@ -11,7 +11,20 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"fmt"
+	"goji.io"
+	"goji.io/pat"
 )
+
+type FakeDeployStatusViewer struct {
+	deployStatusToReturn DeployStatus
+	viewToReturn         DeploymentStatusView
+	errToReturn          error
+}
+
+func (d FakeDeployStatusViewer) DeploymentStatusView(namespace string, deployName string) (DeployStatus, DeploymentStatusView, error) {
+	return d.deployStatusToReturn, d.viewToReturn, d.errToReturn
+}
 
 func TestAnIncorrectPayloadGivesError(t *testing.T) {
 	api := Api{}
@@ -29,6 +42,63 @@ func TestAnIncorrectPayloadGivesError(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, 400, rr.Code)
+}
+
+func TestDeployStatusHandler(t *testing.T) {
+	req, _ := http.NewRequest("GET", "/deploystatus/namespace/deployName", strings.NewReader("whatever"))
+
+	t.Run("Return 404 if deploy status is not found", func(t *testing.T) {
+		mux := goji.NewMux()
+
+		api := Api{DeploymentStatusViewer: FakeDeployStatusViewer{
+			errToReturn: fmt.Errorf("Not Found"),
+		}}
+
+		mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+		assert.Equal(t, http.StatusNotFound, rr.Code)
+
+	})
+
+	t.Run("Correct http code for a given deploy status", func(t *testing.T) {
+
+		tests := []struct {
+			deployStatus     DeployStatus
+			expectedHttpCode int
+		}{
+			{
+				Success,
+				200,
+			},
+			{
+				Failed,
+				500,
+			},
+			{
+				InProgress,
+				202,
+			},
+		}
+
+		for _, test := range tests {
+			mux := goji.NewMux()
+
+			api := Api{
+				DeploymentStatusViewer: FakeDeployStatusViewer{
+					deployStatusToReturn: test.deployStatus,
+				},
+			}
+			mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
+
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+
+			assert.Equal(t, test.expectedHttpCode, rr.Code)
+		}
+	})
 }
 
 func TestNoManifestGivesError(t *testing.T) {
@@ -78,7 +148,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk"}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", nil}
 
 	depReq := NaisDeploymentRequest{
 		Application:  appName,

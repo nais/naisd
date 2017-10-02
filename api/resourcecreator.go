@@ -110,7 +110,7 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 						},
 					},
 				},
-				ProgressDeadlineSeconds: int32p(600),
+				ProgressDeadlineSeconds: int32p(300),
 				RevisionHistoryLimit:    int32p(10),
 				Template: v1.PodTemplateSpec{
 					ObjectMeta: createOjectMeta(deploymentRequest, appConfig),

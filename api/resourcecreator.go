@@ -81,8 +81,7 @@ func validLabelName(str string) string {
 // If existingDeployment is provided, this is updated with modifiable fields
 func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
 	if existingDeployment != nil {
-		existingDeployment.Spec.Template.Spec = createPodSpec(deploymentRequest, appConfig, naisResources)
-		existingDeployment.Spec.Template.ObjectMeta = createObjectMeta(deploymentRequest, appConfig, existingDeployment.Spec.Template.ObjectMeta.ResourceVersion)
+		existingDeployment.Spec = createDeploymentSpec(deploymentRequest, appConfig, naisResources)
 		return existingDeployment
 	} else {
 		deployment := &v1beta1.Deployment{
@@ -94,38 +93,40 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 				Name:      deploymentRequest.Application,
 				Namespace: deploymentRequest.Namespace,
 			},
-			Spec: v1beta1.DeploymentSpec{
-				Replicas: int32p(1),
-				Strategy: v1beta1.DeploymentStrategy{
-					Type: v1beta1.RollingUpdateDeploymentStrategyType,
-					RollingUpdate: &v1beta1.RollingUpdateDeployment{
-						MaxUnavailable: &intstr.IntOrString{
-							Type:   intstr.Int,
-							IntVal: int32(0),
-						},
-						MaxSurge: &intstr.IntOrString{
-							Type:   intstr.Int,
-							IntVal: int32(1),
-						},
-					},
-				},
-				ProgressDeadlineSeconds: int32p(300),
-				RevisionHistoryLimit:    int32p(10),
-				Template: v1.PodTemplateSpec{
-					ObjectMeta: createObjectMeta(deploymentRequest, appConfig, ""),
-					Spec:       createPodSpec(deploymentRequest, appConfig, naisResources),
-				},
-			},
+			Spec: createDeploymentSpec(deploymentRequest, appConfig, naisResources),
 		}
 		return deployment
 	}
-
 }
 
-func createObjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, resourceVersion string) v1.ObjectMeta {
+func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1beta1.DeploymentSpec {
+	return v1beta1.DeploymentSpec{
+		Replicas: int32p(1),
+		Strategy: v1beta1.DeploymentStrategy{
+			Type: v1beta1.RollingUpdateDeploymentStrategyType,
+			RollingUpdate: &v1beta1.RollingUpdateDeployment{
+				MaxUnavailable: &intstr.IntOrString{
+					Type:   intstr.Int,
+					IntVal: int32(0),
+				},
+				MaxSurge: &intstr.IntOrString{
+					Type:   intstr.Int,
+					IntVal: int32(1),
+				},
+			},
+		},
+		ProgressDeadlineSeconds: int32p(300),
+		RevisionHistoryLimit:    int32p(10),
+		Template: v1.PodTemplateSpec{
+			ObjectMeta: createObjectMeta(deploymentRequest, appConfig),
+			Spec:       createPodSpec(deploymentRequest, appConfig, naisResources),
+		},
+	}
+}
+
+func createObjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
 	return v1.ObjectMeta{
 		Name:   deploymentRequest.Application,
-		ResourceVersion: resourceVersion,
 		Labels: map[string]string{"app": deploymentRequest.Application},
 		Annotations: map[string]string{
 			"prometheus.io/scrape": strconv.FormatBool(appConfig.Prometheus.Enabled),

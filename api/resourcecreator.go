@@ -23,7 +23,6 @@ type DeploymentResult struct {
 }
 
 // Creates a Kubernetes Service object
-// If existingService is provided, we update the existing service object with port from the app config
 func createServiceDef(application, namespace string) *v1.Service {
 	return &v1.Service{
 		TypeMeta: unversioned.TypeMeta{
@@ -83,7 +82,7 @@ func validLabelName(str string) string {
 func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
 	if existingDeployment != nil {
 		existingDeployment.Spec.Template.Spec = createPodSpec(deploymentRequest, appConfig, naisResources)
-		existingDeployment.Spec.Template.ObjectMeta = createOjectMeta(deploymentRequest, appConfig)
+		existingDeployment.Spec.Template.ObjectMeta = createObjectMeta(deploymentRequest, appConfig, existingDeployment.Spec.Template.ObjectMeta.ResourceVersion)
 		return existingDeployment
 	} else {
 		deployment := &v1beta1.Deployment{
@@ -113,7 +112,7 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 				ProgressDeadlineSeconds: int32p(300),
 				RevisionHistoryLimit:    int32p(10),
 				Template: v1.PodTemplateSpec{
-					ObjectMeta: createOjectMeta(deploymentRequest, appConfig),
+					ObjectMeta: createObjectMeta(deploymentRequest, appConfig, ""),
 					Spec:       createPodSpec(deploymentRequest, appConfig, naisResources),
 				},
 			},
@@ -123,9 +122,10 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 
 }
 
-func createOjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
+func createObjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, resourceVersion string) v1.ObjectMeta {
 	return v1.ObjectMeta{
 		Name:   deploymentRequest.Application,
+		ResourceVersion: resourceVersion,
 		Labels: map[string]string{"app": deploymentRequest.Application},
 		Annotations: map[string]string{
 			"prometheus.io/scrape": strconv.FormatBool(appConfig.Prometheus.Enabled),
@@ -216,7 +216,6 @@ func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources 
 	}
 
 	return v1.Volume{}
-
 }
 
 func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resources []NaisResource) v1.VolumeMount {

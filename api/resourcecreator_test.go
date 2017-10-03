@@ -191,6 +191,7 @@ func TestDeployment(t *testing.T) {
 
 	deployment := createDeploymentDef(naisResources, newDefaultAppConfig(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
 	deployment.ObjectMeta.ResourceVersion = resourceVersion
+	deployment.Spec.Template.ObjectMeta.ResourceVersion = resourceVersion
 
 	clientset := fake.NewSimpleClientset(deployment)
 
@@ -291,6 +292,7 @@ func TestDeployment(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
+		assert.Equal(t, resourceVersion, deployment.Spec.Template.ObjectMeta.ResourceVersion)
 		assert.Equal(t, appName, updatedDeployment.Name)
 		assert.Equal(t, appName, updatedDeployment.Spec.Template.Name)
 		assert.Equal(t, appName, updatedDeployment.Spec.Template.Spec.Containers[0].Name)

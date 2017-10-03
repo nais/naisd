@@ -72,11 +72,11 @@ func (fasit FasitClient) createOrUpdateFasitResources(resources []ExposedResourc
 		var request = ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType}
 		existingResource, err :=  fasit.getResource(request, environment, application, zone)
 		if err != nil {
-			createdResource, err := fasit.PostResource(resource, environment, application, zone)
+			createdResourceId, err := fasit.postResource(resource, environment, application, zone)
 			if err != nil {
 				return exposedResourceIds, fmt.Errorf("Failed creating resource: %s, %s", resource.Alias, err)
 			}
-			exposedResourceIds = append(exposedResourceIds, createdResource.id)
+			exposedResourceIds = append(exposedResourceIds, createdResourceId)
 			continue
 		} else if resourceHasChanged(existingResource, resource) {
 			// updateResource
@@ -193,12 +193,39 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 	return resource, nil
 }
 
-func (fasit FasitClient) postResource(resource ExposedResource, environment, application, zone string)(error){
+func (fasit FasitClient) postResource(resource ExposedResource, environment, application, zone string)(int, error){
 	requestCounter.With(nil).Inc()
 
-	req, err := http.NewRequest("POST", fasit.FasitUrl+"/api/v2/resources/", bytes.NewBuffer(buildResourcePayload(resource ExposedResource, environment, application, zone)))
+	payload := bytes.NewBuffer([]byte(buildResourcePayload(resource, environment, application, zone)))
+	req, err := http.NewRequest("POST", fasit.FasitUrl+"/api/v2/resources/", payload)
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return 0, fmt.Errorf("Unable to create request: %s", err)
+	}
 
-	return nil
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "POST").Inc()
+	if resp.StatusCode > 299 {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return 0, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+	}
+
+	type CreatedResource struct {
+		Id	int `json:"id"`
+	}
+	createdResource := new(CreatedResource)
+	if err := json.Unmarshal(body, &createdResource); err != nil {
+		errorCounter.WithLabelValues("read_body").Inc()
+		return 0, fmt.Errorf("Could not read response: %s", err)
+	}
+
+	return createdResource.Id, nil
 }
 
 func (fasit FasitClient) getFasitEnvironment(environmentName string) (error){
@@ -380,7 +407,6 @@ func buildResourcePayload(resource ExposedResource, environment, application, zo
 					"environment":"`+environment+`",
 					"application":"`+application+`",
 					"scope:{
-							"environmentClass":"`+environmentclass+`",
 							"zone":"`+zone+`"
 						}"
 					}`

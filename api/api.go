@@ -72,7 +72,7 @@ func validateDeploymentRequirements(fasitUrl string, deploymentRequest NaisDeplo
 		return err
 	}
 
-	return nil;
+	return nil
 }
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()

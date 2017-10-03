@@ -92,7 +92,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Image: image,
 		Port:  321,
 		FasitResources: FasitResources{
-			Used: []UsedResource{{resourceAlias, resourceType}},
+			Used: []UsedResource{{1,resourceAlias, resourceType}},
 		},
 	}
 	data, _ := yaml.Marshal(config)

@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"github.com/golang/glog"
 	"bytes"
 )
 
@@ -33,7 +32,7 @@ type Password struct {
 
 type FasitResource struct {
 	Alias        string
-	ResourceType string `json:"type"`
+	ResourceType string                 `json:"type"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
 	Certificates map[string]interface{} `json:"files""`
@@ -45,15 +44,13 @@ type ResourceRequest struct {
 }
 
 type NaisResource struct {
-	id			 int
+	id           int
 	name         string
 	resourceType string
 	properties   map[string]string
 	secret       map[string]string
 	certificates map[string][]byte
 }
-
-
 
 func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
@@ -66,41 +63,49 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 	return resources, nil
 }
 
-func (fasit FasitClient) createOrUpdateFasitResources(resources []ExposedResource, hostname, environment, application, zone string)([]int, error){
-	var exposedResourceIds []int
+func (fasit FasitClient) createOrUpdateFasitResources(exposedResourceIdsRef *[]int, resources []ExposedResource, hostname, environment, application, zone string) (error) {
+	exposedResourceIds := *exposedResourceIdsRef
 	for _, resource := range resources {
 		var request = ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType}
-		existingResource, err :=  fasit.getResource(request, environment, application, zone)
+		existingResource, err := fasit.getResource(request, environment, application, zone)
+
 		if err != nil {
-			createdResourceId, err := fasit.postResource(resource, environment, application, zone)
+			// Create new resource if none was found
+			createdResourceId, err := fasit.createResource(resource, environment, application, zone)
 			if err != nil {
-				return exposedResourceIds, fmt.Errorf("Failed creating resource: %s, %s", resource.Alias, err)
+				return fmt.Errorf("Failed creating resource: %s, %s", resource.Alias, err)
 			}
+
 			exposedResourceIds = append(exposedResourceIds, createdResourceId)
 			continue
-		} else if resourceHasChanged(existingResource, resource) {
-			// updateResource
-			if err != nil {
-				return exposedResourceIds, fmt.Errorf("Failed updating resource: %s, %s", resource.Alias, err)
-			}
-			exposedResourceIds = append(exposedResourceIds, updatedResource.id)
-			continue
+			//} else if resourceHasChanged(existingResource, resource) {
+			//	// updateResource
+			//	if err != nil {
+			//		return exposedResourceIds, fmt.Errorf("Failed updating resource: %s, %s", resource.Alias, err)
+			//	}
+			//	exposedResourceIds = append(exposedResourceIds, updatedResource.id)
+			//	continue
 		}
+
 		// UnchangedResource
 		exposedResourceIds = append(exposedResourceIds, existingResource.id)
 	}
-
-
-	return exposedResourceIds, nil
-
+	return nil
 }
 
-func environmentExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest)(error) {
+func getResourceIds(usedResources []UsedResource) (usedResourceIds []int) {
+	for _, resource := range usedResources {
+		usedResourceIds = append(usedResourceIds, resource.Id)
+	}
+	return usedResourceIds
+}
+
+func environmentExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest) (error) {
 	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
 	return fasit.getFasitEnvironment(deploymentRequest.Namespace)
 }
 
-func applicationExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest)(error) {
+func applicationExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest) (error) {
 	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
 	return fasit.getFasitApplication(deploymentRequest.Application)
 }
@@ -119,13 +124,15 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 // Updates Fasit with information
 func updateFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest, resources []NaisResource, appConfig NaisAppConfig, hostname string) error {
 	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
-	exposedResourceIds, err := fasit.createOrUpdateFasitResources(appConfig.FasitResources.Exposed, hostname, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
 
-	if err != nil {
-		panic(err)
+	usedResourceIds := getResourceIds(resources)
+
+	var exposedResourceIds = new([]int)
+	if err := fasit.createOrUpdateFasitResources(exposedResourceIds, appConfig.FasitResources.Exposed, hostname, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone); err != nil {
+		return err
 	}
 
-	fmt.Println(exposedResourceIds)
+	fmt.Printf("exposed: %s\nused: %s", exposedResourceIds, usedResourceIds)
 
 	// createApplicationInstance(resources, exposedResourceIds)
 
@@ -134,7 +141,7 @@ func updateFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest, resou
 
 func createOrUpdateResources(resources []ExposedResource, hostname string) ([]int, error) {
 	var resourceIds []int
-	for i,res := range resources {
+	for i, res := range resources {
 		fmt.Println("alias", res.Alias)
 		fmt.Println("path", res.Path)
 		fmt.Println("type", res.ResourceType)
@@ -156,8 +163,12 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-
 	defer resp.Body.Close()
+
+	if err != nil {
+		errorCounter.WithLabelValues("contact_fasit").Inc()
+		return NaisResource{}, fmt.Errorf("Error contacting fasit: %s", err)
+	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -165,16 +176,12 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 		return NaisResource{}, fmt.Errorf("Could not read body: %s", err)
 	}
 
-	if err != nil {
-		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return NaisResource{}, fmt.Errorf("Error contacting fasit: %s", err)
-	}
-
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return NaisResource{}, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
 	}
+
 
 	var fasitResource FasitResource
 
@@ -193,7 +200,7 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 	return resource, nil
 }
 
-func (fasit FasitClient) postResource(resource ExposedResource, environment, application, zone string)(int, error){
+func (fasit FasitClient) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
 	requestCounter.With(nil).Inc()
 
 	payload := bytes.NewBuffer([]byte(buildResourcePayload(resource, environment, application, zone)))
@@ -217,7 +224,7 @@ func (fasit FasitClient) postResource(resource ExposedResource, environment, app
 	}
 
 	type CreatedResource struct {
-		Id	int `json:"id"`
+		Id int
 	}
 	createdResource := new(CreatedResource)
 	if err := json.Unmarshal(body, &createdResource); err != nil {
@@ -228,7 +235,7 @@ func (fasit FasitClient) postResource(resource ExposedResource, environment, app
 	return createdResource.Id, nil
 }
 
-func (fasit FasitClient) getFasitEnvironment(environmentName string) (error){
+func (fasit FasitClient) getFasitEnvironment(environmentName string) (error) {
 	requestCounter.With(nil).Inc()
 	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/environments/"+environmentName, nil)
 	if err != nil {
@@ -250,7 +257,7 @@ func (fasit FasitClient) getFasitEnvironment(environmentName string) (error){
 	return fmt.Errorf("Could not find environment %s in Fasit", environmentName)
 }
 
-func (fasit FasitClient) getFasitApplication(application string) (error){
+func (fasit FasitClient) getFasitApplication(application string) (error) {
 	requestCounter.With(nil).Inc()
 	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/applications/"+application, nil)
 	if err != nil {
@@ -400,14 +407,14 @@ func buildResourceRequest(fasit string, alias string, resourceType string, envir
 	return req, err
 }
 
-func buildResourcePayload(resource ExposedResource, environment, application, zone string)(string){
+func buildResourcePayload(resource ExposedResource, environment, application, zone string) (string) {
 
 	payload := `{
-					"type":"`+resource.ResourceType+`",
-					"environment":"`+environment+`",
-					"application":"`+application+`",
+					"type":"` + resource.ResourceType + `",
+					"environment":"` + environment + `",
+					"application":"` + application + `",
 					"scope:{
-							"zone":"`+zone+`"
+							"zone":"` + zone + `"
 						}"
 					}`
 

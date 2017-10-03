@@ -234,39 +234,24 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 	envVars := createDefaultEnvironmentVariables(deploymentRequest.Version)
 
 	for _, res := range naisResources {
-		for k, v := range res.properties {
-			for _, variableName := range [2]string{ResourceVariableName(res, k), ResourceEnvironmentVariableName(res, k)} {
-				envVar := v1.EnvVar{variableName, v, nil}
-				envVars = append(envVars, envVar)
-			}
+		for variableName, v := range res.properties {
+			envVar := v1.EnvVar{ResourceEnvironmentVariableName(res, variableName), v, nil}
+			envVars = append(envVars, envVar)
 		}
 		if res.secret != nil {
 			for k := range res.secret {
-				variableName := ResourceVariableName(res, k)
 				envVar := v1.EnvVar{
-					Name: variableName,
+					Name: ResourceEnvironmentVariableName(res, k),
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{
 								Name: deploymentRequest.Application,
 							},
-							Key: variableName,
-						},
-					},
-				}
-				envarUpper := v1.EnvVar{
-					Name: strings.ToUpper(variableName),
-					ValueFrom: &v1.EnvVarSource{
-						SecretKeyRef: &v1.SecretKeySelector{
-							LocalObjectReference: v1.LocalObjectReference{
-								Name: deploymentRequest.Application,
-							},
-							Key: variableName,
+							Key: ResourceVariableName(res, k),
 						},
 					},
 				}
 				envVars = append(envVars, envVar)
-				envVars = append(envVars, envarUpper)
 			}
 		}
 	}
@@ -275,9 +260,6 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 
 func createDefaultEnvironmentVariables(version string) []v1.EnvVar {
 	return []v1.EnvVar{{
-		Name:  "app_version",
-		Value: version,
-	}, {
 		Name:  "APP_VERSION",
 		Value: version,
 	}}

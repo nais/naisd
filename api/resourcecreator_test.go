@@ -557,8 +557,9 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	appConfig := NaisAppConfig{
-		Image: image,
-		Port:  port,
+		Image:   image,
+		Port:    port,
+		Ingress: Ingress{Enabled: true},
 		Resources: ResourceRequirements{
 			Requests: ResourceList{
 				Cpu:    cpuRequest,
@@ -603,6 +604,15 @@ func TestCreateK8sResources(t *testing.T) {
 
 		assert.Empty(t, deploymentResult.Secret)
 		assert.NotEmpty(t, deploymentResult.Service)
+	})
+
+	t.Run("omits ingress creation when disabled", func(t *testing.T) {
+		appConfig.Ingress.Enabled = false
+
+		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())
+		assert.NoError(t, error)
+
+		assert.Empty(t, deploymentResult.Ingress)
 	})
 
 }

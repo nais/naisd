@@ -61,6 +61,7 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, "/metrics", appConfig.Prometheus.Path)
 	assert.Equal(t, 20, appConfig.Healthcheck.Readiness.InitialDelay)
 	assert.Equal(t, 20, appConfig.Healthcheck.Liveness.InitialDelay)
+	assert.Equal(t, true, appConfig.Ingress.Enabled)
 }
 
 func TestAppConfigUsesPartialDefaultValues(t *testing.T) {

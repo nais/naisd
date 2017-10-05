@@ -23,7 +23,6 @@ type DeploymentResult struct {
 }
 
 // Creates a Kubernetes Service object
-// If existingService is provided, we update the existing service object with port from the app config
 func createServiceDef(application, namespace string) *v1.Service {
 	return &v1.Service{
 		TypeMeta: unversioned.TypeMeta{
@@ -53,13 +52,20 @@ func createServiceDef(application, namespace string) *v1.Service {
 }
 
 func ResourceVariableName(resource NaisResource, key string) string {
-	if strings.Contains(resource.name, ".") {
-		return strings.Replace(resource.name, ".", "_", -1) + "_" + key
+	name := resource.name + "_" + key
+
+	if resource.resourceType == "applicationproperties" {
+		name = key
 	}
-	if strings.Contains(resource.name, ":") {
-		return strings.Replace(resource.name, ":", "_", -1) + "_" + key
+
+	if strings.Contains(name, ".") {
+		return strings.Replace(name, ".", "_", -1)
 	}
-	return resource.name + "_" + key
+
+	if strings.Contains(name, ":") {
+		return strings.Replace(name, ":", "_", -1)
+	}
+	return name
 }
 
 func ResourceEnvironmentVariableName(resource NaisResource, key string) string {
@@ -75,8 +81,7 @@ func validLabelName(str string) string {
 // If existingDeployment is provided, this is updated with modifiable fields
 func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
 	if existingDeployment != nil {
-		existingDeployment.Spec.Template.Spec = createPodSpec(deploymentRequest, appConfig, naisResources)
-		existingDeployment.Spec.Template.ObjectMeta = createOjectMeta(deploymentRequest, appConfig)
+		existingDeployment.Spec = createDeploymentSpec(deploymentRequest, appConfig, naisResources)
 		return existingDeployment
 	} else {
 		deployment := &v1beta1.Deployment{
@@ -88,35 +93,38 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 				Name:      deploymentRequest.Application,
 				Namespace: deploymentRequest.Namespace,
 			},
-			Spec: v1beta1.DeploymentSpec{
-				Replicas: int32p(1),
-				Strategy: v1beta1.DeploymentStrategy{
-					Type: v1beta1.RollingUpdateDeploymentStrategyType,
-					RollingUpdate: &v1beta1.RollingUpdateDeployment{
-						MaxUnavailable: &intstr.IntOrString{
-							Type:   intstr.Int,
-							IntVal: int32(0),
-						},
-						MaxSurge: &intstr.IntOrString{
-							Type:   intstr.Int,
-							IntVal: int32(1),
-						},
-					},
-				},
-				ProgressDeadlineSeconds:int32p(600),
-				RevisionHistoryLimit: int32p(10),
-				Template: v1.PodTemplateSpec{
-					ObjectMeta: createOjectMeta(deploymentRequest, appConfig),
-					Spec:       createPodSpec(deploymentRequest, appConfig, naisResources),
-				},
-			},
+			Spec: createDeploymentSpec(deploymentRequest, appConfig, naisResources),
 		}
 		return deployment
 	}
-
 }
 
-func createOjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
+func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1beta1.DeploymentSpec {
+	return v1beta1.DeploymentSpec{
+		Replicas: int32p(1),
+		Strategy: v1beta1.DeploymentStrategy{
+			Type: v1beta1.RollingUpdateDeploymentStrategyType,
+			RollingUpdate: &v1beta1.RollingUpdateDeployment{
+				MaxUnavailable: &intstr.IntOrString{
+					Type:   intstr.Int,
+					IntVal: int32(0),
+				},
+				MaxSurge: &intstr.IntOrString{
+					Type:   intstr.Int,
+					IntVal: int32(1),
+				},
+			},
+		},
+		ProgressDeadlineSeconds: int32p(300),
+		RevisionHistoryLimit:    int32p(10),
+		Template: v1.PodTemplateSpec{
+			ObjectMeta: createObjectMeta(deploymentRequest, appConfig),
+			Spec:       createPodSpec(deploymentRequest, appConfig, naisResources),
+		},
+	}
+}
+
+func createObjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
 	return v1.ObjectMeta{
 		Name:   deploymentRequest.Application,
 		Labels: map[string]string{"app": deploymentRequest.Application},
@@ -209,7 +217,6 @@ func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources 
 	}
 
 	return v1.Volume{}
-
 }
 
 func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resources []NaisResource) v1.VolumeMount {
@@ -228,39 +235,24 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 	envVars := createDefaultEnvironmentVariables(deploymentRequest.Version)
 
 	for _, res := range naisResources {
-		for k, v := range res.properties {
-			for _, variableName := range [2]string{ResourceVariableName(res, k), ResourceEnvironmentVariableName(res, k)} {
-				envVar := v1.EnvVar{variableName, v, nil}
-				envVars = append(envVars, envVar)
-			}
+		for variableName, v := range res.properties {
+			envVar := v1.EnvVar{ResourceEnvironmentVariableName(res, variableName), v, nil}
+			envVars = append(envVars, envVar)
 		}
 		if res.secret != nil {
 			for k := range res.secret {
-				variableName := ResourceVariableName(res, k)
 				envVar := v1.EnvVar{
-					Name: variableName,
+					Name: ResourceEnvironmentVariableName(res, k),
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{
 								Name: deploymentRequest.Application,
 							},
-							Key: variableName,
-						},
-					},
-				}
-				envarUpper := v1.EnvVar{
-					Name: strings.ToUpper(variableName),
-					ValueFrom: &v1.EnvVarSource{
-						SecretKeyRef: &v1.SecretKeySelector{
-							LocalObjectReference: v1.LocalObjectReference{
-								Name: deploymentRequest.Application,
-							},
-							Key: variableName,
+							Key: ResourceVariableName(res, k),
 						},
 					},
 				}
 				envVars = append(envVars, envVar)
-				envVars = append(envVars, envarUpper)
 			}
 		}
 	}
@@ -269,9 +261,6 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 
 func createDefaultEnvironmentVariables(version string) []v1.EnvVar {
 	return []v1.EnvVar{{
-		Name:  "app_version",
-		Value: version,
-	}, {
 		Name:  "APP_VERSION",
 		Value: version,
 	}}

@@ -2,12 +2,12 @@ package api
 
 import (
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/util/intstr"
-	"testing"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/resource"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/util/intstr"
 	"strings"
+	"testing"
 )
 
 const (
@@ -160,6 +160,26 @@ func TestDeployment(t *testing.T) {
 		},
 		{
 			1,
+			"resource3",
+			"applicationproperties",
+			map[string]string{
+				"key1": "value1",
+			},
+			map[string]string{},
+			nil,
+		},
+		{
+			1,
+			"resource4",
+			"applicationproperties",
+			map[string]string{
+				"key2.Property": "dc=preprod,dc=local",
+			},
+			map[string]string{},
+			nil,
+		},
+		{
+			1,
 			invalidlyNamedResourceNameDot,
 			invalidlyNamedResourceTypeDot,
 			map[string]string{invalidlyNamedResourceKeyDot: invalidlyNamedResourceValueDot},
@@ -228,47 +248,32 @@ func TestDeployment(t *testing.T) {
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
-		assert.Equal(t, 18, len(env))
-		assert.Equal(t, "app_version", env[0].Name)
+		assert.Equal(t, 11, len(env))
+		assert.Equal(t, "APP_VERSION", env[0].Name)
 		assert.Equal(t, version, env[0].Value)
-		assert.Equal(t, "APP_VERSION", env[1].Name)
-		assert.Equal(t, version, env[1].Value)
 
-		assert.Equal(t, resource1Name+"_"+resource1Key, env[2].Name)
-		assert.Equal(t, "value1", env[2].Value)
-		assert.Equal(t, strings.ToUpper(resource1Name+"_"+resource1Key), env[3].Name)
-		assert.Equal(t, "value1", env[3].Value)
+		assert.Equal(t, strings.ToUpper(resource1Name+"_"+resource1Key), env[1].Name)
+		assert.Equal(t, "value1", env[1].Value)
 
-		assert.Equal(t, resource1Name+"_"+secret1Key, env[4].Name)
-		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[4].ValueFrom)
-		assert.Equal(t, strings.ToUpper(resource1Name+"_"+secret1Key), env[5].Name)
-		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[5].ValueFrom)
+		assert.Equal(t, strings.ToUpper(resource1Name+"_"+secret1Key), env[2].Name)
+		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[2].ValueFrom)
 
-		assert.Equal(t, resource2Name+"_"+resource2Key, env[6].Name)
-		assert.Equal(t, "value2", env[6].Value)
-		assert.Equal(t, strings.ToUpper(resource2Name+"_"+resource2Key), env[7].Name)
-		assert.Equal(t, "value2", env[7].Value)
+		assert.Equal(t, strings.ToUpper(resource2Name+"_"+resource2Key), env[3].Name)
+		assert.Equal(t, "value2", env[3].Value)
 
-		assert.Equal(t, resource2Name+"_"+secret2Key, env[8].Name)
-		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[8].ValueFrom)
-		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[9].Name)
-		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[9].ValueFrom)
+		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[4].Name)
+		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[4].ValueFrom)
 
-		assert.Equal(t, "dots_are_not_allowed_key", env[10].Name)
-		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[11].Name)
-
-		assert.Equal(t, "dots_are_not_allowed_secretkey", env[12].Name)
-		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[13].Name)
-
-		assert.Equal(t, "colon_are_not_allowed_key", env[14].Name)
-		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[15].Name)
-
-		assert.Equal(t, "colon_are_not_allowed_secretkey", env[16].Name)
-		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[17].Name)
+		assert.Equal(t, "KEY1", env[5].Name)
+		assert.Equal(t, "KEY2_PROPERTY", env[6].Name)
+		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[7].Name)
+		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[8].Name)
+		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[9].Name)
+		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[10].Name)
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion,}, newDefaultAppConfig(), naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultAppConfig(), naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
@@ -286,7 +291,7 @@ func TestDeployment(t *testing.T) {
 		appConfig.Prometheus.Path = "/newPath"
 		appConfig.Prometheus.Enabled = false
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, appConfig, naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, appConfig, naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, map[string]string{
@@ -326,7 +331,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), naisResources, clientset)
+		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultAppConfig(), naisResources, clientset)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
@@ -354,13 +359,13 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version,}, newDefaultAppConfig(), resources, clientset)
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultAppConfig(), resources, clientset)
 
 		assert.NoError(t, err)
 
 		spec := deployment.Spec.Template.Spec
-		assert.Empty(t, spec.Volumes,"Unexpected volumes")
-		assert.Empty(t, spec.Containers[0].VolumeMounts,"Unexpected volume mounts.")
+		assert.Empty(t, spec.Volumes, "Unexpected volumes")
+		assert.Empty(t, spec.Containers[0].VolumeMounts, "Unexpected volume mounts.")
 
 	})
 }
@@ -399,7 +404,7 @@ func TestIngress(t *testing.T) {
 		namespace := "nondefault"
 		ingress, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, otherAppName+"-" +namespace+ "."+subDomain, ingress.Spec.Rules[0].Host)
+		assert.Equal(t, otherAppName+"-"+namespace+"."+subDomain, ingress.Spec.Rules[0].Host)
 	})
 
 	t.Run("when an ingress exists, nothing happens", func(t *testing.T) {

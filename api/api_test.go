@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 	"gopkg.in/yaml.v2"
@@ -10,7 +11,20 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"fmt"
+	"goji.io"
+	"goji.io/pat"
 )
+
+type FakeDeployStatusViewer struct {
+	deployStatusToReturn DeployStatus
+	viewToReturn         DeploymentStatusView
+	errToReturn          error
+}
+
+func (d FakeDeployStatusViewer) DeploymentStatusView(namespace string, deployName string) (DeployStatus, DeploymentStatusView, error) {
+	return d.deployStatusToReturn, d.viewToReturn, d.errToReturn
+}
 
 func TestAnIncorrectPayloadGivesError(t *testing.T) {
 	api := Api{}
@@ -23,11 +37,68 @@ func TestAnIncorrectPayloadGivesError(t *testing.T) {
 		panic("could not create req")
 	}
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.deploy)
+	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, 400, rr.Code)
+}
+
+func TestDeployStatusHandler(t *testing.T) {
+	req, _ := http.NewRequest("GET", "/deploystatus/namespace/deployName", strings.NewReader("whatever"))
+
+	t.Run("Return 404 if deploy status is not found", func(t *testing.T) {
+		mux := goji.NewMux()
+
+		api := Api{DeploymentStatusViewer: FakeDeployStatusViewer{
+			errToReturn: fmt.Errorf("Not Found"),
+		}}
+
+		mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+		assert.Equal(t, http.StatusNotFound, rr.Code)
+
+	})
+
+	t.Run("Correct http code for a given deploy status", func(t *testing.T) {
+
+		tests := []struct {
+			deployStatus     DeployStatus
+			expectedHttpCode int
+		}{
+			{
+				Success,
+				200,
+			},
+			{
+				Failed,
+				500,
+			},
+			{
+				InProgress,
+				202,
+			},
+		}
+
+		for _, test := range tests {
+			mux := goji.NewMux()
+
+			api := Api{
+				DeploymentStatusViewer: FakeDeployStatusViewer{
+					deployStatusToReturn: test.deployStatus,
+				},
+			}
+			mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
+
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+
+			assert.Equal(t, test.expectedHttpCode, rr.Code)
+		}
+	})
 }
 
 func TestNoManifestGivesError(t *testing.T) {
@@ -59,7 +130,7 @@ func TestNoManifestGivesError(t *testing.T) {
 		panic("could not create req")
 	}
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.deploy)
+	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
 
@@ -77,7 +148,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk"}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", nil}
 
 	depReq := NaisDeploymentRequest{
 		Application:  appName,
@@ -120,11 +191,37 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/deploy", body)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.deploy)
+	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
 	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n", string(rr.Body.Bytes()))
+}
+
+func TestValidateDeploymentRequest(t *testing.T) {
+	t.Run("Empty fields should be marked invalid", func(t *testing.T) {
+		invalid := NaisDeploymentRequest{
+			Application: "",
+			Version:     "",
+			Environment: "",
+			Zone:        "",
+			Namespace:   "",
+			Username:    "",
+			Password:    "",
+		}
+
+		err := invalid.Validate()
+
+		assert.NotNil(t, err)
+		assert.Contains(t, err, errors.New("Application is required and is empty"))
+		assert.Contains(t, err, errors.New("Version is required and is empty"))
+		assert.Contains(t, err, errors.New("Environment is required and is empty"))
+		assert.Contains(t, err, errors.New("Zone is required and is empty"))
+		assert.Contains(t, err, errors.New("Zone can only be fss, sbs or iapp"))
+		assert.Contains(t, err, errors.New("Namespace is required and is empty"))
+		assert.Contains(t, err, errors.New("Username is required and is empty"))
+		assert.Contains(t, err, errors.New("Password is required and is empty"))
+	})
 }

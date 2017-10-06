@@ -89,7 +89,12 @@ var deployCmd = &cobra.Command{
 		defer resp.Body.Close()
 
 		body, _ := ioutil.ReadAll(resp.Body)
+		fmt.Println("response Status:", resp.Status)
 		fmt.Println("response Body:", string(body))
+
+		if resp.StatusCode > 299 {
+			os.Exit(1)
+		}
 	},
 }
 

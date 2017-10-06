@@ -95,6 +95,29 @@ var deployCmd = &cobra.Command{
 		if resp.StatusCode > 299 {
 			os.Exit(1)
 		}
+
+		if wait, err := cmd.Flags().GetBool("wait"); err != nil {
+			for wait {
+				resp, err = http.Get("https://daemon." + cluster + "/deploystatus/default/" + deployRequest.Application)
+
+				if err != nil {
+					fmt.Printf("%v\n", err)
+					os.Exit(1)
+				}
+
+				switch resp.StatusCode {
+				case 200:
+					wait = false
+					break
+				case 202:
+					// do nothing, continue loop
+					break
+				default:
+					fmt.Printf("Deploy failed: %d\n", resp.StatusCode)
+					os.Exit(1)
+				}
+			}
+		}
 	},
 }
 
@@ -110,4 +133,5 @@ func init() {
 	deployCmd.Flags().StringP("username", "u", "", "the username")
 	deployCmd.Flags().StringP("password", "p", "", "the password")
 	deployCmd.Flags().StringP("manifest-url", "m", "", "alternative URL to the nais manifest")
+	deployCmd.Flags().Bool("wait", false, "whether to wait until the deploy has succeeded (or failed)")
 }

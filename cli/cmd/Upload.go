@@ -197,6 +197,10 @@ var uploadCmd = &cobra.Command{
 		body, _ := ioutil.ReadAll(resp.Body)
 		fmt.Println("response Status:", resp.Status)
 		fmt.Println("response Body:", string(body))
+
+		if resp.StatusCode > 299 {
+			os.Exit(1)
+		}
 	},
 }
 

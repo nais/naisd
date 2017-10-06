@@ -311,7 +311,7 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 	for _, res := range naisResources {
 		if res.secret != nil {
 			for k, v := range res.secret {
-				data[res.name+"_"+k] = []byte(v)
+				data[ResourceVariableName(res, k)] = []byte(v)
 			}
 		}
 		if res.certificates != nil {

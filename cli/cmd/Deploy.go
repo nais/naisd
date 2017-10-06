@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 )
 
 var deployCmd = &cobra.Command{
@@ -96,7 +97,7 @@ var deployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if wait, err := cmd.Flags().GetBool("wait"); err != nil {
+		if wait, err := cmd.Flags().GetBool("wait"); err == nil {
 			for wait {
 				resp, err = http.Get("https://daemon." + cluster + "/deploystatus/default/" + deployRequest.Application)
 
@@ -108,15 +109,19 @@ var deployCmd = &cobra.Command{
 				switch resp.StatusCode {
 				case 200:
 					wait = false
+					fmt.Println("Deploy successful")
 					break
 				case 202:
 					// do nothing, continue loop
+					time.Sleep(1000 * time.Millisecond)
 					break
 				default:
 					fmt.Printf("Deploy failed: %d\n", resp.StatusCode)
 					os.Exit(1)
 				}
 			}
+		} else {
+			fmt.Printf("Error: %v\n", err)
 		}
 	},
 }

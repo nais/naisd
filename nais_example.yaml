@@ -25,7 +25,7 @@ fasitResources: # resources fetched from Fasit
   used: # this will be injected into the application as environment variables
   - alias: mydb
     resourceType: datasource
-  - alias: someservice
+  - alias: someservicenai
     resourceType: restservice
   exposed: # Will be registered as exposed services on an application instane in Fasit
   - alias: myservice

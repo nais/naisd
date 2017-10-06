@@ -115,7 +115,7 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 	return nil
 }
 
-func validateDeploymentRequirements(fasitUrl string, deploymentRequest NaisDeploymentRequest)(error){
+func validateDeploymentRequirements(fasitUrl string, deploymentRequest NaisDeploymentRequest)error{
 	if err := environmentExistsInFasit(fasitUrl, deploymentRequest); err != nil {
 		glog.Errorf("Environment %s does not exist in Fasit", deploymentRequest.Namespace)
 		return err
@@ -144,7 +144,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	if err := validateDeploymentRequirements(api.FasitUrl, deploymentRequest); err != nil {
-		glog.Errorf("Validating requirements for deployment failed: %s", err)
+		return &appError{err, "Validating requirements for deployment failed", http.StatusInternalServerError}
 	}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
@@ -162,11 +162,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
 	ingressHostname := deploymentResult.Ingress.Spec.Rules[0].Host
+
 	if err := updateFasit(api.FasitUrl, deploymentRequest, naisResources, appConfig, ingressHostname); err != nil {
-		glog.Errorf("Failed while creating or updating Fasit: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte("Failed while updating fasit: " + err.Error()))
-		return
+		return &appError{err, "Failed while updating Fasit", http.StatusInternalServerError}
 	}
 
 	w.WriteHeader(200)

@@ -32,3 +32,15 @@ fasitResources:
   - alias: myservice
     resourceType: restservice
     path: /api
+    description: "Dette er en resttjeneste"
+
+  - alias: myWsdlservice
+    resourceType: webserviceendpoint
+    path: /webservieendpoint
+    wsdgGroupId: no.nav.tjenester.test
+    wsdlArtifactId: myWsdl
+    wsdlVersion: 1.0
+    securityToken: NONE
+    description: "Dette er en webservicetjeneste"
+    allZones: false
+

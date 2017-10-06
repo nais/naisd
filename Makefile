@@ -21,7 +21,7 @@ test:
 	${GO} test ./api/ ./cli
 
 cli:
-    ${GO} build -o nais ./cli
+	${GO} build -o nais ./cli
 
 build:
 	${GO} build -o naisd

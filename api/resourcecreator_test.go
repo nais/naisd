@@ -382,7 +382,7 @@ func TestIngress(t *testing.T) {
 	})
 
 	t.Run("when no ingress exists, a new one is created", func(t *testing.T) {
-		ingress, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, ingress.ObjectMeta.Name)
@@ -393,17 +393,11 @@ func TestIngress(t *testing.T) {
 
 	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {
 		namespace := "nondefault"
-		ingress, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName+"-"+namespace+"."+subDomain, ingress.Spec.Rules[0].Host)
 	})
-
-	t.Run("when an ingress exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: appName}, subDomain, clientset)
-		assert.NoError(t, err)
-		assert.Nil(t, nilValue)
-	})
-}
+ }
 
 func TestCreateOrUpdateSecret(t *testing.T) {
 	appName := "appname"

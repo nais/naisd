@@ -63,12 +63,13 @@ var waitCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		start := time.Now()
 		if err := waitForDeploy(clusterUrl + STATUS_ENDPOINT + "/" + namespace + "/" + app); err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}
-
-		fmt.Println("Deploy successful")
+		elapsed := time.Since(start)
+		fmt.Printf("Deploy successful, took %v\n", elapsed)
 	},
 }
 

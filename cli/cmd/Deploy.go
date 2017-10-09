@@ -11,6 +11,9 @@ import (
 	"os"
 )
 
+const DEPLOY_ENDPOINT = "/deploy"
+const STATUS_ENDPOINT = "/deploystatus"
+
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Deploys your application",
@@ -69,7 +72,11 @@ var deployCmd = &cobra.Command{
 			fmt.Print("\n")
 			os.Exit(1)
 		}
-		url := "https://daemon." + cluster + "/deploy"
+
+		clusterUrl := os.Getenv("NAIS_CLUSTER_URL")
+		if len(clusterUrl) == 0 {
+			clusterUrl = "https://daemon." + cluster
+		}
 
 		jsonStr, err := json.Marshal(deployRequest)
 
@@ -80,7 +87,7 @@ var deployCmd = &cobra.Command{
 
 		fmt.Println(string(jsonStr))
 
-		resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonStr))
+		resp, err := http.Post(clusterUrl+DEPLOY_ENDPOINT, "application/json", bytes.NewBuffer(jsonStr))
 
 		if err != nil {
 			fmt.Printf("Error while POSTing to API: %v\n", err)
@@ -98,7 +105,7 @@ var deployCmd = &cobra.Command{
 
 		if wait, err := cmd.Flags().GetBool("wait"); err != nil {
 			for wait {
-				resp, err = http.Get("https://daemon." + cluster + "/deploystatus/default/" + deployRequest.Application)
+				resp, err = http.Get(clusterUrl + STATUS_ENDPOINT + "/" + deployRequest.Namespace + "/" + deployRequest.Application)
 
 				if err != nil {
 					fmt.Printf("%v\n", err)

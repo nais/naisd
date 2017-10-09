@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"time"
 )
 
 const DEPLOY_ENDPOINT = "/deploy"
@@ -104,31 +103,15 @@ var deployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if wait, err := cmd.Flags().GetBool("wait"); err == nil {
-			for wait {
-				resp, err = http.Get(clusterUrl + STATUS_ENDPOINT + "/" + deployRequest.Namespace + "/" + deployRequest.Application)
-
-				if err != nil {
-					fmt.Printf("%v\n", err)
-					os.Exit(1)
-				}
-
-				switch resp.StatusCode {
-				case 200:
-					wait = false
-					fmt.Println("Deploy successful")
-					break
-				case 202:
-					// do nothing, continue loop
-					time.Sleep(1000 * time.Millisecond)
-					break
-				default:
-					fmt.Printf("Deploy failed: %d\n", resp.StatusCode)
-					os.Exit(1)
-				}
-			}
-		} else {
+		if wait, err := cmd.Flags().GetBool("wait"); err != nil {
 			fmt.Printf("Error: %v\n", err)
+		} else if wait {
+			if err := waitForDeploy(clusterUrl + STATUS_ENDPOINT + "/" + deployRequest.Namespace + "/" + deployRequest.Application); err != nil {
+				fmt.Printf("%v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Println("Deploy successful")
 		}
 	},
 }

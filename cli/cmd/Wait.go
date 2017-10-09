@@ -36,17 +36,6 @@ var waitCmd = &cobra.Command{
 	Long:  `Waits for deploy`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		clusters := map[string]string{
-			"ci":           "nais-ci.devillo.no",
-			"nais-dev":     "nais.devillo.no",
-			"preprod-fss":  "nais.preprod.local",
-			"prod-fss":     "nais.adeo.no",
-			"preprod-iapp": "nais-iapp.preprod.local",
-			"prod-iapp":    "nais-iapp.adeo.no",
-			"preprod-sbs":  "nais.oera-q.local",
-			"prod-sbs":     "nais.oera.no",
-		}
-
 		var cluster, app, namespace string
 		strings := map[string]*string{
 			"app":       &app,
@@ -68,19 +57,10 @@ var waitCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		cluster, exists := clusters[cluster]
-		if !exists {
-			fmt.Print("Cluster is not valid, please choose one of: ")
-			for key := range clusters {
-				fmt.Printf("%s, ", key)
-			}
-			fmt.Print("\n")
+		clusterUrl, err := getClusterUrl(cluster)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
-		}
-
-		clusterUrl := os.Getenv("NAIS_CLUSTER_URL")
-		if len(clusterUrl) == 0 {
-			clusterUrl = "https://daemon." + cluster
 		}
 
 		if err := waitForDeploy(clusterUrl + STATUS_ENDPOINT + "/" + namespace + "/" + app); err != nil {
@@ -96,6 +76,6 @@ func init() {
 	RootCmd.AddCommand(waitCmd)
 
 	waitCmd.Flags().StringP("app", "a", "", "name of your app")
-	waitCmd.Flags().StringP("cluster", "c", "preprod-fss", "the cluster you want to deploy to")
+	waitCmd.Flags().StringP("cluster", "c", "", "the cluster you want to deploy to")
 	waitCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")
 }

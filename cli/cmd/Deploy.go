@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/nais/naisd/api"
 	"github.com/spf13/cobra"
@@ -14,23 +15,57 @@ import (
 const DEPLOY_ENDPOINT = "/deploy"
 const STATUS_ENDPOINT = "/deploystatus"
 
+const DEFAULT_CLUSTER = "preprod-fss"
+
+var clustersDict = map[string]string{
+	"ci":           "nais-ci.devillo.no",
+	"nais-dev":     "nais.devillo.no",
+	"preprod-fss":  "nais.preprod.local",
+	"prod-fss":     "nais.adeo.no",
+	"preprod-iapp": "nais-iapp.preprod.local",
+	"prod-iapp":    "nais-iapp.adeo.no",
+	"preprod-sbs":  "nais.oera-q.local",
+	"prod-sbs":     "nais.oera.no",
+}
+
+func validateCluster(cluster string) (string, error) {
+	url, exists := clustersDict[cluster]
+	if exists {
+		return url, nil
+	}
+
+	errmsg := fmt.Sprint("Cluster is not valid, please choose one of: ")
+	for key := range clustersDict {
+		errmsg = errmsg + fmt.Sprintf("%s, ", key)
+	}
+
+	return "", errors.New(errmsg)
+}
+
+func getClusterUrl(cluster string) (string, error) {
+	urlEnv := os.Getenv("NAIS_CLUSTER_URL")
+
+	if len(cluster) == 0 {
+		if len(urlEnv) > 0 {
+			return urlEnv, nil
+		} else {
+			cluster = DEFAULT_CLUSTER
+		}
+	}
+
+	url, err := validateCluster(cluster)
+	if err != nil {
+		return "", err
+	}
+
+	return "https://daemon." + url, nil
+}
+
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Deploys your application",
 	Long:  `Deploys your application`,
 	Run: func(cmd *cobra.Command, args []string) {
-
-		clusters := map[string]string{
-			"ci":           "nais-ci.devillo.no",
-			"nais-dev":     "nais.devillo.no",
-			"preprod-fss":  "nais.preprod.local",
-			"prod-fss":     "nais.adeo.no",
-			"preprod-iapp": "nais-iapp.preprod.local",
-			"prod-iapp":    "nais-iapp.adeo.no",
-			"preprod-sbs":  "nais.oera-q.local",
-			"prod-sbs":     "nais.oera.no",
-		}
-
 		deployRequest := api.NaisDeploymentRequest{
 			Username: os.Getenv("NAIS_USERNAME"),
 			Password: os.Getenv("NAIS_PASSWORD"),
@@ -63,19 +98,10 @@ var deployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		cluster, exists := clusters[cluster]
-		if !exists {
-			fmt.Print("Cluster is not valid, please choose one of: ")
-			for key := range clusters {
-				fmt.Printf("%s, ", key)
-			}
-			fmt.Print("\n")
+		clusterUrl, err := getClusterUrl(cluster)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
-		}
-
-		clusterUrl := os.Getenv("NAIS_CLUSTER_URL")
-		if len(clusterUrl) == 0 {
-			clusterUrl = "https://daemon." + cluster
 		}
 
 		jsonStr, err := json.Marshal(deployRequest)
@@ -121,7 +147,7 @@ func init() {
 
 	deployCmd.Flags().StringP("app", "a", "", "name of your app")
 	deployCmd.Flags().StringP("version", "v", "", "version you want to deploy")
-	deployCmd.Flags().StringP("cluster", "c", "preprod-fss", "the cluster you want to deploy to")
+	deployCmd.Flags().StringP("cluster", "c", "", "the cluster you want to deploy to")
 	deployCmd.Flags().StringP("environment", "e", "t0", "environment you want to use")
 	deployCmd.Flags().StringP("zone", "z", "fss", "the zone the app will be in")
 	deployCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")

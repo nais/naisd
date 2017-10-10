@@ -91,7 +91,9 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) error {
 	requestCounter.With(nil).Inc()
 
-	payload, err := buildApplicationInstancePayload(deploymentRequest, exposedResourceIds, usedResourceIds)
+
+
+	payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, exposedResourceIds, usedResourceIds))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return fmt.Errorf("Unable to create payload (%s)", err)
@@ -153,9 +155,9 @@ func getResourceIds(usedResources []NaisResource) (usedResourceIds []int) {
 	return usedResourceIds
 }
 
-func environmentExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest) (error) {
+func environmentExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest) error {
 	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
-	return fasit.getFasitEnvironment(deploymentRequest.Namespace)
+	return fasit.getFasitEnvironment(deploymentRequest.Environment)
 }
 
 func applicationExistsInFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest) (error) {
@@ -514,19 +516,14 @@ func generateScope(resource ExposedResource, environment, zone string) Scope {
 		Zone: zone,
 	}
 }
-func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) ([]byte, error) {
-		applicationInstancePayload := ApplicationInstancePayload{
+func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) ApplicationInstancePayload {
+		return ApplicationInstancePayload{
 			Application: deploymentRequest.Application,
 			Environment: deploymentRequest.Environment,
 			Version: deploymentRequest.Version,
 			ExposedResources: exposedResourceIds,
 			UsedResources: usedResourceIds,
 		}
-	if payload, err := json.Marshal(applicationInstancePayload); err != nil {
-		return []byte{}, err
-	} else {
-		return payload, nil
-	}
 }
 
 func buildResourcePayload(resource ExposedResource, environment, zone string) ([]byte, error) {
@@ -558,7 +555,6 @@ func buildResourcePayload(resource ExposedResource, environment, zone string) ([
 	// Reference of valid resources in Fasit
 	// ['DataSource', 'MSSQLDataSource', 'DB2DataSource', 'LDAP', 'BaseUrl', 'Credential', 'Certificate', 'OpenAm', 'Cics', 'RoleMapping', 'QueueManager', 'WebserviceEndpoint', 'RestService', 'WebserviceGateway', 'EJB', 'Datapower', 'EmailAddress', 'SMTPServer', 'Queue', 'Topic', 'DeploymentManager', 'ApplicationProperties', 'MemoryParameters', 'LoadBalancer', 'LoadBalancerConfig', 'FileLibrary', 'Channel
 
-	json.Marshal(resourcePayload)
 	if payload, err := json.Marshal(resourcePayload); err != nil {
 		return []byte{}, err
 	} else {

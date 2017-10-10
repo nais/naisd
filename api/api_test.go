@@ -140,6 +140,7 @@ func TestNoManifestGivesError(t *testing.T) {
 func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
+	environment := "environmentName"
 	image := "name/Container"
 	version := "123"
 	resourceAlias := "alias1"
@@ -153,10 +154,10 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	depReq := NaisDeploymentRequest{
 		Application:  appName,
 		Version:      version,
-		Environment:  namespace,
+		Environment:  environment,
 		AppConfigUrl: "http://repo.com/app",
 		Zone:         "zone",
-		Namespace:    "namespace",
+		Namespace:    namespace,
 	}
 
 	config := NaisAppConfig{
@@ -179,10 +180,21 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", resourceAlias).
 		MatchParam("type", resourceType).
-		MatchParam("environment", namespace).
+		MatchParam("environment", environment).
 		MatchParam("application", appName).
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
+
+	gock.New("http://fasit.local").
+		Get("/api/v2/environments/"+environment).
+		Reply(200).
+		BodyString("anything")
+
+	gock.New("http://fasit.local").
+		Get("/api/v2/applications/"+appName).
+		Reply(200).
+		BodyString("anything")
+
 
 	json, _ := json.Marshal(depReq)
 

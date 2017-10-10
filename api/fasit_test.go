@@ -60,6 +60,29 @@ func TestUpdateFasit(t *testing.T) {
 	//updateFasit()
 }
 
+func TestBuildingFasitPayloads(t *testing.T) {
+	application := "appName"
+	environment := "t1000"
+	version := "2.1"
+	exposedResourceIds := []int{1,2,3}
+	usedResourceIds := []int{4,5,6}
+
+	deploymentRequest := NaisDeploymentRequest{
+		Application: application,
+		Environment: environment,
+		Version: version,
+	}
+	t.Run("Building ApplicationInstancePayload", func(t *testing.T){
+		payload := buildApplicationInstancePayload(deploymentRequest, exposedResourceIds, usedResourceIds)
+
+		assert.Equal(t, application, payload.Application)
+		assert.Equal(t, environment, payload.Environment)
+		assert.Equal(t, version, payload.Version)
+		assert.Equal(t, exposedResourceIds, payload.ExposedResources)
+		assert.Equal(t, usedResourceIds, payload.UsedResources)
+
+	})
+}
 func TestGettingListOfResources(t *testing.T) {
 	alias := "alias1"
 	alias2 := "alias2"

@@ -311,7 +311,7 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 	for _, res := range naisResources {
 		if res.secret != nil {
 			for k, v := range res.secret {
-				data[res.name+"_"+k] = []byte(v)
+				data[ResourceVariableName(res, k)] = []byte(v)
 			}
 		}
 		if res.certificates != nil {
@@ -421,11 +421,13 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 	}
 	deploymentResult.Secret = secret
 
-	ingress, err := createIngress(deploymentRequest, clusterSubdomain, k8sClient)
-	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating ingress: %s", err)
+	if appConfig.Ingress.Enabled {
+		ingress, err := createIngress(deploymentRequest, clusterSubdomain, k8sClient)
+		if err != nil {
+			return deploymentResult, fmt.Errorf("Failed while creating ingress: %s", err)
+		}
+		deploymentResult.Ingress = ingress
 	}
-	deploymentResult.Ingress = ingress
 
 	autoscaler, err := createOrUpdateAutoscaler(deploymentRequest, appConfig, k8sClient)
 	if err != nil {

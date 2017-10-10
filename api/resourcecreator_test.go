@@ -417,7 +417,7 @@ func TestIngress(t *testing.T) {
 func TestCreateOrUpdateSecret(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
-	resource1Name := "r1"
+	resource1Name := "r1.alias"
 	resource1Type := "db"
 	resource1Key := "key1"
 	resource1Value := "value1"
@@ -462,7 +462,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, "", secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, otherAppName, secret.ObjectMeta.Name)
 		assert.Equal(t, 4, len(secret.Data))
-		assert.Equal(t, []byte(secret1Value), secret.Data[resource1Name+"_"+secret1Key])
+		assert.Equal(t, []byte(secret1Value), secret.Data["r1_alias_"+secret1Key])
 		assert.Equal(t, []byte(secret2Value), secret.Data[resource2Name+"_"+secret2Key])
 		assert.Equal(t, fileValue1, secret.Data[fileKey1])
 		assert.Equal(t, fileValue2, secret.Data[fileKey2])
@@ -477,7 +477,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
-		assert.Equal(t, []byte(updatedSecretValue), secret.Data[resource1Name+"_"+secret1Key])
+		assert.Equal(t, []byte(updatedSecretValue), secret.Data["r1_alias_"+secret1Key])
 		assert.Equal(t, updatedFileValue, secret.Data[fileKey1])
 	})
 }
@@ -567,8 +567,9 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	appConfig := NaisAppConfig{
-		Image: image,
-		Port:  port,
+		Image:   image,
+		Port:    port,
+		Ingress: Ingress{Enabled: true},
 		Resources: ResourceRequirements{
 			Requests: ResourceList{
 				Cpu:    cpuRequest,
@@ -613,6 +614,15 @@ func TestCreateK8sResources(t *testing.T) {
 
 		assert.Empty(t, deploymentResult.Secret)
 		assert.NotEmpty(t, deploymentResult.Service)
+	})
+
+	t.Run("omits ingress creation when disabled", func(t *testing.T) {
+		appConfig.Ingress.Enabled = false
+
+		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())
+		assert.NoError(t, error)
+
+		assert.Empty(t, deploymentResult.Ingress)
 	})
 
 }

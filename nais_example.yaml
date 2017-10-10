@@ -21,6 +21,8 @@ resources: # Optional. See: http://kubernetes.io/docs/user-guide/compute-resourc
   requests: # app will be scheduled on nodes with at least this amount resources available
     cpu: 200m
     memory: 256Mi
+ingress:
+  enabled: true # if false, no ingress will be created and application can only be reached from inside cluster
 fasitResources: # resources fetched from Fasit
   used: # this will be injected into the application as environment variables
   - alias: mydb

@@ -18,7 +18,6 @@ func GetDefaultAppConfig(application string) NaisAppConfig {
 			Port:    DefaultPortName,
 			Path:    "/metrics",
 		},
-
 		Healthcheck: Healthcheck{
 			Liveness: Probe{
 				Path:         "isAlive",
@@ -29,6 +28,7 @@ func GetDefaultAppConfig(application string) NaisAppConfig {
 				InitialDelay: 20,
 			},
 		},
+		Ingress: Ingress{Enabled: true},
 		Resources: ResourceRequirements{
 			Limits: ResourceList{
 				Cpu:    "500m",

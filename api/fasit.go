@@ -199,7 +199,7 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 	req, err := buildResourceRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
-		return NaisResource{}, &appError{err, "Failed creating Fasit request", nil}
+		return NaisResource{}, &appError{err, "Failed creating Fasit request", 500}
 	}
 
 	client := &http.Client{}
@@ -208,13 +208,13 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 
 	if err != nil {
 		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return NaisResource{}, &appError{err, "Error contacting Fasit", nil}
+		return NaisResource{}, &appError{err, "Error contacting Fasit", 500}
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		errorCounter.WithLabelValues("read_body").Inc()
-		return NaisResource{}, &appError{err, "Could not read body", nil}
+		return NaisResource{}, &appError{err, "Could not read body", 500}
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
@@ -234,13 +234,13 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 	err = json.Unmarshal(body, &fasitResource)
 	if err != nil {
 		errorCounter.WithLabelValues("unmarshal_body").Inc()
-		return NaisResource{}, &appError{err, "Could not unmarshal Fasit response", nil}
+		return NaisResource{}, &appError{err, "Could not unmarshal Fasit response", 500}
 	}
 
 	resource, err := fasit.mapToNaisResource(fasitResource)
 
 	if err != nil {
-		return NaisResource{}, &appError{err, "Could not map response to Nais resource ", nil}
+		return NaisResource{}, &appError{err, "Could not map response to Nais resource ", 500}
 	}
 
 	return resource, nil
@@ -288,8 +288,13 @@ func (fasit FasitClient) createResource(resource ExposedResource, environment, a
 func (fasit FasitClient) updateResource(existingResourceId int, resource ExposedResource, environment, application, zone string) (int, error) {
 	requestCounter.With(nil).Inc()
 
-	payload := bytes.NewBuffer([]byte(buildResourcePayload(resource, environment, application, zone)))
-	req, err := http.NewRequest("PUT", fasit.FasitUrl+"/api/v2/resources/", payload)
+	payload, err := buildResourcePayload(resource, environment, zone)
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return 0, fmt.Errorf("Unable to create payload (%s)", err)
+	}
+
+	req, err := http.NewRequest("PUT", fasit.FasitUrl+"/api/v2/resources/", bytes.NewBuffer(payload))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return 0, fmt.Errorf("Unable to create request: %s", err)
@@ -528,7 +533,7 @@ func buildResourcePayload(resource ExposedResource, environment, zone string) ([
 	var resourcePayload ResourcePayload
 
 	switch resource.ResourceType {
-	case strings.ToLower(resource.ResourceType) == "restservice":
+	case "RestService":
 		resourcePayload = ResourcePayload{
 			Type: resource.ResourceType,
 			Alias: resource.Alias,
@@ -538,7 +543,7 @@ func buildResourcePayload(resource ExposedResource, environment, zone string) ([
 			},
 			Scope: generateScope(resource, environment, zone),
 		}
-	case strings.ToLower(resource.ResourceType) == "webserviceendpoint":
+	case "WebserviceEndpoint":
 		resourcePayload = ResourcePayload{
 			Type: resource.ResourceType,
 			Alias: resource.Alias,
@@ -550,6 +555,8 @@ func buildResourcePayload(resource ExposedResource, environment, zone string) ([
 			Scope: generateScope(resource, environment, zone),
 		}
 	}
+	// Reference of valid resources in Fasit
+	// ['DataSource', 'MSSQLDataSource', 'DB2DataSource', 'LDAP', 'BaseUrl', 'Credential', 'Certificate', 'OpenAm', 'Cics', 'RoleMapping', 'QueueManager', 'WebserviceEndpoint', 'RestService', 'WebserviceGateway', 'EJB', 'Datapower', 'EmailAddress', 'SMTPServer', 'Queue', 'Topic', 'DeploymentManager', 'ApplicationProperties', 'MemoryParameters', 'LoadBalancer', 'LoadBalancerConfig', 'FileLibrary', 'Channel
 
 	json.Marshal(resourcePayload)
 	if payload, err := json.Marshal(resourcePayload); err != nil {

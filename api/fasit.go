@@ -43,6 +43,7 @@ type ResourceRequest struct {
 	ResourceType string
 }
 
+
 type NaisResource struct {
 	name         string
 	resourceType string
@@ -51,9 +52,9 @@ type NaisResource struct {
 	certificates map[string][]byte
 }
 
-func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
+func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
-		resource, err := fasit.getResource(request, environment, application, zone)
+		resource, err := fasit.getScopedResource(request, environment, application, zone)
 		if err != nil {
 			return []NaisResource{}, fmt.Errorf("Failed to get resource: %s. %s", request.Alias, err)
 		}
@@ -70,10 +71,10 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 
 	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
 
-	return fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+	return fasit.GetScopedResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
 }
 
-func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
+func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
 	requestCounter.With(nil).Inc()
 	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)
 	if err != nil {

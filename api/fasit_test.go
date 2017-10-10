@@ -29,7 +29,7 @@ func TestGettingResource(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
-	resource, err := fasit.getResource(ResourceRequest{alias, resourceType}, environment, application, zone)
+	resource, err := fasit.getScopedResource(ResourceRequest{alias, resourceType}, environment, application, zone)
 
 	assert.NoError(t, err)
 	assert.Equal(t, alias, resource.name)
@@ -108,7 +108,7 @@ func TestGettingListOfResources(t *testing.T) {
 	resources = append(resources, ResourceRequest{alias3, resourceType})
 	resources = append(resources, ResourceRequest{alias4, "applicationproperties"})
 
-	resourcesReplies, err := fasit.GetResources(resources, environment, application, zone)
+	resourcesReplies, err := fasit.GetScopedResources(resources, environment, application, zone)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(resourcesReplies))
@@ -130,7 +130,7 @@ func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
 		MatchParam("alias", "alias").
 		Reply(200).File("testdata/fasitResponse-arbitrary-keys.json")
 
-	resource, err := fasit.getResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
+	resource, err := fasit.getScopedResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
 
 	assert.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestResolvingSecret(t *testing.T) {
 		HeaderPresent("Authorization").
 		Reply(200).BodyString("hemmelig")
 
-	resource, err := fasit.getResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
+	resource, err := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
 
 	assert.NoError(t, err)
 
@@ -175,7 +175,7 @@ func TestResolveCertifcates(t *testing.T) {
 			Get("/api/v2/resources/3024713/file/keystore").
 			Reply(200).Body(bytes.NewReader([]byte("Some binary format")))
 
-		resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, err := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
 		assert.NoError(t, err)
 
@@ -192,7 +192,7 @@ func TestResolveCertifcates(t *testing.T) {
 			Reply(200).File("testdata/fasitFilesNoCertifcateResponse.json").
 			Done()
 
-		resource, err := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, err := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
 		assert.NoError(t, err)
 

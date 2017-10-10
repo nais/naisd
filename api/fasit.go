@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/prometheus/client_golang/prometheus"
@@ -9,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"encoding/json"
 )
 
 func init() {
@@ -51,7 +51,6 @@ type NaisResource struct {
 	certificates map[string][]byte
 }
 
-
 func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
 		resource, err := fasit.getScopedResource(request, environment, application, zone)
@@ -61,6 +60,37 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 		resources = append(resources, resource)
 	}
 	return resources, nil
+}
+
+func (fasit FasitClient) getLoadBalancerConfig(application string, environment string) ([]NaisResource, error) {
+	req, err := fasit.buildRequest("GET", "/api/v2/resources", map[string]string{
+		"environment": environment,
+		"application": application,
+	})
+
+	body, err := fasit.doRequest(req)
+	if err != nil {
+		return []NaisResource{}, err
+	}
+
+	var lbConfigs []FasitResource
+	err = json.Unmarshal(body, &lbConfigs)
+	if err != nil {
+		errorCounter.WithLabelValues("unmarshal_body").Inc()
+		return []NaisResource{}, fmt.Errorf("Could not unmarshal body: %s", err)
+	}
+
+	var naisResources []NaisResource
+
+	for _, fasitResource := range lbConfigs {
+		naisResource, err := fasit.mapToNaisResource(fasitResource)
+		if err != nil {
+			return []NaisResource{}, err
+		}
+		naisResources = append(naisResources, naisResource)
+	}
+	return naisResources, nil
+
 }
 
 func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) ([]NaisResource, error) {
@@ -74,7 +104,7 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 	return fasit.GetScopedResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
 }
 
-func (fasit FasitClient) doRequest(r *http.Request) (resource NaisResource, err error) {
+func (fasit FasitClient) doRequest(r *http.Request) ([]byte, error) {
 	requestCounter.With(nil).Inc()
 
 	client := &http.Client{}
@@ -85,35 +115,21 @@ func (fasit FasitClient) doRequest(r *http.Request) (resource NaisResource, err 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		errorCounter.WithLabelValues("read_body").Inc()
-		return NaisResource{}, fmt.Errorf("Could not read body: %s", err)
+		return body, fmt.Errorf("Could not read body: %s", err)
 	}
 
 	if err != nil {
 		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return NaisResource{}, fmt.Errorf("Error contacting fasit: %s", err)
+		return body, fmt.Errorf("Error contacting fasit: %s", err)
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return NaisResource{}, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+		return body, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
 	}
 
-	var fasitResource FasitResource
-
-	err = json.Unmarshal(body, &fasitResource)
-	if err != nil {
-		errorCounter.WithLabelValues("unmarshal_body").Inc()
-		return NaisResource{}, fmt.Errorf("Could not unmarshal body: %s", err)
-	}
-
-	resource, err = fasit.mapToNaisResource(fasitResource)
-
-	if err != nil {
-		return NaisResource{}, err
-	}
-
-	return resource, nil
+	return body, nil
 
 }
 func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
@@ -130,8 +146,25 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, env
 		return NaisResource{}, err
 	}
 
-	return fasit.doRequest(req)
+	body, err := fasit.doRequest(req)
+	if err != nil {
+		return NaisResource{}, err
+	}
 
+	var fasitResource FasitResource
+
+	err = json.Unmarshal(body, &fasitResource)
+	if err != nil {
+		errorCounter.WithLabelValues("unmarshal_body").Inc()
+		return NaisResource{}, fmt.Errorf("Could not unmarshal body: %s", err)
+	}
+
+	resource, err = fasit.mapToNaisResource(fasitResource)
+	if err != nil {
+		return NaisResource{}, err
+	}
+
+	return resource, nil
 }
 
 func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resource NaisResource, err error) {

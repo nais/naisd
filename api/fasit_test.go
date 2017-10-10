@@ -37,6 +37,25 @@ func TestGettingResource(t *testing.T) {
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
 	assert.Equal(t, "basta", resource.properties["username"])
 }
+func TestGettingLBConfig(t *testing.T) {
+
+	environment := "environment"
+	application := "application"
+
+	fasit := FasitClient{"https://fasit.local", "", ""}
+
+	defer gock.Off()
+	gock.New("https://fasit.local").
+		Get("/api/v2/resources").
+		MatchParam("environment", environment).
+		MatchParam("application", application).
+		Reply(200).File("testdata/fasitLbConfigResponse.json")
+
+	resources, err := fasit.getLoadBalancerConfig("application","environment")
+
+	assert.NoError(t, err)
+	assert.Equal(t,len(resources),1)
+}
 
 func TestResourceError(t *testing.T) {
 	defer gock.Off()

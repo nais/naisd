@@ -66,6 +66,7 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 	req, err := fasit.buildRequest("GET", "/api/v2/resources", map[string]string{
 		"environment": environment,
 		"application": application,
+		"type":        "LoadBalancerConfig",
 	})
 
 	body, err := fasit.doRequest(req)
@@ -110,23 +111,22 @@ func (fasit FasitClient) doRequest(r *http.Request) ([]byte, error) {
 	client := &http.Client{}
 	resp, err := client.Do(r)
 
+	if err != nil {
+		errorCounter.WithLabelValues("contact_fasit").Inc()
+		return []byte{}, fmt.Errorf("Error contacting fasit: %s", err)
+	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		errorCounter.WithLabelValues("read_body").Inc()
-		return body, fmt.Errorf("Could not read body: %s", err)
-	}
-
-	if err != nil {
-		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return body, fmt.Errorf("Error contacting fasit: %s", err)
+		return []byte{}, fmt.Errorf("Could not read body: %s", err)
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return body, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+		return []byte{}, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
 	}
 
 	return body, nil

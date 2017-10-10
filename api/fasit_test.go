@@ -37,7 +37,8 @@ func TestGettingResource(t *testing.T) {
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
 	assert.Equal(t, "basta", resource.properties["username"])
 }
-func TestGettingLBConfig(t *testing.T) {
+
+func TestGetLoadBalancerConfig(t *testing.T) {
 
 	environment := "environment"
 	application := "application"
@@ -49,6 +50,7 @@ func TestGettingLBConfig(t *testing.T) {
 		Get("/api/v2/resources").
 		MatchParam("environment", environment).
 		MatchParam("application", application).
+		MatchParam("type", "LoadBalancerConfig").
 		Reply(200).File("testdata/fasitLbConfigResponse.json")
 
 	resources, err := fasit.getLoadBalancerConfig("application","environment")

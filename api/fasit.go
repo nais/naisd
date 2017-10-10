@@ -24,6 +24,14 @@ type ResourcePayload struct {
 	Type		string
 }
 
+type ApplicationInstancePayload struct {
+	Application			string
+	Environment			string
+	Version				string
+	ExposedResources	[]int
+	UsedResources		[]int
+}
+
 type FasitClient struct {
 	FasitUrl string
 	Username string
@@ -80,6 +88,37 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 	return resources, nil
 }
 
+func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) error {
+	requestCounter.With(nil).Inc()
+
+	payload, err := buildApplicationInstancePayload(deploymentRequest, exposedResourceIds, usedResourceIds)
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return fmt.Errorf("Unable to create payload (%s)", err)
+	}
+
+	req, err := http.NewRequest("POST", fasit.FasitUrl+"/api/v2/applicationinstances/", bytes.NewBuffer(payload))
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return fmt.Errorf("Unable to create request: %s", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "POST").Inc()
+	if resp.StatusCode != 200 {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+	}
+
+	return nil
+}
+
 func (fasit FasitClient) createOrUpdateFasitResources(resources []ExposedResource, hostname, environment, application, zone string) ([]int, error) {
 	var exposedResourceIds []int
 	for _, resource := range resources {
@@ -93,7 +132,6 @@ func (fasit FasitClient) createOrUpdateFasitResources(resources []ExposedResourc
 				return nil, fmt.Errorf("Failed creating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
 			}
 			exposedResourceIds = append(exposedResourceIds, createdResourceId)
-			continue
 		} else if appError != nil {
 			// Failed contacting Fasit
 			return nil, fmt.Errorf("Encountered a problem while contacting Fasit (%s)", appError.Error)
@@ -149,23 +187,11 @@ func updateFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest, resou
 
 	glog.Infof("exposed: %s\nused: %s", exposedResourceIds, usedResourceIds)
 
-	// createApplicationInstance(resources, exposedResourceIds)
-
-	return nil
-}
-
-func createOrUpdateResources(resources []ExposedResource, hostname string) ([]int, error) {
-	var resourceIds []int
-	for i, res := range resources {
-		fmt.Println("alias", res.Alias)
-		fmt.Println("path", res.Path)
-		fmt.Println("type", res.ResourceType)
-		fmt.Println("hostname", hostname)
-		//create resource
-		resourceIds = append(resourceIds, i)
+	if err := fasit.createApplicationInstance(deploymentRequest, exposedResourceIds, usedResourceIds); err != nil {
+		return err
 	}
 
-	return resourceIds, nil
+	return nil
 }
 
 func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (NaisResource, *appError) {
@@ -223,7 +249,7 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 func (fasit FasitClient) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
 	requestCounter.With(nil).Inc()
 
-	payload, err := buildResourcePayload(resource, environment, application, zone)
+	payload, err := buildResourcePayload(resource, environment, zone)
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return 0, fmt.Errorf("Unable to create payload (%s)", err)
@@ -483,7 +509,22 @@ func generateScope(resource ExposedResource, environment, zone string) Scope {
 		Zone: zone,
 	}
 }
-func buildResourcePayload(resource ExposedResource, environment, application, zone string) ([]byte, error) {
+func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) ([]byte, error) {
+		applicationInstancePayload := ApplicationInstancePayload{
+			Application: deploymentRequest.Application,
+			Environment: deploymentRequest.Environment,
+			Version: deploymentRequest.Version,
+			ExposedResources: exposedResourceIds,
+			UsedResources: usedResourceIds,
+		}
+	if payload, err := json.Marshal(applicationInstancePayload); err != nil {
+		return []byte{}, err
+	} else {
+		return payload, nil
+	}
+}
+
+func buildResourcePayload(resource ExposedResource, environment, zone string) ([]byte, error) {
 	var resourcePayload ResourcePayload
 
 	switch resource.ResourceType {

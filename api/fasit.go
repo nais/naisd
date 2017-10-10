@@ -32,7 +32,7 @@ type Password struct {
 
 type FasitResource struct {
 	Alias        string
-	ResourceType string `json:"type"`
+	ResourceType string                 `json:"type"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
 	Certificates map[string]interface{} `json:"files""`
@@ -43,7 +43,6 @@ type ResourceRequest struct {
 	ResourceType string
 }
 
-
 type NaisResource struct {
 	name         string
 	resourceType string
@@ -51,6 +50,7 @@ type NaisResource struct {
 	secret       map[string]string
 	certificates map[string][]byte
 }
+
 
 func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
@@ -74,16 +74,11 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 	return fasit.GetScopedResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
 }
 
-func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
+func (fasit FasitClient) doRequest(r *http.Request) (resource NaisResource, err error) {
 	requestCounter.With(nil).Inc()
-	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)
-	if err != nil {
-		errorCounter.WithLabelValues("create_request").Inc()
-		return NaisResource{}, fmt.Errorf("Could not create request: %s", err)
-	}
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(r)
 
 	defer resp.Body.Close()
 
@@ -119,6 +114,24 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, env
 	}
 
 	return resource, nil
+
+}
+func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
+
+	req, err := fasit.buildRequest("GET", "/api/v2/scopedresource", map[string]string{
+		"alias":       resourcesRequest.Alias,
+		"type":        resourcesRequest.ResourceType,
+		"environment": environment,
+		"application": application,
+		"zone":        zone,
+	})
+
+	if err != nil {
+		return NaisResource{}, err
+	}
+
+	return fasit.doRequest(req)
+
 }
 
 func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resource NaisResource, err error) {
@@ -242,17 +255,21 @@ func getFirstKey(m map[string]map[string]string) string {
 	return ""
 }
 
-func buildRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", fasit+"/api/v2/scopedresource", nil)
+func (fasit FasitClient) buildRequest(method, path string, queryParams map[string]string) (*http.Request, error) {
+	req, err := http.NewRequest(method, fasit.FasitUrl+path, nil)
+
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return nil, fmt.Errorf("could not create request: %s", err)
+	}
 
 	q := req.URL.Query()
-	q.Add("alias", alias)
-	q.Add("type", resourceType)
-	q.Add("environment", environment)
-	q.Add("application", application)
-	q.Add("zone", zone)
+
+	for k, v := range queryParams {
+		q.Add(k, v)
+	}
 	req.URL.RawQuery = q.Encode()
-	return req, err
+	return req, nil
 }
 
 var httpReqsCounter = prometheus.NewCounterVec(

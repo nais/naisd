@@ -79,9 +79,9 @@ type NaisResource struct {
 
 func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
-		resource, err := fasit.getResource(request, environment, application, zone)
-		if err != nil {
-			return []NaisResource{}, fmt.Errorf("Failed to get resource: %s. %s", request.Alias, err)
+		resource, appError := fasit.getResource(request, environment, application, zone)
+		if appError != nil {
+			return []NaisResource{}, fmt.Errorf("Failed to get resource: %s", appError.Message)
 		}
 		resources = append(resources, resource)
 	}
@@ -214,20 +214,22 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
+
 	if err != nil {
 		errorCounter.WithLabelValues("read_body").Inc()
 		return NaisResource{}, &appError{err, "Could not read body", 500}
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
-	if resp.StatusCode > 404 {
+	if resp.StatusCode == 404 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return NaisResource{}, &appError{err, "Resource not found in Fasit", 404}
 	}
 
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return NaisResource{}, &appError{err, "Unexpected error returned from Fasit", resp.StatusCode}
+
+		return NaisResource{}, &appError{err, "Unexpected error returned from Fasit",resp.StatusCode}
 	}
 
 

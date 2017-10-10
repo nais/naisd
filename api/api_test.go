@@ -167,7 +167,9 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 			Used: []UsedResource{{resourceAlias, resourceType}},
 		},
 	}
+	response := "anything"
 	data, _ := yaml.Marshal(config)
+	appInstanceResponse, _ := yaml.Marshal(response)
 
 	defer gock.Off()
 
@@ -185,16 +187,20 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
-	gock.New("http://fasit.local").
+	gock.New("https://fasit.local").
 		Get("/api/v2/environments/"+environment).
 		Reply(200).
 		BodyString("anything")
 
-	gock.New("http://fasit.local").
+	gock.New("https://fasit.local").
 		Get("/api/v2/applications/"+appName).
 		Reply(200).
 		BodyString("anything")
 
+		gock.New("https://fasit.local").
+		Post("/api/v2/applicationinstances/").
+		Reply(200).
+		BodyString(string(appInstanceResponse))
 
 	json, _ := json.Marshal(depReq)
 

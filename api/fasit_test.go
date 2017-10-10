@@ -7,6 +7,7 @@ import (
 	"gopkg.in/h2non/gock.v1"
 	"strings"
 	"testing"
+	"fmt"
 )
 
 func TestGettingResource(t *testing.T) {
@@ -31,7 +32,7 @@ func TestGettingResource(t *testing.T) {
 
 	resource, appError := fasit.getResource(ResourceRequest{alias, resourceType}, environment, application, zone)
 
-	assert.NoError(t, appError.Error)
+	assert.Nil(t, appError)
 	assert.Equal(t, alias, resource.name)
 	assert.Equal(t, resourceType, resource.resourceType)
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
@@ -45,10 +46,10 @@ func TestResourceError(t *testing.T) {
 		Reply(404).BodyString("not found")
 
 	resource, err := fetchFasitResources("https://fasit.local", NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}, NaisAppConfig{FasitResources: FasitResources{Used: []UsedResource{{Alias: "resourcealias", ResourceType: "baseurl"}}}})
-
+	fmt.Println("ERROR = " + err.Error())
 	assert.Error(t, err)
 	assert.Empty(t, resource)
-	assert.True(t, strings.Contains(err.Error(), "not found (404)"))
+	assert.True(t, strings.Contains(err.Error(), "Failed to get resource: Resource not found in Fasit"))
 }
 
 func TestUpdateFasit(t *testing.T) {
@@ -163,7 +164,7 @@ func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
 
 	resource, appError := fasit.getResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
 
-	assert.NoError(t, appError.Error)
+	assert.Nil(t, appError)
 
 	assert.Equal(t, "1", resource.properties["a"])
 	assert.Equal(t, "2", resource.properties["b"])
@@ -186,7 +187,7 @@ func TestResolvingSecret(t *testing.T) {
 
 	resource, appError := fasit.getResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
 
-	assert.NoError(t, appError.Error)
+	assert.Nil(t, appError)
 
 	assert.Equal(t, "1", resource.properties["a"])
 	assert.Equal(t, "hemmelig", resource.secret["password"])
@@ -208,7 +209,7 @@ func TestResolveCertifcates(t *testing.T) {
 
 		resource, appError := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
-		assert.NoError(t, appError.Error)
+		assert.Nil(t, appError)
 
 		assert.Equal(t, "Some binary format", string(resource.certificates["srvvarseloppgave_cert_keystore"]))
 
@@ -225,7 +226,7 @@ func TestResolveCertifcates(t *testing.T) {
 
 		resource, appError := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
-		assert.NoError(t, appError.Error)
+		assert.Nil(t, appError)
 
 		assert.Equal(t, 0, len(resource.certificates))
 

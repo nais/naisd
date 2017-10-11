@@ -197,6 +197,7 @@ func updateFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest, resou
 }
 
 func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (NaisResource, *appError) {
+	fmt.Println("Normal getResource called")
 	requestCounter.With(nil).Inc()
 	req, err := buildResourceRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)
 	if err != nil {
@@ -253,7 +254,7 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 func (fasit FasitClient) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
 	requestCounter.With(nil).Inc()
 
-	payload, err := buildResourcePayload(resource, environment, zone)
+	payload, err := json.Marshal(buildResourcePayload(resource, environment, zone))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return 0, fmt.Errorf("Unable to create payload (%s)", err)
@@ -267,6 +268,10 @@ func (fasit FasitClient) createResource(resource ExposedResource, environment, a
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return 0, fmt.Errorf("Unable to contact Fasit: %s", err)
+	}
 
 	defer resp.Body.Close()
 
@@ -292,13 +297,13 @@ func (fasit FasitClient) createResource(resource ExposedResource, environment, a
 func (fasit FasitClient) updateResource(existingResourceId int, resource ExposedResource, environment, application, zone string) (int, error) {
 	requestCounter.With(nil).Inc()
 
-	payload, err := buildResourcePayload(resource, environment, zone)
+	payload, err := json.Marshal(buildResourcePayload(resource, environment, zone))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return 0, fmt.Errorf("Unable to create payload (%s)", err)
 	}
 
-	req, err := http.NewRequest("PUT", fasit.FasitUrl+"/api/v2/resources/", bytes.NewBuffer(payload))
+	req, err := http.NewRequest("PUT", fasit.FasitUrl+"/api/v2/resources/"+fmt.Sprint(existingResourceId), bytes.NewBuffer(payload))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return 0, fmt.Errorf("Unable to create request: %s", err)
@@ -306,7 +311,10 @@ func (fasit FasitClient) updateResource(existingResourceId int, resource Exposed
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return 0, fmt.Errorf("Unable to contact Fasit: %s", err)
+	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -528,39 +536,36 @@ func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, ex
 		}
 }
 
-func buildResourcePayload(resource ExposedResource, environment, zone string) ([]byte, error) {
-	var resourcePayload ResourcePayload
-
+func buildResourcePayload(resource ExposedResource, environment, zone string) ResourcePayload {
 	switch resource.ResourceType {
+	// Reference of valid resources in Fasit
+	// ['DataSource', 'MSSQLDataSource', 'DB2DataSource', 'LDAP', 'BaseUrl', 'Credential', 'Certificate', 'OpenAm', 'Cics', 'RoleMapping', 'QueueManager', 'WebserviceEndpoint', 'RestService', 'WebserviceGateway', 'EJB', 'Datapower', 'EmailAddress', 'SMTPServer', 'Queue', 'Topic', 'DeploymentManager', 'ApplicationProperties', 'MemoryParameters', 'LoadBalancer', 'LoadBalancerConfig', 'FileLibrary', 'Channel
 	case "RestService":
-		resourcePayload = ResourcePayload{
+		return ResourcePayload{
 			Type: resource.ResourceType,
 			Alias: resource.Alias,
 			Properties:Properties{
+				// TODO: URL should be concatenated to the application's LoadBalancerConfig
 				Url:resource.Path,
 				Description: resource.Description,
 			},
 			Scope: generateScope(resource, environment, zone),
 		}
 	case "WebserviceEndpoint":
-		resourcePayload = ResourcePayload{
+
+		return ResourcePayload{
 			Type: resource.ResourceType,
 			Alias: resource.Alias,
 			Properties:Properties{
+				// TODO: URL should be concatenated to the application's LoadBalancerConfig
 				EndpointUrl: resource.Path,
-				WsdlUrl:fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?r=m2internal&g=%s&a=%s&v=%s&e=zip", resource.WsdlGroupId, resource.WsdlArtifactId, resource.WsdlVersion),
+				WsdlUrl: fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?r=m2internal&g=%s&a=%s&v=%s&e=zip", resource.WsdlGroupId, resource.WsdlArtifactId, resource.WsdlVersion),
 				Description: resource.Description,
 			},
 			Scope: generateScope(resource, environment, zone),
 		}
-	}
-	// Reference of valid resources in Fasit
-	// ['DataSource', 'MSSQLDataSource', 'DB2DataSource', 'LDAP', 'BaseUrl', 'Credential', 'Certificate', 'OpenAm', 'Cics', 'RoleMapping', 'QueueManager', 'WebserviceEndpoint', 'RestService', 'WebserviceGateway', 'EJB', 'Datapower', 'EmailAddress', 'SMTPServer', 'Queue', 'Topic', 'DeploymentManager', 'ApplicationProperties', 'MemoryParameters', 'LoadBalancer', 'LoadBalancerConfig', 'FileLibrary', 'Channel
-
-	if payload, err := json.Marshal(resourcePayload); err != nil {
-		return []byte{}, err
-	} else {
-		return payload, nil
+	default:
+		return ResourcePayload{}
 	}
 }
 

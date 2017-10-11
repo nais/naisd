@@ -118,6 +118,8 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 
 func validateFasitRequirements(fasitUrl string, deploymentRequest NaisDeploymentRequest)error{
 	if err := environmentExistsInFasit(fasitUrl, deploymentRequest); err != nil {
+		// TODO: "default" namespace should resolve to fasit environment with the cluster's name.
+		// TODO: "projectname" namespace should resolve to <namespace>-<cluster-name>
 		glog.Errorf("Environment %s does not exist in Fasit", deploymentRequest.Namespace)
 		return err
 	}

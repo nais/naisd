@@ -7,6 +7,7 @@ import (
 	"gopkg.in/h2non/gock.v1"
 	"strings"
 	"testing"
+	"io/ioutil"
 )
 
 func TestGettingResource(t *testing.T) {
@@ -53,10 +54,10 @@ func TestGetLoadBalancerConfig(t *testing.T) {
 		MatchParam("type", "LoadBalancerConfig").
 		Reply(200).File("testdata/fasitLbConfigResponse.json")
 
-	resources, err := fasit.getLoadBalancerConfig("application","environment")
+	resource, err := fasit.getLoadBalancerConfig("application","environment")
 
 	assert.NoError(t, err)
-	assert.Equal(t,len(resources),1)
+	assert.Equal(t,len(resource.ingresses),2)
 }
 
 func TestResourceError(t *testing.T) {
@@ -221,6 +222,23 @@ func TestResolveCertifcates(t *testing.T) {
 
 	})
 
+}
+
+func TestParseLoadBalancerConfig(t *testing.T) {
+	t.Run("Parse array of load balancer config correctly", func(t *testing.T) {
+		b,_ := ioutil.ReadFile("testdata/fasitLbConfigResponse.json")
+		result, err := parseLoadBalancerConfig(b)
+		assert.NoError(t,err)
+		assert.Equal(t,2, len(result))
+		assert.Equal(t,result["url.with.root"],"root")
+		assert.Equal(t,result["url.without.root"],"")
+
+	})
+
+	t.Run("Err if no loadbalancer config is found", func(t *testing.T) {
+		_, err := parseLoadBalancerConfig([]byte(`["json1","json2"]`))
+		assert.Error(t,err)
+	})
 }
 
 func TestParseFilesObject(t *testing.T) {

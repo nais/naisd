@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"encoding/json"
+	"github.com/golang/glog"
 )
 
 func init() {
@@ -49,6 +50,7 @@ type NaisResource struct {
 	properties   map[string]string
 	secret       map[string]string
 	certificates map[string][]byte
+	ingresses    map[string]string
 }
 
 func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
@@ -62,7 +64,7 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 	return resources, nil
 }
 
-func (fasit FasitClient) getLoadBalancerConfig(application string, environment string) ([]NaisResource, error) {
+func (fasit FasitClient) getLoadBalancerConfig(application string, environment string) (NaisResource, error) {
 	req, err := fasit.buildRequest("GET", "/api/v2/resources", map[string]string{
 		"environment": environment,
 		"application": application,
@@ -71,30 +73,27 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 
 	body, err := fasit.doRequest(req)
 	if err != nil {
-		return []NaisResource{}, err
+		return NaisResource{}, err
 	}
 
-	var lbConfigs []FasitResource
-	err = json.Unmarshal(body, &lbConfigs)
+	ingresses, err := parseLoadBalancerConfig(body)
 	if err != nil {
-		errorCounter.WithLabelValues("unmarshal_body").Inc()
-		return []NaisResource{}, fmt.Errorf("Could not unmarshal body: %s", err)
+		return NaisResource{}, err
 	}
 
-	var naisResources []NaisResource
-
-	for _, fasitResource := range lbConfigs {
-		naisResource, err := fasit.mapToNaisResource(fasitResource)
-		if err != nil {
-			return []NaisResource{}, err
-		}
-		naisResources = append(naisResources, naisResource)
-	}
-	return naisResources, nil
+	//todo UGh...
+	return NaisResource{
+		name:"",
+		properties:nil,
+		resourceType:"LoadBalancerConfig",
+		certificates:nil,
+		secret: nil,
+		ingresses:ingresses,
+	}, nil
 
 }
 
-func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) ([]NaisResource, error) {
+func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) (naisresources []NaisResource, err error) {
 	var resourceRequests []ResourceRequest
 	for _, resource := range appConfig.FasitResources.Used {
 		resourceRequests = append(resourceRequests, ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType})
@@ -102,7 +101,19 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 
 	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
 
-	return fasit.GetScopedResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+	naisresources, err = fasit.GetScopedResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+	if err != nil {
+		return naisresources, err
+	}
+
+	if lbResources, e := fasit.getLoadBalancerConfig(deploymentRequest.Application, deploymentRequest.Environment); e == nil {
+		naisresources = append(naisresources, lbResources)
+	} else {
+		glog.Warning("failed getting loadbalancer config for application %s in environment %s: %s ", deploymentRequest.Application, deploymentRequest.Environment, e)
+	}
+
+	return naisresources, nil
+
 }
 
 func (fasit FasitClient) doRequest(r *http.Request) ([]byte, error) {
@@ -225,6 +236,33 @@ func resolveCertificates(files map[string]interface{}, resourceName string) (map
 	fileContent[resourceName+"_"+fileName] = bodyBytes
 	return fileContent, nil
 
+}
+
+func parseLoadBalancerConfig(config []byte) (map[string]string, error) {
+	json, err := gabs.ParseJSON(config)
+	if err != nil {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return nil, fmt.Errorf("Error parsing load balancer config: %s ", config)
+	}
+
+	lbConfigs, _ := json.Children()
+
+	ingresses := make(map[string]string)
+	for _, lbConfig := range lbConfigs {
+		host, found := lbConfig.Path("properties.url").Data().(string)
+		if !found {
+			glog.Warning("no host found for loadbalancer config: %s", lbConfig)
+			continue
+		}
+		path, _ := lbConfig.Path("properties.contextRoots").Data().(string)
+		ingresses[host] = path
+	}
+
+	if len(ingresses) == 0 {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return nil, fmt.Errorf("no loadbalancer config found for: %s", config)
+	}
+	return ingresses, nil
 }
 
 func parseFilesObject(files map[string]interface{}) (fileName string, fileUrl string, e error) {

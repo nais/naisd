@@ -69,6 +69,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			map[string][]byte{},
+			nil,
 		}
 		assert.Equal(t, "TEST_RESOURCE_KEY", ResourceEnvironmentVariableName(resource, "key"))
 	})
@@ -147,6 +148,7 @@ func TestDeployment(t *testing.T) {
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{secret1Key: secret1Value},
 			map[string][]byte{cert1Key: cert1Value},
+			nil,
 		},
 		{
 			resource2Name,
@@ -154,6 +156,7 @@ func TestDeployment(t *testing.T) {
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{secret2Key: secret2Value},
 			map[string][]byte{cert2Key: cert2Value},
+			nil,
 		},
 		{
 			"resource3",
@@ -162,6 +165,7 @@ func TestDeployment(t *testing.T) {
 				"key1": "value1",
 			},
 			map[string]string{},
+			nil,
 			nil,
 		},
 		{
@@ -172,6 +176,7 @@ func TestDeployment(t *testing.T) {
 			},
 			map[string]string{},
 			nil,
+			nil,
 		},
 		{
 			invalidlyNamedResourceNameDot,
@@ -179,12 +184,14 @@ func TestDeployment(t *testing.T) {
 			map[string]string{invalidlyNamedResourceKeyDot: invalidlyNamedResourceValueDot},
 			map[string]string{invalidlyNamedResourceSecretKeyDot: invalidlyNamedResourceSecretValueDot},
 			nil,
+			nil,
 		},
 		{
 			invalidlyNamedResourceNameColon,
 			invalidlyNamedResourceTypeColon,
 			map[string]string{invalidlyNamedResourceKeyColon: invalidlyNamedResourceValueColon},
 			map[string]string{invalidlyNamedResourceSecretKeyColon: invalidlyNamedResourceSecretValueColon},
+			nil,
 			nil,
 		},
 	}
@@ -306,6 +313,7 @@ func TestDeployment(t *testing.T) {
 				nil,
 				nil,
 				map[string][]byte{updatedCertKey: updatedCertValue},
+				nil,
 			},
 		}
 
@@ -344,6 +352,7 @@ func TestDeployment(t *testing.T) {
 			{
 				resource1Name,
 				resource1Type,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -422,8 +431,8 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	files2 := map[string][]byte{fileKey2: fileValue2}
 
 	naisResources := []NaisResource{
-		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}, files1},
-		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, files2}}
+		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}, files1,nil},
+		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, files2, nil}}
 
 	secret := createSecretDef(naisResources, nil, appName, namespace)
 	secret.ObjectMeta.ResourceVersion = resourceVersion
@@ -457,7 +466,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		updatedSecretValue := "newsecret"
 		updatedFileValue := []byte("newfile")
 		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: appName}, []NaisResource{
-			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}, map[string][]byte{fileKey1: updatedFileValue}}}, clientset)
+			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}, map[string][]byte{fileKey1: updatedFileValue},nil}}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
@@ -523,6 +532,7 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 			nil,
 			nil,
 			map[string][]byte{"key": []byte("value")},
+			nil,
 		},
 	}
 
@@ -566,8 +576,7 @@ func TestCreateK8sResources(t *testing.T) {
 		},
 	}
 
-	naisResources := []NaisResource{
-		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}, nil}}
+	naisResources := []NaisResource{{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}, nil,nil}}
 
 	service := createServiceDef(appName, namespace)
 
@@ -590,7 +599,7 @@ func TestCreateK8sResources(t *testing.T) {
 	})
 
 	naisResourcesNoSecret := []NaisResource{
-		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{}, nil}}
+		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{}, nil, nil}}
 
 	t.Run("omits secret creation when no secret resources ex", func(t *testing.T) {
 		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())

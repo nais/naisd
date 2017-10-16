@@ -244,6 +244,13 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 		_, err := parseLoadBalancerConfig([]byte(`["json1","json2"]`))
 		assert.Error(t, err)
 	})
+
+	t.Run("Empty map if empty response", func(t *testing.T) {
+		result, err := parseLoadBalancerConfig([]byte(`[]`))
+		assert.NoError(t, err)
+		assert.Empty(t,result)
+
+	})
 }
 
 func TestParseFilesObject(t *testing.T) {

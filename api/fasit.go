@@ -16,6 +16,7 @@ func init() {
 	prometheus.MustRegister(httpReqsCounter)
 }
 
+
 type FasitClient struct {
 	FasitUrl string
 	Username string
@@ -64,7 +65,7 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 	return resources, nil
 }
 
-func (fasit FasitClient) getLoadBalancerConfig(application string, environment string) (NaisResource, error) {
+func (fasit FasitClient) getLoadBalancerConfig(application string, environment string) (*NaisResource, error) {
 	req, err := fasit.buildRequest("GET", "/api/v2/resources", map[string]string{
 		"environment": environment,
 		"application": application,
@@ -73,22 +74,26 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 
 	body, err := fasit.doRequest(req)
 	if err != nil {
-		return NaisResource{}, err
+		return nil, err
 	}
 
 	ingresses, err := parseLoadBalancerConfig(body)
 	if err != nil {
-		return NaisResource{}, err
+		return nil, err
+	}
+
+	if len(ingresses) == 0 {
+		return nil, nil
 	}
 
 	//todo UGh...
-	return NaisResource{
-		name:"",
-		properties:nil,
-		resourceType:"LoadBalancerConfig",
-		certificates:nil,
-		secret: nil,
-		ingresses:ingresses,
+	return &NaisResource{
+		name:         "",
+		properties:   nil,
+		resourceType: "LoadBalancerConfig",
+		certificates: nil,
+		secret:       nil,
+		ingresses:    ingresses,
 	}, nil
 
 }
@@ -106,8 +111,10 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 		return naisresources, err
 	}
 
-	if lbResources, e := fasit.getLoadBalancerConfig(deploymentRequest.Application, deploymentRequest.Environment); e == nil {
-		naisresources = append(naisresources, lbResources)
+	if lbResource, e := fasit.getLoadBalancerConfig(deploymentRequest.Application, deploymentRequest.Environment); e == nil {
+		if lbResource != nil {
+			naisresources = append(naisresources, *lbResource)
+		}
 	} else {
 		glog.Warning("failed getting loadbalancer config for application %s in environment %s: %s ", deploymentRequest.Application, deploymentRequest.Environment, e)
 	}
@@ -245,9 +252,12 @@ func parseLoadBalancerConfig(config []byte) (map[string]string, error) {
 		return nil, fmt.Errorf("Error parsing load balancer config: %s ", config)
 	}
 
-	lbConfigs, _ := json.Children()
-
 	ingresses := make(map[string]string)
+	lbConfigs, _ := json.Children()
+	if len(lbConfigs) == 0 {
+		return nil, nil
+	}
+
 	for _, lbConfig := range lbConfigs {
 		host, found := lbConfig.Path("properties.url").Data().(string)
 		if !found {

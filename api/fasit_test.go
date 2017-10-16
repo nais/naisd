@@ -46,18 +46,23 @@ func TestGetLoadBalancerConfig(t *testing.T) {
 
 	fasit := FasitClient{"https://fasit.local", "", ""}
 
-	defer gock.Off()
-	gock.New("https://fasit.local").
-		Get("/api/v2/resources").
-		MatchParam("environment", environment).
-		MatchParam("application", application).
-		MatchParam("type", "LoadBalancerConfig").
-		Reply(200).File("testdata/fasitLbConfigResponse.json")
+	t.Run("Get load balancer config happy path", func(t *testing.T) {
 
-	resource, err := fasit.getLoadBalancerConfig("application","environment")
+		defer gock.Off()
+		gock.New("https://fasit.local").
+			Get("/api/v2/resources").
+			MatchParam("environment", environment).
+			MatchParam("application", application).
+			MatchParam("type", "LoadBalancerConfig").
+			Reply(200).File("testdata/fasitLbConfigResponse.json")
 
-	assert.NoError(t, err)
-	assert.Equal(t,len(resource.ingresses),2)
+		resource, err := fasit.getLoadBalancerConfig("application", "environment")
+
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(resource.ingresses))
+		assert.Equal(t, "LoadBalancerConfig", resource.resourceType)
+	})
+
 }
 
 func TestResourceError(t *testing.T) {
@@ -226,18 +231,18 @@ func TestResolveCertifcates(t *testing.T) {
 
 func TestParseLoadBalancerConfig(t *testing.T) {
 	t.Run("Parse array of load balancer config correctly", func(t *testing.T) {
-		b,_ := ioutil.ReadFile("testdata/fasitLbConfigResponse.json")
+		b, _ := ioutil.ReadFile("testdata/fasitLbConfigResponse.json")
 		result, err := parseLoadBalancerConfig(b)
-		assert.NoError(t,err)
-		assert.Equal(t,2, len(result))
-		assert.Equal(t,result["url.with.root"],"root")
-		assert.Equal(t,result["url.without.root"],"")
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result))
+		assert.Equal(t, "root", result["url.with.root"])
+		assert.Equal(t, "", result["url.without.root"])
 
 	})
 
 	t.Run("Err if no loadbalancer config is found", func(t *testing.T) {
 		_, err := parseLoadBalancerConfig([]byte(`["json1","json2"]`))
-		assert.Error(t,err)
+		assert.Error(t, err)
 	})
 }
 

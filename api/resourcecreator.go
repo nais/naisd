@@ -347,17 +347,18 @@ func createIngressHostname(application, namespace, subdomain string) string {
 	}
 }
 
-func createDefaultIngressRule(application, namespace, subdomain string) v1beta1.IngressRule {
+func createIngressRule(serviceName, host, path string) v1beta1.IngressRule {
 	return v1beta1.IngressRule{
-		Host: createIngressHostname(application, namespace, subdomain),
+		Host: host,
 		IngressRuleValue: v1beta1.IngressRuleValue{
 			HTTP: &v1beta1.HTTPIngressRuleValue{
 				Paths: []v1beta1.HTTPIngressPath{
 					{
 						Backend: v1beta1.IngressBackend{
-							ServiceName: application,
+							ServiceName: serviceName,
 							ServicePort: intstr.IntOrString{IntVal: 80},
 						},
+						Path: path,
 					},
 				},
 			},
@@ -423,7 +424,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 	deploymentResult.Secret = secret
 
 	if appConfig.Ingress.Enabled {
-		ingress, err := createOrUpdateIngress(deploymentRequest, clusterSubdomain, k8sClient)
+		ingress, err := createOrUpdateIngress(deploymentRequest, clusterSubdomain, resources, k8sClient)
 		if err != nil {
 			return deploymentResult, fmt.Errorf("Failed while creating ingress: %s", err)
 		}
@@ -452,7 +453,7 @@ func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, appConfig
 }
 
 // Returns nil,nil if ingress already exists. No reason to do update, as nothing can change
-func createOrUpdateIngress(deploymentRequest NaisDeploymentRequest, clusterSubdomain string, k8sClient kubernetes.Interface) (*v1beta1.Ingress, error) {
+func createOrUpdateIngress(deploymentRequest NaisDeploymentRequest, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*v1beta1.Ingress, error) {
 	ingress, err := getExistingIngress(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
@@ -463,10 +464,26 @@ func createOrUpdateIngress(deploymentRequest NaisDeploymentRequest, clusterSubdo
 		ingress = createIngressDef(clusterSubdomain, deploymentRequest.Application, deploymentRequest.Namespace)
 	}
 
-	ingress.Spec.Rules = []v1beta1.IngressRule{createDefaultIngressRule(deploymentRequest.Application, deploymentRequest.Namespace, clusterSubdomain)}
+	ingress.Spec.Rules = createIngressRules(deploymentRequest, clusterSubdomain, naisResources)
 	return createOrUpdateIngressResource(ingress, deploymentRequest.Namespace, k8sClient)
 }
 
+func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomain string, naisResources []NaisResource) []v1beta1.IngressRule {
+	var ingressRules []v1beta1.IngressRule
+
+	defaultIngressRule := createIngressRule(deploymentRequest.Application, createIngressHostname(deploymentRequest.Application, deploymentRequest.Namespace, clusterSubdomain), "")
+	ingressRules = append(ingressRules, defaultIngressRule)
+
+	for _, naisResource := range naisResources {
+		if naisResource.resourceType == "LoadBalancerConfig" && len(naisResource.ingresses) > 0 {
+			for host,path := range naisResource.ingresses {
+				ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application,host,path))
+			}
+		}
+	}
+
+	return ingressRules
+}
 func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes.Interface) (*v1.Service, error) {
 	existingService, err := getExistingService(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 

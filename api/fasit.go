@@ -37,7 +37,7 @@ type FasitResource struct {
 	ResourceType string                 `json:"type"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
-	Certificates map[string]interface{} `json:"files""`
+	Certificates map[string]interface{} `json:"files"`
 }
 
 type ResourceRequest struct {

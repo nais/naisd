@@ -38,6 +38,10 @@ type FasitClient struct {
 	Password string
 }
 
+type FasitClientInterface interface {
+	GetResources([]ResourceRequest, ...string) ([]NaisResource, error)
+}
+
 type Properties struct {
 	Url			string
 	EndpointUrl	string

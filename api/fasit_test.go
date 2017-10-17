@@ -104,7 +104,7 @@ func TestUpdateResource(t *testing.T) {
 		Path:         "",
 	}
 
-	fasit := FasitClient{"https://fasit.local", "", ""}
+	fasit := FasitClient{"https://fasit.local", "", "", }
 
 	defer gock.Off()
 
@@ -142,16 +142,15 @@ func TestUpdateResource(t *testing.T) {
 		assert.Equal(t, 0, createdResourceId)
 	})
 }
-type StubFasit struct{
+type FakeFasitClient struct{
 	FasitClient
 }
-func (s StubFasit) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string)(NaisResource, *appError){
+func (s FakeFasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string)(NaisResource, *appError){
 	fmt.Println("StubGetResource called")
 	return NaisResource{}, &appError{fmt.Errorf("not found"), "Resource not found in Fasit", 404}
 }
-func (s StubFasit) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
+func (s FakeFasitClient) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
 	fmt.Println("StubCreateResource called")
-
 	return 4242, nil
 }
 func TestCreateOrUpdateFasitResources(t *testing.T) {
@@ -169,7 +168,7 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 	}
 	exposedResources := []ExposedResource{exposedResource}
 
-	stubFasit := StubFasit{FasitClient{"https://fasit.local", "", ""}}
+	stubFasit := FakeFasitClient{}
 
 	t.Run("A resource is created when resource ID isn't found in Fasit", func(t *testing.T) {
 		resourceIds, err := stubFasit.createOrUpdateFasitResources(exposedResources, "", environment, application, zone)

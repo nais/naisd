@@ -38,9 +38,10 @@ type FasitClient struct {
 	Username string
 	Password string
 }
-
-type FasitClientInterface interface {
-	GetResources([]ResourceRequest, ...string) ([]NaisResource, error)
+type FasitClientAdapter interface {
+	getScopedResource(resourcesRequest ResourceRequest, environment, application, zone string) (NaisResource, *appError)
+	createResource(resource ExposedResource, environment, application, zone string) (int, error)
+	updateResource(existingResourceId int, resource ExposedResource, environment, application, zone string) (int, error)
 }
 
 type Properties struct {
@@ -85,9 +86,9 @@ type NaisResource struct {
 
 func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
-		resource, err := fasit.getScopedResource(request, environment, application, zone)
-		if err != nil {
-			return []NaisResource{}, fmt.Errorf("Failed to get resource: %s. %s", request.Alias, err)
+		resource, appErr := fasit.getScopedResource(request, environment, application, zone)
+		if appErr != nil {
+			return []NaisResource{}, fmt.Errorf("Failed to get resource: %s (%s)", request.Alias, appErr.Message)
 		}
 		resources = append(resources, resource)
 	}
@@ -134,8 +135,8 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 		"type":        "LoadBalancerConfig",
 	})
 
-	body, err := fasit.doRequest(req)
-	if err != nil {
+	body, appErr := fasit.doRequest(req)
+	if appErr != nil {
 		return nil, err
 	}
 
@@ -160,31 +161,37 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 
 }
 
-
-func (fasit FasitClient) createOrUpdateFasitResources(resources []ExposedResource, hostname, environment, application, zone string) ([]int, error) {
+func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedResource, hostname, environment, application, zone string) ([]int, error) {
 	var exposedResourceIds []int
 	for _, resource := range resources {
 		var request = ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType}
 		existingResource, appError := fasit.getScopedResource(request, environment, application, zone)
 
-		if existingResource.id == 0 {
-			// Create new resource if none was found
-			createdResourceId, err := fasit.createResource(resource, environment, application, zone)
-			if err != nil {
-				return nil, fmt.Errorf("Failed creating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
+		if appError != nil{
+
+			if appError.Code == 404 {
+				// Create new resource if none was found
+				createdResourceId, err := fasit.createResource(resource, environment, application, zone)
+				if err != nil {
+					return nil, fmt.Errorf("Failed creating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
+				}
+				exposedResourceIds = append(exposedResourceIds, createdResourceId)
+			} else {
+				// Failed contacting Fasit
+				return nil, fmt.Errorf("Encountered a problem while contacting Fasit (%s)", appError.Error)
 			}
-			exposedResourceIds = append(exposedResourceIds, createdResourceId)
-		} else if appError != nil {
-			// Failed contacting Fasit
-			return nil, fmt.Errorf("Encountered a problem while contacting Fasit (%s)", appError.Error)
+
+		} else {
+			// Updating Fasit resource
+			updatedResourceId, err := fasit.updateResource(existingResource.id, resource, environment, application, zone)
+			if err != nil {
+				return nil, fmt.Errorf("Failed updating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
+			}
+			exposedResourceIds = append(exposedResourceIds, updatedResourceId)
+
 		}
-		// Updating Fasit resource
-		updatedResourceId, err := fasit.updateResource(existingResource.id, resource, environment, application, zone)
-		if err != nil {
-			return nil, fmt.Errorf("Failed creating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
-		}
-		exposedResourceIds = append(exposedResourceIds, updatedResourceId)
 	}
+	fmt.Println("exposed: ", exposedResourceIds)
 	return exposedResourceIds, nil
 }
 
@@ -236,7 +243,7 @@ func updateFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest, resou
 
 	usedResourceIds := getResourceIds(resources)
 
-	exposedResourceIds, err := fasit.createOrUpdateFasitResources(appConfig.FasitResources.Exposed, hostname, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+	exposedResourceIds, err := CreateOrUpdateFasitResources(fasit, appConfig.FasitResources.Exposed, hostname, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
 	if 	err != nil {
 		return err
 	}
@@ -251,7 +258,7 @@ func updateFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest, resou
 }
 
 
-func (fasit FasitClient) doRequest(r *http.Request) ([]byte, error) {
+func (fasit FasitClient) doRequest(r *http.Request) ([]byte, *appError) {
 	requestCounter.With(nil).Inc()
 
 	client := &http.Client{}
@@ -259,27 +266,32 @@ func (fasit FasitClient) doRequest(r *http.Request) ([]byte, error) {
 
 	if err != nil {
 		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return []byte{}, fmt.Errorf("Error contacting fasit: %s", err)
+		return []byte{}, &appError{err,"Error contacting fasit: %s", 500}
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		errorCounter.WithLabelValues("read_body").Inc()
-		return []byte{}, fmt.Errorf("Could not read body: %s", err)
+		return []byte{}, &appError{err, "Could not read body: %s", 500}
+	}
+
+	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
+	if resp.StatusCode == 404 {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return []byte{}, &appError{err, "Resource not found in Fasit", 404}
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return []byte{}, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+		return []byte{}, &appError{err, "Fasit returned: %s (%s)", resp.StatusCode}
 	}
 
 	return body, nil
 
 }
-func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
-
+func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, environment, application, zone string) (NaisResource, *appError) {
 	req, err := fasit.buildRequest("GET", "/api/v2/scopedresource", map[string]string{
 		"alias":       resourcesRequest.Alias,
 		"type":        resourcesRequest.ResourceType,
@@ -289,12 +301,12 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, env
 	})
 
 	if err != nil {
-		return NaisResource{}, err
+		return NaisResource{}, &appError{err, "unable to create request", 500}
 	}
 
-	body, err := fasit.doRequest(req)
-	if err != nil {
-		return NaisResource{}, err
+	body, appErr := fasit.doRequest(req)
+	if appErr != nil {
+		return NaisResource{}, appErr
 	}
 
 	var fasitResource FasitResource
@@ -302,12 +314,12 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, env
 	err = json.Unmarshal(body, &fasitResource)
 	if err != nil {
 		errorCounter.WithLabelValues("unmarshal_body").Inc()
-		return NaisResource{}, fmt.Errorf("Could not unmarshal body: %s", err)
+		return NaisResource{}, &appError{err, "Could not unmarshal body: %s", 500}
 	}
 
-	resource, err = fasit.mapToNaisResource(fasitResource)
+	resource, err := fasit.mapToNaisResource(fasitResource)
 	if err != nil {
-		return NaisResource{}, err
+		return NaisResource{}, &appError{err, "Unable to map response to Nais resource", 500}
 	}
 
 	return resource, nil

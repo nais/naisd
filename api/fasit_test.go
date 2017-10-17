@@ -33,7 +33,7 @@ func TestGettingResource(t *testing.T) {
 
 	resource, err := fasit.getScopedResource(ResourceRequest{alias, resourceType}, environment, application, zone)
 
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, alias, resource.name)
 	assert.Equal(t, resourceType, resource.resourceType)
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
@@ -105,7 +105,7 @@ func TestUpdateResource(t *testing.T) {
 		Path:         "",
 	}
 
-	fasit := FasitClient{"https://fasit.local", "", "", }
+	fasit := FasitClient{"https://fasit.local", "", "",}
 
 	defer gock.Off()
 
@@ -143,17 +143,7 @@ func TestUpdateResource(t *testing.T) {
 		assert.Equal(t, 0, createdResourceId)
 	})
 }
-type FakeFasitClient struct{
-	FasitClient
-}
-func (s FakeFasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string)(NaisResource, *appError){
-	fmt.Println("StubGetResource called")
-	return NaisResource{}, &appError{fmt.Errorf("not found"), "Resource not found in Fasit", 404}
-}
-func (s FakeFasitClient) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
-	fmt.Println("StubCreateResource called")
-	return 4242, nil
-}
+
 func TestGetLoadBalancerConfig(t *testing.T) {
 
 	environment := "environment"
@@ -184,6 +174,43 @@ func TestGetResourceId(t *testing.T) {
 	resourceIds := getResourceIds(naisResources)
 	assert.Equal(t, []int{1, 2}, resourceIds)
 }
+
+type FakeFasitClient struct {
+	FasitClient
+}
+
+func (fasit FakeFasitClient) getScopedResource(resourcesRequest ResourceRequest, environment, application, zone string) (NaisResource, *appError) {
+	switch application {
+	case "notfound":
+		return NaisResource{}, &appError{fmt.Errorf("not found"), "Resource not found in Fasit", 404}
+	case "fasitError":
+		return NaisResource{}, &appError{fmt.Errorf("random error"), "random error", 500}
+	default:
+		return NaisResource{id: 1}, nil
+	}
+}
+func (fasit FakeFasitClient) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
+	switch zone {
+	case "failed":
+		return 0, fmt.Errorf("random error")
+	default:
+		return 4242, nil
+	}
+}
+
+var updateCalled bool
+
+func (fasit FakeFasitClient) updateResource(existingResourceId int, resource ExposedResource, environment, application, zone string) (int, error) {
+	updateCalled = true
+	switch zone {
+	case "failed":
+		return 0, fmt.Errorf("random error")
+	default:
+		return 1, nil
+
+	}
+}
+
 func TestCreateOrUpdateFasitResources(t *testing.T) {
 
 	alias := "alias1"
@@ -191,20 +218,50 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 	environment := "environment"
 	application := "application"
 	zone := "zone"
+	hostname := "bish"
 
 	exposedResource := ExposedResource{
 		Alias:        alias,
 		ResourceType: resourceType,
 		Path:         "",
 	}
-	exposedResources := []ExposedResource{exposedResource}
+	exposedResources := []ExposedResource{exposedResource, exposedResource}
 
-	stubFasit := FakeFasitClient{}
+	fakeFasitClient := FakeFasitClient{}
 
-	t.Run("A resource is created when resource ID isn't found in Fasit", func(t *testing.T) {
-		resourceIds, err := stubFasit.createOrUpdateFasitResources(exposedResources, "", environment, application, zone)
+	// Using application field to identify which response to return from getScopedResource on FakeFasitClient
+	t.Run("Resources are created when their resource ID isn't found in Fasit", func(t *testing.T) {
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "notfound", zone)
 		assert.NoError(t, err)
-		assert.Equal(t, []int{4242}, resourceIds)
+		assert.Equal(t, []int{4242, 4242}, resourceIds)
+	})
+	t.Run("Returns an error if contacting Fasit fails", func(t *testing.T) {
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "fasitError", zone)
+		assert.Error(t, err)
+		assert.Nil(t, resourceIds)
+		assert.True(t, strings.Contains(err.Error(), "Encountered a problem while contacting Fasit (random error)"))
+	})
+
+	// Using Zone field to identify which response to return from createResource on FakeFasitClient
+	t.Run("Returns an error if unable to create resource", func(t *testing.T) {
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "notfound", "failed")
+		assert.Error(t, err)
+		assert.Nil(t, resourceIds)
+		assert.True(t, strings.Contains(err.Error(), "Failed creating resource: alias1 of type RestService with path . (random error)"))
+	})
+	t.Run("Updates Fasit if resources were found", func(t *testing.T) {
+		updateCalled = false
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, application, zone)
+		assert.NoError(t, err)
+		assert.Equal(t, []int{1, 1}, resourceIds)
+		assert.True(t, updateCalled)
+	})
+	// Using Zone field to identify which response to return from updateResource on FakeFasitClient
+	t.Run("Returns an error if unable to update resource", func(t *testing.T) {
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, application, "failed")
+		assert.Error(t, err)
+		assert.Nil(t, resourceIds)
+		assert.True(t, strings.Contains(err.Error(), "Failed updating resource: alias1 of type RestService with path . (random error)"))
 	})
 }
 
@@ -215,10 +272,9 @@ func TestResourceError(t *testing.T) {
 		Reply(404).BodyString("not found")
 
 	resource, err := fetchFasitResources("https://fasit.local", NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}, NaisAppConfig{FasitResources: FasitResources{Used: []UsedResource{{Alias: "resourcealias", ResourceType: "baseurl"}}}})
-
 	assert.Error(t, err)
 	assert.Empty(t, resource)
-	assert.True(t, strings.Contains(err.Error(), "not found (404)"))
+	assert.True(t, strings.Contains(err.Error(), "Failed to get resource: resourcealias (Resource not found in Fasit)"))
 }
 
 func TestUpdateFasit(t *testing.T) {
@@ -381,9 +437,9 @@ func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
 		MatchParam("alias", "alias").
 		Reply(200).File("testdata/fasitResponse-arbitrary-keys.json")
 
-	resource, err := fasit.getScopedResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
+	resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
 
-	assert.NoError(t, err)
+	assert.Nil(t, appError)
 
 	assert.Equal(t, "1", resource.properties["a"])
 	assert.Equal(t, "2", resource.properties["b"])
@@ -404,9 +460,9 @@ func TestResolvingSecret(t *testing.T) {
 		HeaderPresent("Authorization").
 		Reply(200).BodyString("hemmelig")
 
-	resource, err := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
+	resource, appError := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
 
-	assert.NoError(t, err)
+	assert.Nil(t, appError)
 
 	assert.Equal(t, "1", resource.properties["a"])
 	assert.Equal(t, "hemmelig", resource.secret["password"])
@@ -426,9 +482,9 @@ func TestResolveCertifcates(t *testing.T) {
 			Get("/api/v2/resources/3024713/file/keystore").
 			Reply(200).Body(bytes.NewReader([]byte("Some binary format")))
 
-		resource, err := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
-		assert.NoError(t, err)
+		assert.Nil(t, appError)
 
 		assert.Equal(t, "Some binary format", string(resource.certificates["srvvarseloppgave_cert_keystore"]))
 
@@ -443,9 +499,9 @@ func TestResolveCertifcates(t *testing.T) {
 			Reply(200).File("testdata/fasitFilesNoCertifcateResponse.json").
 			Done()
 
-		resource, err := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
-		assert.NoError(t, err)
+		assert.Nil(t, appError)
 
 		assert.Equal(t, 0, len(resource.certificates))
 
@@ -472,7 +528,7 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 	t.Run("Empty map if empty response", func(t *testing.T) {
 		result, err := parseLoadBalancerConfig([]byte(`[]`))
 		assert.NoError(t, err)
-		assert.Empty(t,result)
+		assert.Empty(t, result)
 
 	})
 }

@@ -69,6 +69,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			map[string]string{},
 			map[string]string{},
 			map[string][]byte{},
+			nil,
 		}
 		assert.Equal(t, "TEST_RESOURCE_KEY", ResourceEnvironmentVariableName(resource, "key"))
 	})
@@ -147,6 +148,7 @@ func TestDeployment(t *testing.T) {
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{secret1Key: secret1Value},
 			map[string][]byte{cert1Key: cert1Value},
+			nil,
 		},
 		{
 			resource2Name,
@@ -154,6 +156,7 @@ func TestDeployment(t *testing.T) {
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{secret2Key: secret2Value},
 			map[string][]byte{cert2Key: cert2Value},
+			nil,
 		},
 		{
 			"resource3",
@@ -162,6 +165,7 @@ func TestDeployment(t *testing.T) {
 				"key1": "value1",
 			},
 			map[string]string{},
+			nil,
 			nil,
 		},
 		{
@@ -172,6 +176,7 @@ func TestDeployment(t *testing.T) {
 			},
 			map[string]string{},
 			nil,
+			nil,
 		},
 		{
 			invalidlyNamedResourceNameDot,
@@ -179,12 +184,14 @@ func TestDeployment(t *testing.T) {
 			map[string]string{invalidlyNamedResourceKeyDot: invalidlyNamedResourceValueDot},
 			map[string]string{invalidlyNamedResourceSecretKeyDot: invalidlyNamedResourceSecretValueDot},
 			nil,
+			nil,
 		},
 		{
 			invalidlyNamedResourceNameColon,
 			invalidlyNamedResourceTypeColon,
 			map[string]string{invalidlyNamedResourceKeyColon: invalidlyNamedResourceValueColon},
 			map[string]string{invalidlyNamedResourceSecretKeyColon: invalidlyNamedResourceSecretValueColon},
+			nil,
 			nil,
 		},
 	}
@@ -306,6 +313,7 @@ func TestDeployment(t *testing.T) {
 				nil,
 				nil,
 				map[string][]byte{updatedCertKey: updatedCertValue},
+				nil,
 			},
 		}
 
@@ -347,6 +355,7 @@ func TestDeployment(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			},
 		}
 
@@ -381,11 +390,12 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, resourceVersion, existingIngress.ObjectMeta.ResourceVersion)
 	})
 
-	t.Run("when no ingress exists, a new one is created", func(t *testing.T) {
-		ingress, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
+	t.Run("when no ingress exists, a default ingress is created", func(t *testing.T) {
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, []NaisResource{}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, ingress.ObjectMeta.Name)
+		assert.Equal(t, 1, len(ingress.Spec.Rules))
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
 		assert.Equal(t, otherAppName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
@@ -393,16 +403,42 @@ func TestIngress(t *testing.T) {
 
 	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {
 		namespace := "nondefault"
-		ingress, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, clientset)
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, []NaisResource{}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName+"-"+namespace+"."+subDomain, ingress.Spec.Rules[0].Host)
 	})
 
-	t.Run("when an ingress exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createIngress(NaisDeploymentRequest{Namespace: namespace, Application: appName}, subDomain, clientset)
+	t.Run("Nais ingress resources are added", func(t *testing.T) {
+		clientset := fake.NewSimpleClientset(ingress) //Avoid interfering with other tests in suite.
+		naisResources := []NaisResource{
+			{
+				resourceType: "LoadBalancerConfig",
+				ingresses: map[string]string{
+					"app.adeo.no": "/context",
+				},
+			},
+			{
+				resourceType: "LoadBalancerConfig",
+				ingresses: map[string]string{
+					"app2.adeo.no": "/context2",
+				},
+			},
+		}
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, naisResources, clientset)
+
 		assert.NoError(t, err)
-		assert.Nil(t, nilValue)
+		assert.Equal(t, 3, len(ingress.Spec.Rules))
+
+		assert.Equal(t, "app.adeo.no", ingress.Spec.Rules[1].Host)
+		assert.Equal(t, 1, len(ingress.Spec.Rules[1].HTTP.Paths))
+		assert.Equal(t, "/context", ingress.Spec.Rules[1].HTTP.Paths[0].Path)
+
+		assert.Equal(t, "app2.adeo.no", ingress.Spec.Rules[2].Host)
+		assert.Equal(t, 1, len(ingress.Spec.Rules[1].HTTP.Paths))
+		assert.Equal(t, "/context2", ingress.Spec.Rules[2].HTTP.Paths[0].Path)
+
 	})
+
 }
 
 func TestCreateOrUpdateSecret(t *testing.T) {
@@ -428,8 +464,8 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	files2 := map[string][]byte{fileKey2: fileValue2}
 
 	naisResources := []NaisResource{
-		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}, files1},
-		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, files2}}
+		{resource1Name, resource1Type, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}, files1, nil},
+		{resource2Name, resource2Type, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, files2, nil}}
 
 	secret := createSecretDef(naisResources, nil, appName, namespace)
 	secret.ObjectMeta.ResourceVersion = resourceVersion
@@ -463,7 +499,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		updatedSecretValue := "newsecret"
 		updatedFileValue := []byte("newfile")
 		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: appName}, []NaisResource{
-			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}, map[string][]byte{fileKey1: updatedFileValue}}}, clientset)
+			{resource1Name, resource1Type, nil, map[string]string{secret1Key: updatedSecretValue}, map[string][]byte{fileKey1: updatedFileValue}, nil}}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
@@ -529,6 +565,7 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 			nil,
 			nil,
 			map[string][]byte{"key": []byte("value")},
+			nil,
 		},
 	}
 
@@ -572,8 +609,7 @@ func TestCreateK8sResources(t *testing.T) {
 		},
 	}
 
-	naisResources := []NaisResource{
-		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}, nil}}
+	naisResources := []NaisResource{{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}, nil, nil}}
 
 	service := createServiceDef(appName, namespace)
 
@@ -596,7 +632,7 @@ func TestCreateK8sResources(t *testing.T) {
 	})
 
 	naisResourcesNoSecret := []NaisResource{
-		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{}, nil}}
+		{"resourceName", "resourceType", map[string]string{"resourceKey": "resource1Value"}, map[string]string{}, nil, nil}}
 
 	t.Run("omits secret creation when no secret resources ex", func(t *testing.T) {
 		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/prometheus/client_golang/prometheus"
@@ -9,11 +8,14 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"encoding/json"
+	"github.com/golang/glog"
 )
 
 func init() {
 	prometheus.MustRegister(httpReqsCounter)
 }
+
 
 type FasitClient struct {
 	FasitUrl string
@@ -32,10 +34,10 @@ type Password struct {
 
 type FasitResource struct {
 	Alias        string
-	ResourceType string `json:"type"`
+	ResourceType string                 `json:"type"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
-	Certificates map[string]interface{} `json:"files""`
+	Certificates map[string]interface{} `json:"files"`
 }
 
 type ResourceRequest struct {
@@ -49,11 +51,12 @@ type NaisResource struct {
 	properties   map[string]string
 	secret       map[string]string
 	certificates map[string][]byte
+	ingresses    map[string]string
 }
 
-func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
+func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
-		resource, err := fasit.getResource(request, environment, application, zone)
+		resource, err := fasit.getScopedResource(request, environment, application, zone)
 		if err != nil {
 			return []NaisResource{}, fmt.Errorf("Failed to get resource: %s. %s", request.Alias, err)
 		}
@@ -62,7 +65,40 @@ func (fasit FasitClient) GetResources(resourcesRequests []ResourceRequest, envir
 	return resources, nil
 }
 
-func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) ([]NaisResource, error) {
+func (fasit FasitClient) getLoadBalancerConfig(application string, environment string) (*NaisResource, error) {
+	req, err := fasit.buildRequest("GET", "/api/v2/resources", map[string]string{
+		"environment": environment,
+		"application": application,
+		"type":        "LoadBalancerConfig",
+	})
+
+	body, err := fasit.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	ingresses, err := parseLoadBalancerConfig(body)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ingresses) == 0 {
+		return nil, nil
+	}
+
+	//todo UGh...
+	return &NaisResource{
+		name:         "",
+		properties:   nil,
+		resourceType: "LoadBalancerConfig",
+		certificates: nil,
+		secret:       nil,
+		ingresses:    ingresses,
+	}, nil
+
+}
+
+func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) (naisresources []NaisResource, err error) {
 	var resourceRequests []ResourceRequest
 	for _, resource := range appConfig.FasitResources.Used {
 		resourceRequests = append(resourceRequests, ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType})
@@ -70,37 +106,67 @@ func fetchFasitResources(fasitUrl string, deploymentRequest NaisDeploymentReques
 
 	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
 
-	return fasit.GetResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
-}
-
-func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
-	requestCounter.With(nil).Inc()
-	req, err := buildRequest(fasit.FasitUrl, resourcesRequest.Alias, resourcesRequest.ResourceType, environment, application, zone)
+	naisresources, err = fasit.GetScopedResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
 	if err != nil {
-		errorCounter.WithLabelValues("create_request").Inc()
-		return NaisResource{}, fmt.Errorf("Could not create request: %s", err)
+		return naisresources, err
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	if lbResource, e := fasit.getLoadBalancerConfig(deploymentRequest.Application, deploymentRequest.Environment); e == nil {
+		if lbResource != nil {
+			naisresources = append(naisresources, *lbResource)
+		}
+	} else {
+		glog.Warning("failed getting loadbalancer config for application %s in environment %s: %s ", deploymentRequest.Application, deploymentRequest.Environment, e)
+	}
 
+	return naisresources, nil
+
+}
+
+func (fasit FasitClient) doRequest(r *http.Request) ([]byte, error) {
+	requestCounter.With(nil).Inc()
+
+	client := &http.Client{}
+	resp, err := client.Do(r)
+
+	if err != nil {
+		errorCounter.WithLabelValues("contact_fasit").Inc()
+		return []byte{}, fmt.Errorf("Error contacting fasit: %s", err)
+	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		errorCounter.WithLabelValues("read_body").Inc()
-		return NaisResource{}, fmt.Errorf("Could not read body: %s", err)
-	}
-
-	if err != nil {
-		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return NaisResource{}, fmt.Errorf("Error contacting fasit: %s", err)
+		return []byte{}, fmt.Errorf("Could not read body: %s", err)
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return NaisResource{}, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+		return []byte{}, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+	}
+
+	return body, nil
+
+}
+func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, environment string, application string, zone string) (resource NaisResource, err error) {
+
+	req, err := fasit.buildRequest("GET", "/api/v2/scopedresource", map[string]string{
+		"alias":       resourcesRequest.Alias,
+		"type":        resourcesRequest.ResourceType,
+		"environment": environment,
+		"application": application,
+		"zone":        zone,
+	})
+
+	if err != nil {
+		return NaisResource{}, err
+	}
+
+	body, err := fasit.doRequest(req)
+	if err != nil {
+		return NaisResource{}, err
 	}
 
 	var fasitResource FasitResource
@@ -112,7 +178,6 @@ func (fasit FasitClient) getResource(resourcesRequest ResourceRequest, environme
 	}
 
 	resource, err = fasit.mapToNaisResource(fasitResource)
-
 	if err != nil {
 		return NaisResource{}, err
 	}
@@ -180,6 +245,36 @@ func resolveCertificates(files map[string]interface{}, resourceName string) (map
 
 }
 
+func parseLoadBalancerConfig(config []byte) (map[string]string, error) {
+	json, err := gabs.ParseJSON(config)
+	if err != nil {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return nil, fmt.Errorf("Error parsing load balancer config: %s ", config)
+	}
+
+	ingresses := make(map[string]string)
+	lbConfigs, _ := json.Children()
+	if len(lbConfigs) == 0 {
+		return nil, nil
+	}
+
+	for _, lbConfig := range lbConfigs {
+		host, found := lbConfig.Path("properties.url").Data().(string)
+		if !found {
+			glog.Warning("no host found for loadbalancer config: %s", lbConfig)
+			continue
+		}
+		path, _ := lbConfig.Path("properties.contextRoots").Data().(string)
+		ingresses[host] = path
+	}
+
+	if len(ingresses) == 0 {
+		errorCounter.WithLabelValues("error_fasit").Inc()
+		return nil, fmt.Errorf("no loadbalancer config found for: %s", config)
+	}
+	return ingresses, nil
+}
+
 func parseFilesObject(files map[string]interface{}) (fileName string, fileUrl string, e error) {
 	json, err := gabs.Consume(files)
 	if err != nil {
@@ -241,17 +336,21 @@ func getFirstKey(m map[string]map[string]string) string {
 	return ""
 }
 
-func buildRequest(fasit string, alias string, resourceType string, environment string, application string, zone string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", fasit+"/api/v2/scopedresource", nil)
+func (fasit FasitClient) buildRequest(method, path string, queryParams map[string]string) (*http.Request, error) {
+	req, err := http.NewRequest(method, fasit.FasitUrl+path, nil)
+
+	if err != nil {
+		errorCounter.WithLabelValues("create_request").Inc()
+		return nil, fmt.Errorf("could not create request: %s", err)
+	}
 
 	q := req.URL.Query()
-	q.Add("alias", alias)
-	q.Add("type", resourceType)
-	q.Add("environment", environment)
-	q.Add("application", application)
-	q.Add("zone", zone)
+
+	for k, v := range queryParams {
+		q.Add(k, v)
+	}
 	req.URL.RawQuery = q.Encode()
-	return req, err
+	return req, nil
 }
 
 var httpReqsCounter = prometheus.NewCounterVec(

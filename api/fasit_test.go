@@ -7,6 +7,7 @@ import (
 	"gopkg.in/h2non/gock.v1"
 	"strings"
 	"testing"
+	"io/ioutil"
 	"fmt"
 )
 
@@ -30,9 +31,9 @@ func TestGettingResource(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
-	resource, appError := fasit.getResource(ResourceRequest{alias, resourceType}, environment, application, zone)
+	resource, err := fasit.getScopedResource(ResourceRequest{alias, resourceType}, environment, application, zone)
 
-	assert.Nil(t, appError)
+	assert.NoError(t, err)
 	assert.Equal(t, alias, resource.name)
 	assert.Equal(t, resourceType, resource.resourceType)
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
@@ -151,8 +152,37 @@ func (s StubFasit) getResource(resourcesRequest ResourceRequest, environment str
 }
 func (s StubFasit) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
 	fmt.Println("StubCreateResource called")
-
 	return 4242, nil
+}
+func TestGetLoadBalancerConfig(t *testing.T) {
+
+	environment := "environment"
+	application := "application"
+
+	fasit := FasitClient{"https://fasit.local", "", ""}
+
+	t.Run("Get load balancer config happy path", func(t *testing.T) {
+
+		defer gock.Off()
+		gock.New("https://fasit.local").
+			Get("/api/v2/resources").
+			MatchParam("environment", environment).
+			MatchParam("application", application).
+			MatchParam("type", "LoadBalancerConfig").
+			Reply(200).File("testdata/fasitLbConfigResponse.json")
+
+		resource, err := fasit.getLoadBalancerConfig("application", "environment")
+
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(resource.ingresses))
+		assert.Equal(t, "LoadBalancerConfig", resource.resourceType)
+	})
+
+}
+func TestGetResourceId(t *testing.T) {
+	naisResources := []NaisResource{{id: 1}, {id: 2},}
+	resourceIds := getResourceIds(naisResources)
+	assert.Equal(t, []int{1, 2}, resourceIds)
 }
 func TestCreateOrUpdateFasitResources(t *testing.T) {
 
@@ -177,11 +207,7 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 		assert.Equal(t, []int{4242}, resourceIds)
 	})
 }
-func TestGetResourceId(t *testing.T) {
-	naisResources := []NaisResource{{id: 1}, {id: 2},}
-	resourceIds := getResourceIds(naisResources)
-	assert.Equal(t, []int{1, 2}, resourceIds)
-}
+
 func TestResourceError(t *testing.T) {
 	defer gock.Off()
 	gock.New("https://fasit.local").
@@ -189,9 +215,10 @@ func TestResourceError(t *testing.T) {
 		Reply(404).BodyString("not found")
 
 	resource, err := fetchFasitResources("https://fasit.local", NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}, NaisAppConfig{FasitResources: FasitResources{Used: []UsedResource{{Alias: "resourcealias", ResourceType: "baseurl"}}}})
+
 	assert.Error(t, err)
 	assert.Empty(t, resource)
-	assert.True(t, strings.Contains(err.Error(), "Failed to get resource: Resource not found in Fasit"))
+	assert.True(t, strings.Contains(err.Error(), "not found (404)"))
 }
 
 func TestUpdateFasit(t *testing.T) {
@@ -276,6 +303,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	})
 }
 func TestGettingListOfResources(t *testing.T) {
+
 	alias := "alias1"
 	alias2 := "alias2"
 	alias3 := "alias3"
@@ -331,7 +359,7 @@ func TestGettingListOfResources(t *testing.T) {
 	resources = append(resources, ResourceRequest{alias3, resourceType})
 	resources = append(resources, ResourceRequest{alias4, "applicationproperties"})
 
-	resourcesReplies, err := fasit.GetResources(resources, environment, application, zone)
+	resourcesReplies, err := fasit.GetScopedResources(resources, environment, application, zone)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(resourcesReplies))
@@ -353,9 +381,9 @@ func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
 		MatchParam("alias", "alias").
 		Reply(200).File("testdata/fasitResponse-arbitrary-keys.json")
 
-	resource, appError := fasit.getResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
+	resource, err := fasit.getScopedResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
 
-	assert.Nil(t, appError)
+	assert.NoError(t, err)
 
 	assert.Equal(t, "1", resource.properties["a"])
 	assert.Equal(t, "2", resource.properties["b"])
@@ -376,9 +404,9 @@ func TestResolvingSecret(t *testing.T) {
 		HeaderPresent("Authorization").
 		Reply(200).BodyString("hemmelig")
 
-	resource, appError := fasit.getResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
+	resource, err := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
 
-	assert.Nil(t, appError)
+	assert.NoError(t, err)
 
 	assert.Equal(t, "1", resource.properties["a"])
 	assert.Equal(t, "hemmelig", resource.secret["password"])
@@ -398,9 +426,9 @@ func TestResolveCertifcates(t *testing.T) {
 			Get("/api/v2/resources/3024713/file/keystore").
 			Reply(200).Body(bytes.NewReader([]byte("Some binary format")))
 
-		resource, appError := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, err := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
-		assert.Nil(t, appError)
+		assert.NoError(t, err)
 
 		assert.Equal(t, "Some binary format", string(resource.certificates["srvvarseloppgave_cert_keystore"]))
 
@@ -415,14 +443,38 @@ func TestResolveCertifcates(t *testing.T) {
 			Reply(200).File("testdata/fasitFilesNoCertifcateResponse.json").
 			Done()
 
-		resource, appError := fasit.getResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, err := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
 
-		assert.Nil(t, appError)
+		assert.NoError(t, err)
 
 		assert.Equal(t, 0, len(resource.certificates))
 
 	})
 
+}
+
+func TestParseLoadBalancerConfig(t *testing.T) {
+	t.Run("Parse array of load balancer config correctly", func(t *testing.T) {
+		b, _ := ioutil.ReadFile("testdata/fasitLbConfigResponse.json")
+		result, err := parseLoadBalancerConfig(b)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(result))
+		assert.Equal(t, "root", result["url.with.root"])
+		assert.Equal(t, "", result["url.without.root"])
+
+	})
+
+	t.Run("Err if no loadbalancer config is found", func(t *testing.T) {
+		_, err := parseLoadBalancerConfig([]byte(`["json1","json2"]`))
+		assert.Error(t, err)
+	})
+
+	t.Run("Empty map if empty response", func(t *testing.T) {
+		result, err := parseLoadBalancerConfig([]byte(`[]`))
+		assert.NoError(t, err)
+		assert.Empty(t,result)
+
+	})
 }
 
 func TestParseFilesObject(t *testing.T) {

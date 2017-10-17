@@ -1,0 +1,61 @@
+[
+  {
+    "type": "loadbalancerconfig",
+    "alias": "loadbalancer:presys",
+    "scope": {
+      "environmentclass": "t",
+      "zone": "fss",
+      "environment": "t0",
+      "application": "presys"
+    },
+    "properties": {
+      "contextRoots": "root",
+      "url": "url.with.root",
+      "poolName": "pool_tst_presys_t0_https_auto"
+    },
+    "secrets": {},
+    "files": {},
+    "dodgy": false,
+    "id": 2719736,
+    "created": "2017-06-16T08:09:13.407",
+    "updated": "2017-06-16T08:09:13.407",
+    "lifecycle": {},
+    "accesscontrol": {
+      "environmentclass": "t",
+      "adgroups": []
+    },
+    "links": {
+      "self": "https://fasit.adeo.no/api/v2/resources/2719736",
+      "revisions": "https://fasit.adeo.no/api/v2/resources/2719736/revisions"
+    }
+  },
+  {
+    "type": "loadbalancerconfig",
+    "alias": "loadbalancer:presys",
+    "scope": {
+      "environmentclass": "t",
+      "zone": "fss",
+      "environment": "t0",
+      "application": "presys"
+    },
+    "properties": {
+      "url": "url.without.root",
+      "poolName": "pool_tst_presys_t0_https_auto"
+    },
+    "secrets": {},
+    "files": {},
+    "dodgy": false,
+    "id": 2719736,
+    "created": "2017-06-16T08:09:13.407",
+    "updated": "2017-06-16T08:09:13.407",
+    "lifecycle": {},
+    "accesscontrol": {
+      "environmentclass": "t",
+      "adgroups": []
+    },
+    "links": {
+      "self": "https://fasit.adeo.no/api/v2/resources/2719736",
+      "revisions": "https://fasit.adeo.no/api/v2/resources/2719736/revisions"
+    }
+  }
+]

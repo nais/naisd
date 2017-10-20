@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
+	"strconv"
 )
 
 type Api struct {
@@ -34,10 +35,27 @@ type NaisDeploymentRequest struct {
 	Password     string `json:"password"`
 	Namespace    string `json:"namespace"`
 }
+
+type AppError interface {
+	Error() string
+	Code() int
+}
+
 type appError struct {
-	Error   error
-	Message string
-	Code    int
+	TheError   error
+	Message    string
+	StatusCode int
+}
+
+func (e appError) Code() int {
+	return e.StatusCode
+}
+func (e appError) Error() string {
+	if e.TheError != nil {
+		return fmt.Sprintf("%s: %s, (%s)", e.Message, e.TheError.Error(), strconv.Itoa(e.StatusCode))
+	}
+	return fmt.Sprintf("%s: (%s)", e.Message, strconv.Itoa(e.StatusCode))
+
 }
 
 type appHandler func(w http.ResponseWriter, r *http.Request) *appError
@@ -45,7 +63,7 @@ type appHandler func(w http.ResponseWriter, r *http.Request) *appError
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil { // e is *appError, not os.Error.
 		glog.Errorf(e.Message+": %s\n", e.Error)
-		http.Error(w, e.Message, e.Code)
+		http.Error(w, e.Message, e.StatusCode)
 	}
 }
 
@@ -116,16 +134,18 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 	return nil
 }
 
-func validateFasitRequirements(fasitUrl string, deploymentRequest NaisDeploymentRequest)error{
-	if err := environmentExistsInFasit(fasitUrl, deploymentRequest); err != nil {
+func validateFasitRequirements(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest)error{
+
+	if err := fasit.GetFasitEnvironment(deploymentRequest.Namespace); err != nil {
 		// TODO: "default" namespace should resolve to fasit environment with the cluster's name.
 		// TODO: "projectname" namespace should resolve to <namespace>-<cluster-name>
-		glog.Errorf("Environment %s does not exist in Fasit", deploymentRequest.Namespace)
-		return err
-	}
 
-	if err := applicationExistsInFasit(fasitUrl, deploymentRequest); err != nil {
-		glog.Errorf("Application %s does not exist in Fasit", deploymentRequest.Application)
+		glog.Errorf("Environment '%s' does not exist in Fasit", deploymentRequest.Namespace)
+		return err
+
+	}
+	if err := fasit.GetFasitApplication(deploymentRequest.Application); err != nil {
+		glog.Errorf("Application '%s' does not exist in Fasit", deploymentRequest.Application)
 		return err
 	}
 
@@ -134,10 +154,13 @@ func validateFasitRequirements(fasitUrl string, deploymentRequest NaisDeployment
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 
+
 	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
 	if err != nil {
 		return &appError{err, "Unable to unmarshal deployment request", http.StatusBadRequest}
 	}
+
+	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
@@ -147,14 +170,14 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	if !deploymentRequest.NoFasit {
-		if err := validateFasitRequirements(api.FasitUrl, deploymentRequest); err != nil {
+		if err := validateFasitRequirements(fasit, deploymentRequest); err != nil {
 			return &appError{err, "Validating requirements for deployment failed", http.StatusInternalServerError}
 		}
 	}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
-	naisResources, err := fetchFasitResources(api.FasitUrl, deploymentRequest, appConfig)
+	naisResources, err := fetchFasitResources(fasit, deploymentRequest, appConfig)
 	if err != nil {
 		return &appError{err, "Unable to fetch fasit resources", http.StatusInternalServerError}
 	}

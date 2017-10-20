@@ -188,7 +188,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Reply(200).File("testdata/fasitResponse.json")
 
 	gock.New("https://fasit.local").
-		Get("/api/v2/environments/"+environment).
+		Get("/api/v2/environments/"+namespace).
 		Reply(200).
 		BodyString("anything")
 

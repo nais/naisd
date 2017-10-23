@@ -45,6 +45,7 @@ func TestCreatingResource(t *testing.T) {
 	resourceType := "RestService"
 	environment := "environment"
 	application := "application"
+	hostname := "hostname"
 	zone := "zone"
 	id := 4242
 	exposedResource := ExposedResource{
@@ -58,7 +59,7 @@ func TestCreatingResource(t *testing.T) {
 	defer gock.Off()
 
 	t.Run("createResource returns error if fasit is unreachable", func(t *testing.T) {
-		_, err := fasit.createResource(exposedResource, environment, application, zone)
+		_, err := fasit.createResource(exposedResource, environment, application, zone, hostname)
 		assert.Error(t, err)
 	})
 	gock.New("https://fasit.local").
@@ -67,7 +68,7 @@ func TestCreatingResource(t *testing.T) {
 		JSON(map[string]int{"id": id})
 
 	t.Run("createResource returns ID when called", func(t *testing.T) {
-		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone)
+		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone, hostname)
 		assert.NoError(t, err)
 		assert.True(t, gock.IsDone())
 		assert.Equal(t, id, createdResourceId)
@@ -77,7 +78,7 @@ func TestCreatingResource(t *testing.T) {
 		Reply(501).
 		BodyString("bish")
 	t.Run("createResource errs when Fasit fails", func(t *testing.T) {
-		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone)
+		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone, hostname)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
@@ -86,7 +87,7 @@ func TestCreatingResource(t *testing.T) {
 		Reply(201).
 		BodyString("bish")
 	t.Run("createResource errs when Fasit returns gibberish", func(t *testing.T) {
-		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone)
+		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone, hostname)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
@@ -97,6 +98,7 @@ func TestUpdateResource(t *testing.T) {
 	resourceType := "RestService"
 	environment := "environment"
 	application := "application"
+	hostname := "hostname"
 	zone := "zone"
 	id := 4242
 	exposedResource := ExposedResource{
@@ -110,7 +112,7 @@ func TestUpdateResource(t *testing.T) {
 	defer gock.Off()
 
 	t.Run("updateResource returns error if fasit is unreachable", func(t *testing.T) {
-		_, err := fasit.updateResource(id, exposedResource, environment, application, zone)
+		_, err := fasit.updateResource(id, exposedResource, environment, application, zone, hostname)
 		assert.Error(t, err)
 	})
 	gock.New("https://fasit.local").
@@ -119,7 +121,7 @@ func TestUpdateResource(t *testing.T) {
 		JSON(map[string]int{"id": id})
 
 	t.Run("updateResource returns ID when called", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone)
+		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone, hostname)
 		assert.NoError(t, err)
 		assert.True(t, gock.IsDone())
 		assert.Equal(t, id, createdResourceId)
@@ -129,7 +131,7 @@ func TestUpdateResource(t *testing.T) {
 		Reply(501).
 		BodyString("bish")
 	t.Run("updateResource errs when Fasit fails", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone)
+		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone, hostname)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
@@ -138,7 +140,7 @@ func TestUpdateResource(t *testing.T) {
 		Reply(200).
 		BodyString("bish")
 	t.Run("updateResource errs when Fasit returns gibberish", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone)
+		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone, hostname)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
@@ -191,7 +193,7 @@ func (fasit FakeFasitClient) getScopedResource(resourcesRequest ResourceRequest,
 	}
 }
 
-func (fasit FakeFasitClient) createResource(resource ExposedResource, environment, application, zone string) (int, error) {
+func (fasit FakeFasitClient) createResource(resource ExposedResource, environment, application, zone, hostname string) (int, error) {
 	switch zone {
 	case "failed":
 		return 0, fmt.Errorf("random error")
@@ -202,7 +204,7 @@ func (fasit FakeFasitClient) createResource(resource ExposedResource, environmen
 
 var updateCalled bool
 
-func (fasit FakeFasitClient) updateResource(existingResourceId int, resource ExposedResource, environment, application, zone string) (int, error) {
+func (fasit FakeFasitClient) updateResource(existingResourceId int, resource ExposedResource, environment, application, zone, hostname string) (int, error) {
 	updateCalled = true
 	switch zone {
 	case "failed":
@@ -241,7 +243,6 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "fasitError", zone)
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
-		fmt.Println(err.Error())
 		assert.True(t, strings.Contains(err.Error(), "random error: error from fasit, (500)"))
 	})
 
@@ -298,7 +299,8 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	usedResourceIds := []int{4, 5, 6}
 	zone := "fss"
 	alias := "resourceAlias"
-	path := "myPath"
+	path := "/myPath"
+	hostname := "hostname"
 	wsdlGroupId := "myGroup"
 	wsdlArtifactId := "myArtifactId"
 	securityToken := "LDAP"
@@ -338,16 +340,16 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		assert.Equal(t, usedResourceIds, payload.UsedResources)
 	})
 	t.Run("Building RestService ResourcePayload", func(t *testing.T) {
-		payload := buildResourcePayload(restResource, environment, zone)
+		payload := buildResourcePayload(restResource, environment, zone, hostname)
 		assert.Equal(t, "RestService", payload.Type)
 		assert.Equal(t, alias, payload.Alias)
-		assert.Equal(t, path, payload.Properties.Url)
+		assert.Equal(t, hostname+path, payload.Properties.Url)
 		assert.Equal(t, description, payload.Properties.Description)
 		assert.Equal(t, environment, payload.Scope.Environment)
 		assert.Equal(t, zone, payload.Scope.Zone)
 	})
 	t.Run("Building WebserviceEndpoint ResourcePayload", func(t *testing.T) {
-		payload := buildResourcePayload(webserviceResource, environment, zone)
+		payload := buildResourcePayload(webserviceResource, environment, zone, hostname)
 		assert.Equal(t, "WebserviceEndpoint", payload.Type)
 		assert.Equal(t, alias, payload.Alias)
 		assert.Equal(t, wsdlPath, payload.Properties.WsdlUrl)
@@ -357,7 +359,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	})
 	t.Run("Building RestService ResourcePayload with AllZones returns wider scope", func(t *testing.T) {
 		restResource.AllZones = allZones
-		payload := buildResourcePayload(restResource, environment, zone)
+		payload := buildResourcePayload(restResource, environment, zone, hostname)
 		assert.Equal(t, environment, payload.Scope.Environment)
 		assert.Empty(t, payload.Scope.Zone)
 	})

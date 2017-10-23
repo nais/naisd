@@ -188,7 +188,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
-	ingressHostname := deploymentResult.Ingress.Spec.Rules[0].Host
+	ingressHostnames := deploymentResult.Ingress.Spec.Rules
+	ingressHostname := ingressHostnames[len(ingressHostnames)-1].Host
 
 	if !deploymentRequest.NoFasit{
 		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname); err != nil {

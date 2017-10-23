@@ -3,7 +3,10 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"goji.io"
+	"goji.io/pat"
 	"gopkg.in/h2non/gock.v1"
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes/fake"
@@ -11,9 +14,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"fmt"
-	"goji.io"
-	"goji.io/pat"
 )
 
 type FakeDeployStatusViewer struct {

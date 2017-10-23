@@ -1,11 +1,11 @@
 package api
 
 import (
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"fmt"
-	"k8s.io/client-go/pkg/api/v1"
 	"github.com/golang/glog"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 type DeployStatus int
@@ -24,7 +24,7 @@ func (d DeployStatus) String() string {
 }
 
 const (
-	Success    DeployStatus = iota
+	Success DeployStatus = iota
 	InProgress
 	Failed
 )

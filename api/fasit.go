@@ -1,21 +1,20 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
-	"encoding/json"
-	"github.com/golang/glog"
 )
 
 func init() {
 	prometheus.MustRegister(httpReqsCounter)
 }
-
 
 type FasitClient struct {
 	FasitUrl string
@@ -34,7 +33,7 @@ type Password struct {
 
 type FasitResource struct {
 	Alias        string
-	ResourceType string                 `json:"type"`
+	ResourceType string `json:"type"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
 	Certificates map[string]interface{} `json:"files"`

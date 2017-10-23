@@ -334,8 +334,7 @@ func createIngressDef(subdomain, application, namespace string) *v1beta1.Ingress
 			Name:      application,
 			Namespace: namespace,
 		},
-		Spec: v1beta1.IngressSpec{
-		},
+		Spec: v1beta1.IngressSpec{},
 	}
 }
 
@@ -476,8 +475,8 @@ func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomai
 
 	for _, naisResource := range naisResources {
 		if naisResource.resourceType == "LoadBalancerConfig" && len(naisResource.ingresses) > 0 {
-			for host,path := range naisResource.ingresses {
-				ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application,host,path))
+			for host, path := range naisResource.ingresses {
+				ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application, host, path))
 			}
 		}
 	}

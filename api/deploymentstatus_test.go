@@ -1,10 +1,10 @@
 package api
 
 import (
-	"testing"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/api/v1"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"testing"
 )
 
 func TestIsDeploymentStatus(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
+	"io/ioutil"
 	"strings"
 	"testing"
-	"io/ioutil"
 )
 
 func TestGettingResource(t *testing.T) {
@@ -248,7 +248,7 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 	t.Run("Empty map if empty response", func(t *testing.T) {
 		result, err := parseLoadBalancerConfig([]byte(`[]`))
 		assert.NoError(t, err)
-		assert.Empty(t,result)
+		assert.Empty(t, result)
 
 	})
 }

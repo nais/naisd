@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
-	"strconv"
 )
 
 type Api struct {
@@ -37,24 +36,24 @@ type NaisDeploymentRequest struct {
 }
 
 type AppError interface {
-	Error() string
+	error
 	Code() int
 }
 
 type appError struct {
-	TheError   error
-	Message    string
-	StatusCode int
+	OriginalError error
+	Message       string
+	StatusCode    int
 }
 
 func (e appError) Code() int {
 	return e.StatusCode
 }
 func (e appError) Error() string {
-	if e.TheError != nil {
-		return fmt.Sprintf("%s: %s, (%s)", e.Message, e.TheError.Error(), strconv.Itoa(e.StatusCode))
+	if e.OriginalError != nil {
+		return fmt.Sprintf("%s: %s, (%d)", e.Message, e.OriginalError.Error(), e.StatusCode)
 	}
-	return fmt.Sprintf("%s: (%s)", e.Message, strconv.Itoa(e.StatusCode))
+	return fmt.Sprintf("%s: (%d)", e.Message, e.StatusCode)
 
 }
 
@@ -192,7 +191,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	ingressHostname := deploymentResult.Ingress.Spec.Rules[0].Host
 
 	if !deploymentRequest.NoFasit{
-		if err := updateFasit(api.FasitUrl, deploymentRequest, naisResources, appConfig, ingressHostname); err != nil {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname); err != nil {
 			return &appError{err, "Failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}

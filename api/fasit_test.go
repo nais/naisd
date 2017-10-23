@@ -233,12 +233,12 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 
 	// Using application field to identify which response to return from getScopedResource on FakeFasitClient
 	t.Run("Resources are created when their resource ID isn't found in Fasit", func(t *testing.T) {
-		resourceIds, err := fakeFasitClient.CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "notfound", zone)
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "notfound", zone)
 		assert.NoError(t, err)
 		assert.Equal(t, []int{4242, 4242}, resourceIds)
 	})
 	t.Run("Returns an error if contacting Fasit fails", func(t *testing.T) {
-		resourceIds, err := fakeFasitClient.CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "fasitError", zone)
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "fasitError", zone)
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
 		fmt.Println(err.Error())
@@ -247,21 +247,21 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 
 	// Using Zone field to identify which response to return from createResource on FakeFasitClient
 	t.Run("Returns an error if unable to create resource", func(t *testing.T) {
-		resourceIds, err := fakeFasitClient.CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "notfound", "failed")
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "notfound", "failed")
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
 		assert.True(t, strings.Contains(err.Error(), "Failed creating resource: alias1 of type RestService with path . (random error)"))
 	})
 	t.Run("Updates Fasit if resources were found", func(t *testing.T) {
 		updateCalled = false
-		resourceIds, err := fakeFasitClient.CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, application, zone)
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, application, zone)
 		assert.NoError(t, err)
 		assert.Equal(t, []int{1, 1}, resourceIds)
 		assert.True(t, updateCalled)
 	})
 	// Using Zone field to identify which response to return from updateResource on FakeFasitClient
 	t.Run("Returns an error if unable to update resource", func(t *testing.T) {
-		resourceIds, err := fakeFasitClient.CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, application, "failed")
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, application, "failed")
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
 		assert.True(t, strings.Contains(err.Error(), "Failed updating resource: alias1 of type RestService with path . (random error)"))
@@ -361,6 +361,53 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		assert.Equal(t, environment, payload.Scope.Environment)
 		assert.Empty(t, payload.Scope.Zone)
 	})
+}
+
+func TestGetFasitEnvironment(t *testing.T) {
+	namespace := "namespace"
+
+	defer gock.Off()
+	gock.New("https://fasit.local").
+		Get("/api/v2/environments/"+namespace).
+		Reply(200).
+		BodyString("anything")
+
+	fasit := FasitClient{"https://fasit.local", "", ""}
+	t.Run("Returns an error if environment isn't found", func(t *testing.T) {
+		err := fasit.GetFasitEnvironment("notExisting")
+		assert.Error(t, err)
+		assert.False(t, gock.IsDone())
+	})
+	t.Run("Returns no error if environment is found", func(t *testing.T) {
+		err := fasit.GetFasitEnvironment(namespace)
+		assert.NoError(t, err)
+		assert.True(t, gock.IsDone())
+	})
+
+}
+func TestGetFasitApplication(t *testing.T) {
+	application := "appname"
+
+	defer gock.Off()
+	gock.New("https://fasit.local").
+		Get("/api/v2/applications/"+application).
+		Reply(200).
+		BodyString("anything")
+
+	fasit := FasitClient{"https://fasit.local", "", ""}
+
+	t.Run("Returns err if application isn't found", func(t *testing.T) {
+		err := fasit.GetFasitApplication("Nonexistant")
+		assert.Error(t, err)
+		assert.False(t, gock.IsDone())
+	})
+
+	t.Run("Returns no error if application is found", func(t *testing.T) {
+		err := fasit.GetFasitApplication(application)
+		assert.NoError(t, err)
+		assert.True(t, gock.IsDone())
+	})
+
 }
 func TestGettingListOfResources(t *testing.T) {
 

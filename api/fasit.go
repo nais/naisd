@@ -46,6 +46,7 @@ type FasitClientAdapter interface {
 	GetFasitApplication(application string) error
 	GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error)
 	getLoadBalancerConfig(application string, environment string) (*NaisResource, error)
+	createApplicationInstance(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) error
 }
 
 type Properties struct {
@@ -100,9 +101,7 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 }
 
 func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) error {
-	requestCounter.With(nil).Inc()
-
-
+	fasitPath := fasit.FasitUrl + "/api/v2/applicationinstances/"
 
 	payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, exposedResourceIds, usedResourceIds))
 	if err != nil {
@@ -110,25 +109,12 @@ func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploym
 		return fmt.Errorf("Unable to create payload (%s)", err)
 	}
 
-	req, err := http.NewRequest("POST", fasit.FasitUrl+"/api/v2/applicationinstances/", bytes.NewBuffer(payload))
-	if err != nil {
-		errorCounter.WithLabelValues("create_request").Inc()
-		return fmt.Errorf("Unable to create request: %s", err)
+	req, err := http.NewRequest("POST", fasitPath, bytes.NewBuffer(payload))
+
+	_, appErr := fasit.doRequest(req)
+	if appErr != nil {
+		return appErr
 	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "POST").Inc()
-	if resp.StatusCode != 200 {
-		errorCounter.WithLabelValues("error_fasit").Inc()
-		return fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
-	}
-
 	return nil
 }
 
@@ -165,7 +151,7 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 
 }
 
-func (f FasitClient)CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedResource, hostname, environment, application, zone string) ([]int, error) {
+func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedResource, hostname, environment, application, zone string) ([]int, error) {
 	var exposedResourceIds []int
 	for _, resource := range resources {
 		var request = ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType}
@@ -194,7 +180,6 @@ func (f FasitClient)CreateOrUpdateFasitResources(fasit FasitClientAdapter, resou
 
 		}
 	}
-	fmt.Println("exposed: ", exposedResourceIds)
 	return exposedResourceIds, nil
 }
 
@@ -228,12 +213,11 @@ func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploym
 
 }
 // Updates Fasit with information
-func updateFasit(fasitUrl string, deploymentRequest NaisDeploymentRequest, resources []NaisResource, appConfig NaisAppConfig, hostname string) error {
-	fasit := FasitClient{fasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, resources []NaisResource, appConfig NaisAppConfig, hostname string) error {
 
 	usedResourceIds := getResourceIds(resources)
 
-	exposedResourceIds, err := fasit.CreateOrUpdateFasitResources(fasit, appConfig.FasitResources.Exposed, hostname, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+	exposedResourceIds, err := CreateOrUpdateFasitResources(fasit, appConfig.FasitResources.Exposed, hostname, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
 	if 	err != nil {
 		return err
 	}

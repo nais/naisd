@@ -638,7 +638,7 @@ func buildResourcePayload(resource ExposedResource, environment, zone, hostname 
 			Type: resource.ResourceType,
 			Alias: resource.Alias,
 			Properties:Properties{
-				Url:hostname+resource.Path,
+				Url:"https://" + hostname + resource.Path,
 				Description: resource.Description,
 			},
 			Scope: generateScope(resource, environment, zone),
@@ -649,7 +649,7 @@ func buildResourcePayload(resource ExposedResource, environment, zone, hostname 
 			Type: resource.ResourceType,
 			Alias: resource.Alias,
 			Properties:Properties{
-				EndpointUrl: hostname + resource.Path,
+				EndpointUrl: "https://" + hostname + resource.Path,
 				WsdlUrl: fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?r=m2internal&g=%s&a=%s&v=%s&e=zip", resource.WsdlGroupId, resource.WsdlArtifactId, resource.WsdlVersion),
 				Description: resource.Description,
 			},

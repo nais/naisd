@@ -39,6 +39,26 @@ func TestGettingResource(t *testing.T) {
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
 	assert.Equal(t, "basta", resource.properties["username"])
 }
+
+func TestCreatingApplicationInstance(t *testing.T) {
+
+	defer gock.Off()
+
+	gock.New("https://fasit.local").
+		Post("/api/v2/applicationinstances").
+		Reply(201).
+		BodyString("aiit")
+
+	fasit := FasitClient{"https://fasit.local", "", ""}
+	exposedResourceIds, usedResourceIds := []int{1, 2, 3}, []int{4, 5, 6}
+	deploymentRequest := NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}
+
+	t.Run("A valid payload creates ApplicationInstance", func(t *testing.T) {
+		err := fasit.createApplicationInstance(deploymentRequest, exposedResourceIds, usedResourceIds)
+		assert.NoError(t, err)
+	})
+
+}
 func TestCreatingResource(t *testing.T) {
 
 	alias := "alias1"
@@ -214,6 +234,12 @@ func (fasit FakeFasitClient) updateResource(existingResourceId int, resource Exp
 
 	}
 }
+var createApplicationInstanceCalled bool
+
+func (fasit FakeFasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) error {
+	createApplicationInstanceCalled = true
+	return nil
+}
 
 func TestCreateOrUpdateFasitResources(t *testing.T) {
 
@@ -270,7 +296,7 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 }
 
 func TestResourceError(t *testing.T) {
-	fasitClient := FasitClient{FasitUrl:"https://fasit.local"}
+	fasitClient := FasitClient{FasitUrl: "https://fasit.local"}
 	defer gock.Off()
 	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
@@ -284,12 +310,51 @@ func TestResourceError(t *testing.T) {
 
 func TestUpdateFasit(t *testing.T) {
 
-	//exposedResources := []ExposedResource{{ResourceType:"rest", Alias:"alias", Path:"/path"}, {ResourceType:"rest", Alias:"alias1", Path:"/path1"}}
-	//resourceIds, err := createResources(exposedResources, "bla.bla.no")
-	//assert.NoError(t, err)
-	//assert.Equal(t, 2, len(resourceIds))
-	//updateFasit()
+	alias := "alias"
+	resourceType := "restService"
+	environment := "environment"
+	application := "application"
+	hostname := "bish"
+
+	exposedResource := ExposedResource{
+		Alias:        alias,
+		ResourceType: resourceType,
+		Path:         "",
+	}
+
+	usedResources := []NaisResource{{id: 1}, {id: 2}}
+	exposedResources := []ExposedResource{exposedResource, exposedResource}
+
+	deploymentRequest := NaisDeploymentRequest{
+		Application: application,
+		Environment: environment,
+		Version:     version,
+	}
+
+	fakeFasitClient := FakeFasitClient{}
+	appConfig := NaisAppConfig{FasitResources: FasitResources{Exposed: exposedResources}}
+
+	t.Run("Calling updateFasit with resources returns no error", func(t *testing.T) {
+		createApplicationInstanceCalled = false
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, hostname)
+		assert.NoError(t, err)
+		assert.True(t, createApplicationInstanceCalled)
+	})
+	t.Run("Calling updateFasit without hostname when you have exposed resources fails", func(t *testing.T) {
+		createApplicationInstanceCalled = false
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "")
+		assert.Error(t, err)
+		assert.False(t, createApplicationInstanceCalled)
+	})
+	t.Run("Calling updateFasit without hostname when you have no exposed resources works", func(t *testing.T) {
+		createApplicationInstanceCalled = false
+		appConfig.FasitResources.Exposed = nil
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "")
+		assert.NoError(t, err)
+		assert.True(t, createApplicationInstanceCalled)
+	})
 }
+
 
 func TestBuildingFasitPayloads(t *testing.T) {
 	application := "appName"
@@ -343,7 +408,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		payload := buildResourcePayload(restResource, environment, zone, hostname)
 		assert.Equal(t, "RestService", payload.Type)
 		assert.Equal(t, alias, payload.Alias)
-		assert.Equal(t, hostname+path, payload.Properties.Url)
+		assert.Equal(t, "https://"+hostname+path, payload.Properties.Url)
 		assert.Equal(t, description, payload.Properties.Description)
 		assert.Equal(t, environment, payload.Scope.Environment)
 		assert.Equal(t, zone, payload.Scope.Zone)
@@ -370,7 +435,7 @@ func TestGetFasitEnvironment(t *testing.T) {
 
 	defer gock.Off()
 	gock.New("https://fasit.local").
-		Get("/api/v2/environments/"+namespace).
+		Get("/api/v2/environments/" + namespace).
 		Reply(200).
 		BodyString("anything")
 
@@ -392,7 +457,7 @@ func TestGetFasitApplication(t *testing.T) {
 
 	defer gock.Off()
 	gock.New("https://fasit.local").
-		Get("/api/v2/applications/"+application).
+		Get("/api/v2/applications/" + application).
 		Reply(200).
 		BodyString("anything")
 

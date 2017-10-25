@@ -1,7 +1,7 @@
 # naisd 
 
 [![Build Status](https://travis-ci.org/nais/naisd.svg?branch=master)](https://travis-ci.org/nais/naisd)
-[![Go Report Card](https://goreportcard.com/badge/github.com/navikt/naisd)](https://goreportcard.com/report/github.com/navikt/naisd)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nais/naisd)](https://goreportcard.com/report/github.com/navikt/naisd)
 
 
 k8s in-cluster daemon with API for performing NAIS-operations

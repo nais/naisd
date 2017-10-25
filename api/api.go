@@ -19,6 +19,7 @@ type Api struct {
 	Clientset              kubernetes.Interface
 	FasitUrl               string
 	ClusterSubdomain       string
+	ClusterName			   string
 	DeploymentStatusViewer DeploymentStatusViewer
 }
 
@@ -90,11 +91,12 @@ func (api Api) Handler() http.Handler {
 	return mux
 }
 
-func NewApi(clientset kubernetes.Interface, fasitUrl string, clusterDomain string, d DeploymentStatusViewer) Api {
+func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName string, d DeploymentStatusViewer) Api {
 	return Api{
 		Clientset:              clientset,
 		FasitUrl:               fasitUrl,
 		ClusterSubdomain:       clusterDomain,
+		ClusterName:			clusterName,
 		DeploymentStatusViewer: d,
 	}
 }
@@ -133,18 +135,13 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 	return nil
 }
 
-func validateFasitRequirements(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest)error{
-
-	if err := fasit.GetFasitEnvironment(deploymentRequest.Namespace); err != nil {
-		// TODO: "default" namespace should resolve to fasit environment with the cluster's name.
-		// TODO: "projectname" namespace should resolve to <namespace>-<cluster-name>
-
-		glog.Errorf("Environment '%s' does not exist in Fasit", deploymentRequest.Namespace)
+func validateFasitRequirements(fasit FasitClientAdapter, application, fasitEnvironment string)error{
+	if err := fasit.GetFasitEnvironment(fasitEnvironment); err != nil {
+		glog.Errorf("Environment '%s' does not exist in Fasit", fasitEnvironment)
 		return err
-
 	}
-	if err := fasit.GetFasitApplication(deploymentRequest.Application); err != nil {
-		glog.Errorf("Application '%s' does not exist in Fasit", deploymentRequest.Application)
+	if err := fasit.GetFasitApplication(application); err != nil {
+		glog.Errorf("Application '%s' does not exist in Fasit", application)
 		return err
 	}
 
@@ -168,8 +165,10 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, "Unable to fetch manifest", http.StatusInternalServerError}
 	}
 
+	fasitEnvironment := fasit.environmentNameFromNamespaceBuilder(deploymentRequest.Namespace, api.ClusterName)
+
 	if !deploymentRequest.NoFasit {
-		if err := validateFasitRequirements(fasit, deploymentRequest); err != nil {
+		if err := validateFasitRequirements(fasit, deploymentRequest.Application, fasitEnvironment); err != nil {
 			return &appError{err, "Validating requirements for deployment failed", http.StatusInternalServerError}
 		}
 	}
@@ -192,7 +191,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	ingressHostname := ingressHostnames[len(ingressHostnames)-1].Host
 
 	if !deploymentRequest.NoFasit{
-		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname); err != nil {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname, api.ClusterName); err != nil {
 			return &appError{err, "Failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}

@@ -54,7 +54,7 @@ func TestCreatingApplicationInstance(t *testing.T) {
 	deploymentRequest := NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}
 
 	t.Run("A valid payload creates ApplicationInstance", func(t *testing.T) {
-		err := fasit.createApplicationInstance(deploymentRequest, exposedResourceIds, usedResourceIds)
+		err := fasit.createApplicationInstance(deploymentRequest, "", exposedResourceIds, usedResourceIds)
 		assert.NoError(t, err)
 	})
 
@@ -236,7 +236,7 @@ func (fasit FakeFasitClient) updateResource(existingResourceId int, resource Exp
 }
 var createApplicationInstanceCalled bool
 
-func (fasit FakeFasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) error {
+func (fasit FakeFasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) error {
 	createApplicationInstanceCalled = true
 	return nil
 }
@@ -315,6 +315,7 @@ func TestUpdateFasit(t *testing.T) {
 	environment := "environment"
 	application := "application"
 	hostname := "bish"
+	clustername := "clustername"
 
 	exposedResource := ExposedResource{
 		Alias:        alias,
@@ -336,20 +337,20 @@ func TestUpdateFasit(t *testing.T) {
 
 	t.Run("Calling updateFasit with resources returns no error", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, hostname)
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, hostname, clustername)
 		assert.NoError(t, err)
 		assert.True(t, createApplicationInstanceCalled)
 	})
 	t.Run("Calling updateFasit without hostname when you have exposed resources fails", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "")
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", clustername)
 		assert.Error(t, err)
 		assert.False(t, createApplicationInstanceCalled)
 	})
 	t.Run("Calling updateFasit without hostname when you have no exposed resources works", func(t *testing.T) {
 		createApplicationInstanceCalled = false
 		appConfig.FasitResources.Exposed = nil
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "")
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", clustername)
 		assert.NoError(t, err)
 		assert.True(t, createApplicationInstanceCalled)
 	})
@@ -358,6 +359,7 @@ func TestUpdateFasit(t *testing.T) {
 
 func TestBuildingFasitPayloads(t *testing.T) {
 	application := "appName"
+	fasitEnvironment := "t1000"
 	environment := "t1000"
 	version := "2.1"
 	exposedResourceIds := []int{1, 2, 3}
@@ -397,7 +399,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	}
 
 	t.Run("Building ApplicationInstancePayload", func(t *testing.T) {
-		payload := buildApplicationInstancePayload(deploymentRequest, exposedResourceIds, usedResourceIds)
+		payload := buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds)
 		assert.Equal(t, application, payload.Application)
 		assert.Equal(t, environment, payload.Environment)
 		assert.Equal(t, version, payload.Version)
@@ -647,6 +649,43 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, result)
 
+	})
+}
+
+func TestBuildEnvironmentNameFromNamespace(t *testing.T) {
+
+	fasitClient := FasitClient{}
+	clusterName := "testcluster"
+
+	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
+		namespace := "t1"
+		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
+		assert.Equal(t,namespace, environmentName)
+	})
+	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
+		namespace := "t1000"
+		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
+		assert.Equal(t,namespace, environmentName)
+	})
+	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
+		namespace := "q1"
+		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
+		assert.Equal(t,namespace, environmentName)
+	})
+	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
+		namespace := "p"
+		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
+		assert.Equal(t,namespace, environmentName)
+	})
+	t.Run("'default' namespace returns clustername", func(t *testing.T) {
+		namespace := "default"
+		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
+		assert.Equal(t,clusterName, environmentName)
+	})
+	t.Run("'project' specific namespaces returns clustername + namespace", func(t *testing.T) {
+		namespace := "projectX"
+		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
+		assert.Equal(t,namespace + "-" + clusterName, environmentName)
 	})
 }
 

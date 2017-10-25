@@ -11,26 +11,26 @@ import (
 	"strings"
 	"encoding/json"
 	"github.com/golang/glog"
+	"regexp"
 )
 
 func init() {
 	prometheus.MustRegister(httpReqsCounter)
 }
 
-
 type ResourcePayload struct {
-	Alias 		string
-	Properties	Properties
-	Scope		Scope
-	Type		string
+	Alias      string
+	Properties Properties
+	Scope      Scope
+	Type       string
 }
 
 type ApplicationInstancePayload struct {
-	Application			string
-	Environment			string
-	Version				string
-	ExposedResources	[]int
-	UsedResources		[]int
+	Application      string
+	Environment      string
+	Version          string
+	ExposedResources []int
+	UsedResources    []int
 }
 
 type FasitClient struct {
@@ -46,20 +46,20 @@ type FasitClientAdapter interface {
 	GetFasitApplication(application string) error
 	GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error)
 	getLoadBalancerConfig(application string, environment string) (*NaisResource, error)
-	createApplicationInstance(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) error
+	createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) error
 }
 
 type Properties struct {
-	Url			string
-	EndpointUrl	string
-	WsdlUrl		string
-	Username	string
-	Description	string
+	Url         string
+	EndpointUrl string
+	WsdlUrl     string
+	Username    string
+	Description string
 }
 
 type Scope struct {
-	Environment	string
-	Zone		string
+	Environment string
+	Zone        string
 }
 
 type Password struct {
@@ -92,7 +92,7 @@ type NaisResource struct {
 func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
 		resource, appErr := fasit.getScopedResource(request, environment, application, zone)
-		if appErr != nil  {
+		if appErr != nil {
 			return []NaisResource{}, appErr
 		}
 		resources = append(resources, resource)
@@ -100,10 +100,10 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 	return resources, nil
 }
 
-func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) error {
+func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) error {
 	fasitPath := fasit.FasitUrl + "/api/v2/applicationinstances/"
 
-	payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, exposedResourceIds, usedResourceIds))
+	payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return fmt.Errorf("Unable to create payload (%s)", err)
@@ -151,17 +151,17 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 
 }
 
-func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedResource, hostname, environment, application, zone string) ([]int, error) {
+func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedResource, hostname, fasitEnvironment, application, zone string) ([]int, error) {
 	var exposedResourceIds []int
 
 	for _, resource := range resources {
 		var request = ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType}
-		existingResource, appError := fasit.getScopedResource(request, environment, application, zone)
+		existingResource, appError := fasit.getScopedResource(request, fasitEnvironment, application, zone)
 
-		if appError != nil{
+		if appError != nil {
 			if appError.Code() == 404 {
 				// Create new resource if none was found
-				createdResourceId, err := fasit.createResource(resource, environment, application, zone, hostname)
+				createdResourceId, err := fasit.createResource(resource, fasitEnvironment, application, zone, hostname)
 				if err != nil {
 					return nil, fmt.Errorf("Failed creating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
 				}
@@ -173,7 +173,7 @@ func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedR
 
 		} else {
 			// Updating Fasit resource
-			updatedResourceId, err := fasit.updateResource(existingResource.id, resource, environment, application, zone, hostname)
+			updatedResourceId, err := fasit.updateResource(existingResource.id, resource, fasitEnvironment, application, zone, hostname)
 			if err != nil {
 				return nil, fmt.Errorf("Failed updating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
 			}
@@ -213,8 +213,9 @@ func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploym
 	return naisresources, nil
 
 }
+
 // Updates Fasit with information
-func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, usedResources []NaisResource, appConfig NaisAppConfig, hostname string) error {
+func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, usedResources []NaisResource, appConfig NaisAppConfig, hostname, fasitEnvironment string) error {
 
 	usedResourceIds := getResourceIds(usedResources)
 	var exposedResourceIds []int
@@ -224,21 +225,20 @@ func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentReque
 		if len(hostname) == 0 {
 			return fmt.Errorf("Unable to create resources when no ingress nor loadbalancer is specified.")
 		}
-		exposedResourceIds, err = CreateOrUpdateFasitResources(fasit, appConfig.FasitResources.Exposed, hostname, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
-		if 	err != nil {
+		exposedResourceIds, err = CreateOrUpdateFasitResources(fasit, appConfig.FasitResources.Exposed, hostname, fasitEnvironment, deploymentRequest.Application, deploymentRequest.Zone)
+		if err != nil {
 			return err
 		}
 	}
 
 	glog.Infof("exposed: %s\nused: %s", exposedResourceIds, usedResourceIds)
 
-	if err := fasit.createApplicationInstance(deploymentRequest, exposedResourceIds, usedResourceIds); err != nil {
+	if err := fasit.createApplicationInstance(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds); err != nil {
 		return err
 	}
 
 	return nil
 }
-
 
 func (fasit FasitClient) doRequest(r *http.Request) ([]byte, AppError) {
 	requestCounter.With(nil).Inc()
@@ -248,7 +248,7 @@ func (fasit FasitClient) doRequest(r *http.Request) ([]byte, AppError) {
 
 	if err != nil {
 		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return []byte{}, appError{err,"Error contacting fasit", http.StatusInternalServerError}
+		return []byte{}, appError{err, "Error contacting fasit", http.StatusInternalServerError}
 	}
 	defer resp.Body.Close()
 
@@ -273,11 +273,11 @@ func (fasit FasitClient) doRequest(r *http.Request) ([]byte, AppError) {
 	return body, nil
 
 }
-func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, environment, application, zone string) (NaisResource, AppError) {
+func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, fasitEnvironment, application, zone string) (NaisResource, AppError) {
 	req, err := fasit.buildRequest("GET", "/api/v2/scopedresource", map[string]string{
 		"alias":       resourcesRequest.Alias,
 		"type":        resourcesRequest.ResourceType,
-		"environment": environment,
+		"environment": fasitEnvironment,
 		"application": application,
 		"zone":        zone,
 	})
@@ -306,8 +306,8 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, env
 	return resource, nil
 }
 
-func (fasit FasitClient) createResource(resource ExposedResource, environment, application, zone, hostname string) (int, error) {
-	payload, err := json.Marshal(buildResourcePayload(resource, environment, zone, hostname))
+func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironment, application, zone, hostname string) (int, error) {
+	payload, err := json.Marshal(buildResourcePayload(resource, fasitEnvironment, zone, hostname))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return 0, fmt.Errorf("Unable to create payload (%s)", err)
@@ -347,10 +347,10 @@ func (fasit FasitClient) createResource(resource ExposedResource, environment, a
 
 	return createdResource.Id, nil
 }
-func (fasit FasitClient) updateResource(existingResourceId int, resource ExposedResource, environment, application, zone, hostname string) (int, error) {
+func (fasit FasitClient) updateResource(existingResourceId int, resource ExposedResource, fasitEnvironment, application, zone, hostname string) (int, error) {
 	requestCounter.With(nil).Inc()
 
-	payload, err := json.Marshal(buildResourcePayload(resource, environment, zone, hostname))
+	payload, err := json.Marshal(buildResourcePayload(resource, fasitEnvironment, zone, hostname))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return 0, fmt.Errorf("Unable to create payload (%s)", err)
@@ -608,52 +608,63 @@ func (fasit FasitClient) buildRequest(method, path string, queryParams map[strin
 	return req, nil
 }
 
+func (fasit FasitClient) environmentNameFromNamespaceBuilder(namespace, clustername string) string {
+	re := regexp.MustCompile(`^[utqp][0-9]*$`)
+
+	if namespace == "default" {
+		return clustername
+	} else if !re.MatchString(namespace) {
+		return namespace + "-" + clustername
+	}
+	return namespace
+}
+
 func generateScope(resource ExposedResource, environment, zone string) Scope {
 	if resource.AllZones {
 		return Scope{
-			Environment:environment,
+			Environment: environment,
 		}
 	}
 	return Scope{
-		Environment:environment,
-		Zone: zone,
+		Environment: environment,
+		Zone:        zone,
 	}
 }
-func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, exposedResourceIds, usedResourceIds []int) ApplicationInstancePayload {
-		return ApplicationInstancePayload{
-			Application: deploymentRequest.Application,
-			Environment: deploymentRequest.Environment,
-			Version: deploymentRequest.Version,
-			ExposedResources: exposedResourceIds,
-			UsedResources: usedResourceIds,
-		}
+func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) ApplicationInstancePayload {
+	return ApplicationInstancePayload{
+		Application:      deploymentRequest.Application,
+		Environment:      fasitEnvironment,
+		Version:          deploymentRequest.Version,
+		ExposedResources: exposedResourceIds,
+		UsedResources:    usedResourceIds,
+	}
 }
 
-func buildResourcePayload(resource ExposedResource, environment, zone, hostname string) ResourcePayload {
+func buildResourcePayload(resource ExposedResource, fasitEnvironment, zone, hostname string) ResourcePayload {
 	switch resource.ResourceType {
 	// Reference of valid resources in Fasit
 	// ['DataSource', 'MSSQLDataSource', 'DB2DataSource', 'LDAP', 'BaseUrl', 'Credential', 'Certificate', 'OpenAm', 'Cics', 'RoleMapping', 'QueueManager', 'WebserviceEndpoint', 'RestService', 'WebserviceGateway', 'EJB', 'Datapower', 'EmailAddress', 'SMTPServer', 'Queue', 'Topic', 'DeploymentManager', 'ApplicationProperties', 'MemoryParameters', 'LoadBalancer', 'LoadBalancerConfig', 'FileLibrary', 'Channel
 	case "RestService":
 		return ResourcePayload{
-			Type: resource.ResourceType,
+			Type:  resource.ResourceType,
 			Alias: resource.Alias,
-			Properties:Properties{
-				Url:"https://" + hostname + resource.Path,
+			Properties: Properties{
+				Url:         "https://" + hostname + resource.Path,
 				Description: resource.Description,
 			},
-			Scope: generateScope(resource, environment, zone),
+			Scope: generateScope(resource, fasitEnvironment, zone),
 		}
 	case "WebserviceEndpoint":
 
 		return ResourcePayload{
-			Type: resource.ResourceType,
+			Type:  resource.ResourceType,
 			Alias: resource.Alias,
-			Properties:Properties{
+			Properties: Properties{
 				EndpointUrl: "https://" + hostname + resource.Path,
-				WsdlUrl: fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?r=m2internal&g=%s&a=%s&v=%s&e=zip", resource.WsdlGroupId, resource.WsdlArtifactId, resource.WsdlVersion),
+				WsdlUrl:     fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?r=m2internal&g=%s&a=%s&v=%s&e=zip", resource.WsdlGroupId, resource.WsdlArtifactId, resource.WsdlVersion),
 				Description: resource.Description,
 			},
-			Scope: generateScope(resource, environment, zone),
+			Scope: generateScope(resource, fasitEnvironment, zone),
 		}
 	default:
 		return ResourcePayload{}

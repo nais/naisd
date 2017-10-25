@@ -43,7 +43,7 @@ type NaisAppConfig struct {
 	Healthcheck    Healthcheck
 	Prometheus     PrometheusConfig
 	Replicas       Replicas
-	Ingress		   Ingress
+	Ingress        Ingress
 	Resources      ResourceRequirements
 	FasitResources FasitResources `yaml:"fasitResources"`
 }

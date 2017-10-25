@@ -8,8 +8,8 @@ func GetDefaultAppConfig(application string) NaisAppConfig {
 
 	defaultAppConfig := NaisAppConfig{
 		Replicas: Replicas{
-			Min:                    2,
-			Max:                    4,
+			Min: 2,
+			Max: 4,
 			CpuThresholdPercentage: 50,
 		},
 		Port: 8080,

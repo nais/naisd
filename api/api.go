@@ -43,7 +43,7 @@ type appHandler func(w http.ResponseWriter, r *http.Request) *appError
 
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil { // e is *appError, not os.Error.
-		glog.Errorf(e.Message+": %s\n", e.Error)
+		glog.Errorf("%s: %s\n", e.Message, e.Error)
 		http.Error(w, e.Message, e.Code)
 	}
 }
@@ -132,7 +132,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	naisResources, err := fetchFasitResources(api.FasitUrl, deploymentRequest, appConfig)
 	if err != nil {
-		return &appError{err, "Unable to fetch fasit resources", http.StatusInternalServerError}
+		return &appError{err, fmt.Sprintf("Unable to fetch fasit resources: %s", err.Error()), http.StatusBadRequest}
 	}
 
 	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, api.ClusterSubdomain, api.Clientset)

@@ -218,6 +218,56 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n", string(rr.Body.Bytes()))
 }
 
+func TestMissingResources(t *testing.T) {
+	resourceAlias := "alias1"
+
+	config := NaisAppConfig{
+		Image: "name/Container",
+		Port:  321,
+		FasitResources: FasitResources{
+			Used: []UsedResource{{resourceAlias, "db"}},
+		},
+	}
+	data, _ := yaml.Marshal(config)
+
+	defer gock.Off()
+
+	gock.New("http://repo.com").
+		Get("/app").
+		Reply(200).
+		BodyString(string(data))
+
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
+		Reply(404)
+
+	req, _ := http.NewRequest("POST", "/deploy", strings.NewReader(CreateDefaultDeploymentRequest()))
+
+	rr := httptest.NewRecorder()
+	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", nil}
+	handler := http.Handler(appHandler(api.deploy))
+
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, 400, rr.Code)
+	assert.True(t, gock.IsDone())
+	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("Failed to get resource: %s", resourceAlias))
+}
+
+func CreateDefaultDeploymentRequest() string {
+	json, _ := json.Marshal(NaisDeploymentRequest{
+		Application:  "appname",
+		Version:      "123",
+		Environment:  "namespace",
+		AppConfigUrl: "http://repo.com/app",
+		Zone:         "zone",
+		Namespace:    "namespace",
+	})
+
+	return string(json)
+}
+
+
 func TestValidateDeploymentRequest(t *testing.T) {
 	t.Run("Empty fields should be marked invalid", func(t *testing.T) {
 		invalid := NaisDeploymentRequest{

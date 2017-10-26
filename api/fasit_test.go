@@ -12,7 +12,6 @@ import (
 )
 
 func TestGettingResource(t *testing.T) {
-
 	alias := "alias1"
 	resourceType := "datasource"
 	environment := "environment"
@@ -167,7 +166,6 @@ func TestUpdateResource(t *testing.T) {
 }
 
 func TestGetLoadBalancerConfig(t *testing.T) {
-
 	environment := "environment"
 	application := "application"
 
@@ -479,7 +477,6 @@ func TestGetFasitApplication(t *testing.T) {
 
 }
 func TestGettingListOfResources(t *testing.T) {
-
 	alias := "alias1"
 	alias2 := "alias2"
 	alias3 := "alias3"
@@ -587,7 +584,7 @@ func TestResolvingSecret(t *testing.T) {
 	assert.Equal(t, "hemmelig", resource.secret["password"])
 }
 
-func TestResolveCertifcates(t *testing.T) {
+func TestResolveCertificates(t *testing.T) {
 	fasit := FasitClient{"https://fasit.local", "", ""}
 
 	t.Run("Fetch certificate file for resources of type certificate", func(t *testing.T) {
@@ -690,7 +687,6 @@ func TestBuildEnvironmentNameFromNamespace(t *testing.T) {
 }
 
 func TestParseFilesObject(t *testing.T) {
-
 	t.Run("Parse filename and fileurl correctly", func(t *testing.T) {
 		var jsonMap map[string]interface{}
 		json.Unmarshal([]byte(`{
@@ -727,5 +723,4 @@ func TestParseFilesObject(t *testing.T) {
 
 		assert.Error(t, err)
 	})
-
 }

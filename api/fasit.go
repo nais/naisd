@@ -67,6 +67,7 @@ type Password struct {
 }
 
 type FasitResource struct {
+	Id			 int
 	Alias        string
 	ResourceType string `json:"type"`
 	Properties   map[string]string
@@ -213,7 +214,9 @@ func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploym
 	return naisresources, nil
 
 }
-
+func arrayToString(a []int) string {
+	return strings.Trim(strings.Replace(fmt.Sprint(a), " ", ",", -1), "[]")
+}
 // Updates Fasit with information
 func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, usedResources []NaisResource, appConfig NaisAppConfig, hostname, fasitEnvironment string) error {
 
@@ -231,7 +234,7 @@ func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentReque
 		}
 	}
 
-	glog.Infof("exposed: %s\nused: %s", exposedResourceIds, usedResourceIds)
+	glog.Infof("exposed: %s\nused: %s", arrayToString(exposedResourceIds), arrayToString(usedResourceIds))
 
 	if err := fasit.createApplicationInstance(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds); err != nil {
 		return err
@@ -267,7 +270,7 @@ func (fasit FasitClient) doRequest(r *http.Request) ([]byte, AppError) {
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return []byte{}, appError{err, "Error contacting Fasit)", resp.StatusCode}
+		return []byte{}, appError{err, "Error contacting Fasit", resp.StatusCode}
 	}
 
 	return body, nil
@@ -444,6 +447,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 	resource.name = fasitResource.Alias
 	resource.resourceType = fasitResource.ResourceType
 	resource.properties = fasitResource.Properties
+	resource.id = fasitResource.Id
 
 	if len(fasitResource.Secrets) > 0 {
 		secret, err := resolveSecret(fasitResource.Secrets, fasit.Username, fasit.Password)
@@ -631,13 +635,15 @@ func generateScope(resource ExposedResource, environment, zone string) Scope {
 	}
 }
 func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) ApplicationInstancePayload {
-	return ApplicationInstancePayload{
+	applicationInstancePayload := ApplicationInstancePayload{
 		Application:      deploymentRequest.Application,
 		Environment:      fasitEnvironment,
 		Version:          deploymentRequest.Version,
 		ExposedResources: exposedResourceIds,
 		UsedResources:    usedResourceIds,
 	}
+	glog.Infof("applicationinstance payload: %s", applicationInstancePayload)
+	return applicationInstancePayload
 }
 
 func buildResourcePayload(resource ExposedResource, fasitEnvironment, zone, hostname string) ResourcePayload {

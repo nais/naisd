@@ -62,8 +62,8 @@ type appHandler func(w http.ResponseWriter, r *http.Request) *appError
 
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil { // e is *appError, not os.Error.
-		glog.Errorf(e.Message+": %s\n", e.Error)
-		http.Error(w, e.Message, e.StatusCode)
+		glog.Errorf(e.Error())
+		http.Error(w, e.Error(), e.StatusCode)
 	}
 }
 
@@ -176,12 +176,12 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	naisResources, err := fetchFasitResources(fasit, deploymentRequest, appConfig)
 	if err != nil {
-		return &appError{err, "Unable to fetch fasit resources", http.StatusInternalServerError}
+		return &appError{err, "Unable to fetch fasit resources", http.StatusBadRequest}
 	}
 
 	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, api.ClusterSubdomain, api.Clientset)
 	if err != nil {
-		return &appError{err, "Failed while creating or updating k8s-resources", http.StatusInternalServerError}
+		return &appError{err, "Failed while creating or updating k8s-resources", http.StatusBadRequest}
 	}
 
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()

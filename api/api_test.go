@@ -236,7 +236,14 @@ func TestMissingResources(t *testing.T) {
 		Get("/app").
 		Reply(200).
 		BodyString(string(data))
-
+	gock.New("https://fasit.local").
+		Get("/api/v2/environments/namespace-clustername").
+		Reply(200).
+		BodyString("anything")
+	gock.New("https://fasit.local").
+		Get("/api/v2/applications/appname").
+		Reply(200).
+		BodyString("anything")
 	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
 		Reply(404)
@@ -244,14 +251,14 @@ func TestMissingResources(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/deploy", strings.NewReader(CreateDefaultDeploymentRequest()))
 
 	rr := httptest.NewRecorder()
-	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", nil}
+	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", "clustername",nil}
 	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, 400, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("Failed to get resource: %s", resourceAlias))
+	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("Unable to fetch fasit resources: Resource not found in Fasit:"))
 }
 
 func CreateDefaultDeploymentRequest() string {

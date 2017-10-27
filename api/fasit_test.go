@@ -34,6 +34,7 @@ func TestGettingResource(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, alias, resource.name)
+	assert.Equal(t, 848186, resource.id)
 	assert.Equal(t, resourceType, resource.resourceType)
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
 	assert.Equal(t, "basta", resource.properties["username"])

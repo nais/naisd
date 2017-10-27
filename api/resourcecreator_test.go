@@ -414,13 +414,13 @@ func TestIngress(t *testing.T) {
 			{
 				resourceType: "LoadBalancerConfig",
 				ingresses: map[string]string{
-					"app.adeo.no": "/context",
+					"app.adeo.no": "context",
 				},
 			},
 			{
 				resourceType: "LoadBalancerConfig",
 				ingresses: map[string]string{
-					"app2.adeo.no": "/context2",
+					"app2.adeo.no": "context2",
 				},
 			},
 		}

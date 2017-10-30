@@ -88,7 +88,7 @@ func TestCreatingResource(t *testing.T) {
 		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
 		Reply(201).
-		JSON(map[string]int{"id": id})
+		SetHeader("Location", fmt.Sprintf("http://localhost:8089/v2/resources/%d", id))
 
 	t.Run("createResource returns ID when called", func(t *testing.T) {
 		createdResourceId, err := fasit.createResource(exposedResource, environment, hostname, deploymentRequest)
@@ -102,16 +102,6 @@ func TestCreatingResource(t *testing.T) {
 		Reply(501).
 		BodyString("bish")
 	t.Run("createResource errs when Fasit fails", func(t *testing.T) {
-		createdResourceId, err := fasit.createResource(exposedResource, environment, hostname, deploymentRequest)
-		assert.Error(t, err)
-		assert.Equal(t, 0, createdResourceId)
-	})
-	gock.New("https://fasit.local").
-		Post("/api/v2/resources").
-		HeaderPresent("Authorization").
-		Reply(201).
-		BodyString("bish")
-	t.Run("createResource errs when Fasit returns gibberish", func(t *testing.T) {
 		createdResourceId, err := fasit.createResource(exposedResource, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
@@ -143,8 +133,7 @@ func TestUpdateResource(t *testing.T) {
 		Put("/api/v2/resources/" + fmt.Sprint(id)).
 		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
-		Reply(200).
-		JSON(map[string]int{"id": id})
+		Reply(200)
 
 	t.Run("updateResource returns ID when called", func(t *testing.T) {
 		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, hostname, deploymentRequest)
@@ -159,17 +148,6 @@ func TestUpdateResource(t *testing.T) {
 		Reply(501).
 		BodyString("bish")
 	t.Run("updateResource errs when Fasit fails", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, hostname, deploymentRequest)
-		assert.Error(t, err)
-		assert.Equal(t, 0, createdResourceId)
-	})
-	gock.New("https://fasit.local").
-		Put("/api/v2/resources/" + fmt.Sprint(id)).
-		HeaderPresent("Authorization").
-		MatchHeader("Content-Type", "application/json").
-		Reply(200).
-		BodyString("bish")
-	t.Run("updateResource errs when Fasit returns gibberish", func(t *testing.T) {
 		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)

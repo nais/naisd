@@ -644,12 +644,11 @@ func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, fa
 }
 
 func buildResourcePayload(resource ExposedResource, fasitEnvironment, zone, hostname string) ResourcePayload {
-	switch resource.ResourceType {
 	// Reference of valid resources in Fasit
 	// ['DataSource', 'MSSQLDataSource', 'DB2DataSource', 'LDAP', 'BaseUrl', 'Credential', 'Certificate', 'OpenAm', 'Cics', 'RoleMapping', 'QueueManager', 'WebserviceEndpoint', 'RestService', 'WebserviceGateway', 'EJB', 'Datapower', 'EmailAddress', 'SMTPServer', 'Queue', 'Topic', 'DeploymentManager', 'ApplicationProperties', 'MemoryParameters', 'LoadBalancer', 'LoadBalancerConfig', 'FileLibrary', 'Channel
-	case "RestService":
+	if strings.EqualFold("restservice", resource.ResourceType) {
 		return ResourcePayload{
-			Type:  resource.ResourceType,
+			Type:  "RestService",
 			Alias: resource.Alias,
 			Properties: Properties{
 				Url:         "https://" + hostname + resource.Path,
@@ -657,9 +656,9 @@ func buildResourcePayload(resource ExposedResource, fasitEnvironment, zone, host
 			},
 			Scope: generateScope(resource, fasitEnvironment, zone),
 		}
-	case "WebserviceEndpoint":
+	} else if strings.EqualFold("WebserviceEndpoint", resource.ResourceType) {
 		return ResourcePayload{
-			Type:  resource.ResourceType,
+			Type:  "WebserviceEndpoint",
 			Alias: resource.Alias,
 			Properties: Properties{
 				EndpointUrl: "https://" + hostname + resource.Path,
@@ -668,7 +667,7 @@ func buildResourcePayload(resource ExposedResource, fasitEnvironment, zone, host
 			},
 			Scope: generateScope(resource, fasitEnvironment, zone),
 		}
-	default:
+	} else {
 		return ResourcePayload{}
 	}
 }

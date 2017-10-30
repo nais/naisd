@@ -46,6 +46,8 @@ func TestCreatingApplicationInstance(t *testing.T) {
 
 	gock.New("https://fasit.local").
 		Post("/api/v2/applicationinstances").
+		HeaderPresent("Authorization").
+		MatchHeader("Content-Type", "application/json").
 		Reply(201).
 		BodyString("aiit")
 
@@ -56,22 +58,21 @@ func TestCreatingApplicationInstance(t *testing.T) {
 	t.Run("A valid payload creates ApplicationInstance", func(t *testing.T) {
 		err := fasit.createApplicationInstance(deploymentRequest, "", exposedResourceIds, usedResourceIds)
 		assert.NoError(t, err)
+		assert.True(t, gock.IsDone())
 	})
-
 }
 func TestCreatingResource(t *testing.T) {
-
-	alias := "alias1"
-	resourceType := "RestService"
 	environment := "environment"
-	application := "application"
 	hostname := "hostname"
-	zone := "zone"
 	id := 4242
 	exposedResource := ExposedResource{
-		Alias:        alias,
-		ResourceType: resourceType,
+		Alias:        "alias1",
+		ResourceType: "RestService",
 		Path:         "",
+	}
+	deploymentRequest := NaisDeploymentRequest{
+		Application: "application",
+		Zone: "zone",
 	}
 
 	fasit := FasitClient{"https://fasit.local", "", ""}
@@ -79,88 +80,97 @@ func TestCreatingResource(t *testing.T) {
 	defer gock.Off()
 
 	t.Run("createResource returns error if fasit is unreachable", func(t *testing.T) {
-		_, err := fasit.createResource(exposedResource, environment, application, zone, hostname)
+		_, err := fasit.createResource(exposedResource, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 	})
 	gock.New("https://fasit.local").
 		Post("/api/v2/resources").
+		HeaderPresent("Authorization").
+		MatchHeader("Content-Type", "application/json").
 		Reply(201).
 		JSON(map[string]int{"id": id})
 
 	t.Run("createResource returns ID when called", func(t *testing.T) {
-		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone, hostname)
+		createdResourceId, err := fasit.createResource(exposedResource, environment, hostname, deploymentRequest)
 		assert.NoError(t, err)
 		assert.True(t, gock.IsDone())
 		assert.Equal(t, id, createdResourceId)
 	})
 	gock.New("https://fasit.local").
 		Post("/api/v2/resources").
+		HeaderPresent("Authorization").
 		Reply(501).
 		BodyString("bish")
 	t.Run("createResource errs when Fasit fails", func(t *testing.T) {
-		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone, hostname)
+		createdResourceId, err := fasit.createResource(exposedResource, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
 	gock.New("https://fasit.local").
 		Post("/api/v2/resources").
+		HeaderPresent("Authorization").
 		Reply(201).
 		BodyString("bish")
 	t.Run("createResource errs when Fasit returns gibberish", func(t *testing.T) {
-		createdResourceId, err := fasit.createResource(exposedResource, environment, application, zone, hostname)
+		createdResourceId, err := fasit.createResource(exposedResource, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
 }
 
 func TestUpdateResource(t *testing.T) {
-	alias := "alias1"
-	resourceType := "RestService"
 	environment := "environment"
-	application := "application"
 	hostname := "hostname"
-	zone := "zone"
 	id := 4242
 	exposedResource := ExposedResource{
-		Alias:        alias,
-		ResourceType: resourceType,
+		Alias:        "alias1",
+		ResourceType: "RestService",
 		Path:         "",
 	}
-
+	deploymentRequest := NaisDeploymentRequest{
+		Application: "application",
+		Zone: "zone",
+	}
 	fasit := FasitClient{"https://fasit.local", "", "",}
 
 	defer gock.Off()
 
 	t.Run("updateResource returns error if fasit is unreachable", func(t *testing.T) {
-		_, err := fasit.updateResource(id, exposedResource, environment, application, zone, hostname)
+		_, err := fasit.updateResource(id, exposedResource, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 	})
 	gock.New("https://fasit.local").
 		Put("/api/v2/resources/" + fmt.Sprint(id)).
+		HeaderPresent("Authorization").
+		MatchHeader("Content-Type", "application/json").
 		Reply(200).
 		JSON(map[string]int{"id": id})
 
 	t.Run("updateResource returns ID when called", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone, hostname)
+		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, hostname, deploymentRequest)
 		assert.NoError(t, err)
 		assert.True(t, gock.IsDone())
 		assert.Equal(t, id, createdResourceId)
 	})
 	gock.New("https://fasit.local").
 		Put("/api/v2/resources/" + fmt.Sprint(id)).
+		HeaderPresent("Authorization").
+		MatchHeader("Content-Type", "application/json").
 		Reply(501).
 		BodyString("bish")
 	t.Run("updateResource errs when Fasit fails", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone, hostname)
+		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
 	gock.New("https://fasit.local").
 		Put("/api/v2/resources/" + fmt.Sprint(id)).
+		HeaderPresent("Authorization").
+		MatchHeader("Content-Type", "application/json").
 		Reply(200).
 		BodyString("bish")
 	t.Run("updateResource errs when Fasit returns gibberish", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, application, zone, hostname)
+		createdResourceId, err := fasit.updateResource(id, exposedResource, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
@@ -212,8 +222,8 @@ func (fasit FakeFasitClient) getScopedResource(resourcesRequest ResourceRequest,
 	}
 }
 
-func (fasit FakeFasitClient) createResource(resource ExposedResource, environment, application, zone, hostname string) (int, error) {
-	switch zone {
+func (fasit FakeFasitClient) createResource(resource ExposedResource, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
+	switch deploymentRequest.Zone {
 	case "failed":
 		return 0, fmt.Errorf("random error")
 	default:
@@ -223,9 +233,9 @@ func (fasit FakeFasitClient) createResource(resource ExposedResource, environmen
 
 var updateCalled bool
 
-func (fasit FakeFasitClient) updateResource(existingResourceId int, resource ExposedResource, environment, application, zone, hostname string) (int, error) {
+func (fasit FakeFasitClient) updateResource(existingResourceId int, resource ExposedResource, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
 	updateCalled = true
-	switch zone {
+	switch deploymentRequest.Zone {
 	case "failed":
 		return 0, fmt.Errorf("random error")
 	default:
@@ -245,8 +255,6 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 	alias := "alias1"
 	resourceType := "RestService"
 	environment := "environment"
-	application := "application"
-	zone := "zone"
 	hostname := "bish"
 
 	exposedResource := ExposedResource{
@@ -254,18 +262,25 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 		ResourceType: resourceType,
 		Path:         "",
 	}
+
+	deploymentRequest := NaisDeploymentRequest{
+		Application: "application",
+		Zone: "zone",
+	}
 	exposedResources := []ExposedResource{exposedResource, exposedResource}
 
 	fakeFasitClient := FakeFasitClient{}
 
 	// Using application field to identify which response to return from getScopedResource on FakeFasitClient
 	t.Run("Resources are created when their resource ID isn't found in Fasit", func(t *testing.T) {
-		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "notfound", zone)
+		deploymentRequest.Application = "notfound"
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, deploymentRequest)
 		assert.NoError(t, err)
 		assert.Equal(t, []int{4242, 4242}, resourceIds)
 	})
 	t.Run("Returns an error if contacting Fasit fails", func(t *testing.T) {
-		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "fasitError", zone)
+		deploymentRequest.Application = "fasitError"
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, deploymentRequest)
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
 		assert.True(t, strings.Contains(err.Error(), "random error: error from fasit, (500)"))
@@ -273,21 +288,26 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 
 	// Using Zone field to identify which response to return from createResource on FakeFasitClient
 	t.Run("Returns an error if unable to create resource", func(t *testing.T) {
-		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, "notfound", "failed")
+		deploymentRequest.Application = "notfound"
+		deploymentRequest.Zone = "failed"
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, deploymentRequest)
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
 		assert.True(t, strings.Contains(err.Error(), "Failed creating resource: alias1 of type RestService with path . (random error)"))
 	})
 	t.Run("Updates Fasit if resources were found", func(t *testing.T) {
 		updateCalled = false
-		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, application, zone)
+		deploymentRequest.Zone = "zone"
+		deploymentRequest.Application = "application"
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment,deploymentRequest)
 		assert.NoError(t, err)
 		assert.Equal(t, []int{1, 1}, resourceIds)
 		assert.True(t, updateCalled)
 	})
 	// Using Zone field to identify which response to return from updateResource on FakeFasitClient
 	t.Run("Returns an error if unable to update resource", func(t *testing.T) {
-		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, application, "failed")
+		deploymentRequest.Zone = "failed"
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, environment, deploymentRequest)
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
 		assert.True(t, strings.Contains(err.Error(), "Failed updating resource: alias1 of type RestService with path . (random error)"))
@@ -404,6 +424,12 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		assert.Equal(t, version, payload.Version)
 		assert.Equal(t, exposedResourceIds, payload.ExposedResources)
 		assert.Equal(t, usedResourceIds, payload.UsedResources)
+	})
+	t.Run("Marshalling payload works", func(t *testing.T) {
+		payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds))
+		assert.NoError(t, err)
+		n := len(payload)
+		assert.Equal(t, "{\"application\":\"appName\",\"environment\":\"t1000\",\"version\":\"2.1\",\"exposedResources\":[1,2,3],\"usedResources\":[4,5,6]}", string(payload[:n]))
 	})
 	t.Run("Building RestService ResourcePayload", func(t *testing.T) {
 		payload := buildResourcePayload(restResource, environment, zone, hostname)

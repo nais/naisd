@@ -56,7 +56,7 @@ func TestCreatingApplicationInstance(t *testing.T) {
 	deploymentRequest := NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}
 
 	t.Run("A valid payload creates ApplicationInstance", func(t *testing.T) {
-		err := fasit.createApplicationInstance(deploymentRequest, "", exposedResourceIds, usedResourceIds)
+		err := fasit.createApplicationInstance(deploymentRequest, "", "", exposedResourceIds, usedResourceIds)
 		assert.NoError(t, err)
 		assert.True(t, gock.IsDone())
 	})
@@ -223,7 +223,7 @@ func (fasit FakeFasitClient) updateResource(existingResourceId int, resource Exp
 }
 var createApplicationInstanceCalled bool
 
-func (fasit FakeFasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) error {
+func (fasit FakeFasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error {
 	createApplicationInstanceCalled = true
 	return nil
 }
@@ -334,20 +334,20 @@ func TestUpdateFasit(t *testing.T) {
 
 	t.Run("Calling updateFasit with resources returns no error", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, hostname, clustername)
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, hostname, clustername,"")
 		assert.NoError(t, err)
 		assert.True(t, createApplicationInstanceCalled)
 	})
 	t.Run("Calling updateFasit without hostname when you have exposed resources fails", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", clustername)
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", clustername,"")
 		assert.Error(t, err)
 		assert.False(t, createApplicationInstanceCalled)
 	})
 	t.Run("Calling updateFasit without hostname when you have no exposed resources works", func(t *testing.T) {
 		createApplicationInstanceCalled = false
 		appConfig.FasitResources.Exposed = nil
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", clustername)
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", clustername,"")
 		assert.NoError(t, err)
 		assert.True(t, createApplicationInstanceCalled)
 	})
@@ -357,6 +357,7 @@ func TestUpdateFasit(t *testing.T) {
 func TestBuildingFasitPayloads(t *testing.T) {
 	application := "appName"
 	fasitEnvironment := "t1000"
+	subDomain := "nais.devillo.no"
 	environment := "t1000"
 	version := "2.1"
 	exposedResourceIds := []int{1, 2, 3}
@@ -394,20 +395,36 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		SecurityToken:  securityToken,
 		Description:    description,
 	}
+	exposedResources := []Resource{Resource{1},Resource{2},Resource{3}}
+	usedResources := []Resource{Resource{4},Resource{5},Resource{6}}
 
 	t.Run("Building ApplicationInstancePayload", func(t *testing.T) {
-		payload := buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds)
+		payload := buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, exposedResourceIds, usedResourceIds)
 		assert.Equal(t, application, payload.Application)
 		assert.Equal(t, environment, payload.Environment)
 		assert.Equal(t, version, payload.Version)
-		assert.Equal(t, exposedResourceIds, payload.ExposedResources)
-		assert.Equal(t, usedResourceIds, payload.UsedResources)
+		assert.Equal(t, exposedResources, payload.ExposedResources)
+		assert.Equal(t, usedResources, payload.UsedResources)
 	})
-	t.Run("Marshalling payload works", func(t *testing.T) {
-		payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds))
+	t.Run("Marshalling payload with both exposed and used resources works", func(t *testing.T) {
+		payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, exposedResourceIds, usedResourceIds))
 		assert.NoError(t, err)
 		n := len(payload)
-		assert.Equal(t, "{\"application\":\"appName\",\"environment\":\"t1000\",\"version\":\"2.1\",\"exposedResources\":[1,2,3],\"usedResources\":[4,5,6]}", string(payload[:n]))
+		assert.Equal(t, "{\"application\":\"appName\",\"environment\":\"t1000\",\"version\":\"2.1\",\"exposedresources\":[{\"id\":1},{\"id\":2},{\"id\":3}],\"usedresources\":[{\"id\":4},{\"id\":5},{\"id\":6}],\"clustername\":\"nais\",\"domain\":\"devillo.no\"}", string(payload[:n]))
+	})
+	t.Run("Marshalling payload with no exposed resources returns empty array in json", func(t *testing.T) {
+		emptyResourceList := []int{}
+		payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, emptyResourceList, usedResourceIds))
+		assert.NoError(t, err)
+		n := len(payload)
+		assert.Equal(t, "{\"application\":\"appName\",\"environment\":\"t1000\",\"version\":\"2.1\",\"exposedresources\":[],\"usedresources\":[{\"id\":4},{\"id\":5},{\"id\":6}],\"clustername\":\"nais\",\"domain\":\"devillo.no\"}", string(payload[:n]))
+	})
+	t.Run("Marshalling payload with no used resources returns empty array in json", func(t *testing.T) {
+		emptyResourceList := []int{}
+		payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, exposedResourceIds, emptyResourceList))
+		assert.NoError(t, err)
+		n := len(payload)
+		assert.Equal(t, "{\"application\":\"appName\",\"environment\":\"t1000\",\"version\":\"2.1\",\"exposedresources\":[{\"id\":1},{\"id\":2},{\"id\":3}],\"usedresources\":[],\"clustername\":\"nais\",\"domain\":\"devillo.no\"}", string(payload[:n]))
 	})
 	t.Run("Building RestService ResourcePayload", func(t *testing.T) {
 		payload := buildResourcePayload(restResource, environment, zone, hostname)
@@ -681,6 +698,11 @@ func TestBuildEnvironmentNameFromNamespace(t *testing.T) {
 	})
 	t.Run("'default' namespace returns clustername", func(t *testing.T) {
 		namespace := "default"
+		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
+		assert.Equal(t,clusterName, environmentName)
+	})
+	t.Run("empty namespace returns clustername", func(t *testing.T) {
+		namespace := ""
 		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
 		assert.Equal(t,clusterName, environmentName)
 	})

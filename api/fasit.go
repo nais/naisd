@@ -26,11 +26,17 @@ type ResourcePayload struct {
 }
 
 type ApplicationInstancePayload struct {
-	Application      string  `json:"application"`
-	Environment      string  `json:"environment"`
-	Version          string  `json:"version"`
-	ExposedResources []int   `json:"exposedResources"`
-	UsedResources    []int   `json:"usedResources"`
+	Application      string     `json:"application"`
+	Environment      string     `json:"environment"`
+	Version          string     `json:"version"`
+	ExposedResources []Resource `json:"exposedresources"`
+	UsedResources    []Resource `json:"usedresources"`
+	ClusterName      string     `json:"clustername"`
+	Domain           string     `json:"domain"`
+}
+
+type Resource struct {
+	Id int `json:"id"`
 }
 
 type FasitClient struct {
@@ -46,7 +52,7 @@ type FasitClientAdapter interface {
 	GetFasitApplication(application string) error
 	GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error)
 	getLoadBalancerConfig(application string, environment string) (*NaisResource, error)
-	createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) error
+	createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error
 }
 
 type Properties struct {
@@ -101,14 +107,16 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 	return resources, nil
 }
 
-func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) error {
+func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error {
 	fasitPath := fasit.FasitUrl + "/api/v2/applicationinstances/"
 
-	payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds))
+	payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, exposedResourceIds, usedResourceIds))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return fmt.Errorf("Unable to create payload (%s)", err)
 	}
+
+	glog.Infof("ApplicationInstancePayload: %s", payload)
 	req, err := http.NewRequest("POST", fasitPath, bytes.NewBuffer(payload))
 	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
 	req.Header.Set("Content-Type", "application/json")
@@ -220,7 +228,7 @@ func arrayToString(a []int) string {
 }
 
 // Updates Fasit with information
-func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, usedResources []NaisResource, appConfig NaisAppConfig, hostname, fasitEnvironment string) error {
+func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, usedResources []NaisResource, appConfig NaisAppConfig, hostname, fasitEnvironment, domain string) error {
 
 	usedResourceIds := getResourceIds(usedResources)
 	var exposedResourceIds []int
@@ -238,7 +246,7 @@ func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentReque
 
 	glog.Infof("exposed: %s\nused: %s", arrayToString(exposedResourceIds), arrayToString(usedResourceIds))
 
-	if err := fasit.createApplicationInstance(deploymentRequest, fasitEnvironment, exposedResourceIds, usedResourceIds); err != nil {
+	if err := fasit.createApplicationInstance(deploymentRequest, fasitEnvironment, domain, exposedResourceIds, usedResourceIds); err != nil {
 		return err
 	}
 
@@ -609,7 +617,7 @@ func (fasit FasitClient) buildRequest(method, path string, queryParams map[strin
 func (fasit FasitClient) environmentNameFromNamespaceBuilder(namespace, clustername string) string {
 	re := regexp.MustCompile(`^[utqp][0-9]*$`)
 
-	if namespace == "default" {
+	if namespace == "default" || len(namespace) == 0{
 		return clustername
 	} else if !re.MatchString(namespace) {
 		return namespace + "-" + clustername
@@ -628,18 +636,32 @@ func generateScope(resource ExposedResource, environment, zone string) Scope {
 		Zone:        zone,
 	}
 }
-func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, fasitEnvironment string, exposedResourceIds, usedResourceIds []int) ApplicationInstancePayload {
+
+func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) ApplicationInstancePayload {
+	// Need to make an empty array of Resources in order for json.Marshall to return [] and not null
+	// see https://danott.co/posts/json-marshalling-empty-slices-to-empty-arrays-in-go.html for details
+	emptyResources := make([]Resource, 0)
+	domain := strings.Join(strings.Split(subDomain, ".")[1:], ".")
 	applicationInstancePayload := ApplicationInstancePayload{
-		Application:        deploymentRequest.Application,
-		Environment: fasitEnvironment,
-		Version:     deploymentRequest.Version,
+		Application:      deploymentRequest.Application,
+		Environment:      fasitEnvironment,
+		Version:          deploymentRequest.Version,
+		ClusterName:      "nais",
+		Domain:           domain,
+		ExposedResources: emptyResources,
+		UsedResources:    emptyResources,
 	}
 	if len(exposedResourceIds) > 0 {
-		applicationInstancePayload.ExposedResources = exposedResourceIds
+		for _, id := range exposedResourceIds {
+			applicationInstancePayload.ExposedResources = append(applicationInstancePayload.ExposedResources, Resource{id})
+		}
 	}
 	if len(usedResourceIds) > 0 {
-		applicationInstancePayload.UsedResources = usedResourceIds
+		for _, id := range usedResourceIds {
+			applicationInstancePayload.UsedResources = append(applicationInstancePayload.UsedResources, Resource{id})
+		}
 	}
+
 	return applicationInstancePayload
 }
 

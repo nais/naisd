@@ -193,7 +193,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	if !deploymentRequest.NoFasit {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname, api.ClusterName); err != nil {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname, api.ClusterName, api.ClusterSubdomain); err != nil {
 			return &appError{err, "Failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}

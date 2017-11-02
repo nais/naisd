@@ -12,31 +12,30 @@ import (
 	"bytes"
 	"strings"
 	"regexp"
+	"net/url"
 )
 
 func init() {
 	prometheus.MustRegister(httpReqsCounter)
 }
 
-type ResourcePayload interface {}
+type ResourcePayload interface{}
 
 type RestResourcePayload struct {
-	Alias      string     `json:"alias"`
-	Scope      Scope      `json:"scope"`
-	Type       string     `json:"type"`
+	Alias      string         `json:"alias"`
+	Scope      Scope          `json:"scope"`
+	Type       string         `json:"type"`
 	Properties RestProperties `json:"properties"`
 }
 type WebserviceResourcePayload struct {
-	Alias      string     `json:"alias"`
-	Scope      Scope      `json:"scope"`
-	Type       string     `json:"type"`
+	Alias      string               `json:"alias"`
+	Scope      Scope                `json:"scope"`
+	Type       string               `json:"type"`
 	Properties WebserviceProperties `json:"properties"`
 }
 type WebserviceProperties struct {
-	Url         string `json:"url"`
 	EndpointUrl string `json:"endpointurl"`
 	WsdlUrl     string `json:"wsdlurl"`
-	Username    string `json:"username"`
 	Description string `json:"description"`
 }
 type RestProperties struct {
@@ -329,8 +328,16 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, fas
 	return resource, nil
 }
 
+func SafeMarshal(v interface{})([]byte, error){
+	/*	String values encode as JSON strings coerced to valid UTF-8, replacing invalid bytes with the Unicode replacement rune.
+	The angle brackets "<" and ">" are escaped to "\u003c" and "\u003e" to keep some browsers from misinterpreting JSON output as HTML.
+	Ampersand "&" is also escaped to "\u0026" for the same reason. This escaping can be disabled using an Encoder that had SetEscapeHTML(false) called on it.	*/
+	b, err := json.Marshal(v)
+	b = bytes.Replace(b, []byte("\\u0026"), []byte("&"), -1)
+	return b, err
+}
 func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
-	payload, err := json.Marshal(buildResourcePayload(resource, fasitEnvironmentClass, environment, deploymentRequest.Zone, hostname))
+	payload, err := SafeMarshal(buildResourcePayload(resource, fasitEnvironmentClass, environment, deploymentRequest.Zone, hostname))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
 		return 0, fmt.Errorf("Unable to create payload (%s)", err)
@@ -689,12 +696,21 @@ func buildResourcePayload(resource ExposedResource, fasitEnvironmentClass, fasit
 			Scope: generateScope(resource, fasitEnvironmentClass, fasitEnvironment, zone),
 		}
 	} else if strings.EqualFold("WebserviceEndpoint", resource.ResourceType) {
+		Url, _ := url.Parse("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect")
+		q := url.Values{}
+		q.Add("r","m2internal")
+		q.Add("g", resource.WsdlGroupId)
+		q.Add("a", resource.WsdlArtifactId)
+		q.Add("v", resource.WsdlVersion)
+		q.Add("e", "zip")
+		Url.RawQuery = q.Encode()
+
 		return WebserviceResourcePayload{
 			Type:  "WebserviceEndpoint",
 			Alias: resource.Alias,
 			Properties: WebserviceProperties{
 				EndpointUrl: "https://" + hostname + resource.Path,
-				WsdlUrl:     fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?r=m2internal&g=%s&a=%s&v=%s&e=zip", resource.WsdlGroupId, resource.WsdlArtifactId, resource.WsdlVersion),
+				WsdlUrl: Url.String(),
 				Description: resource.Description,
 			},
 			Scope: generateScope(resource, fasitEnvironmentClass, fasitEnvironment, zone),

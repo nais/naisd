@@ -376,7 +376,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	securityToken := "LDAP"
 	allZones := true
 	description := "myDescription"
-	wsdlPath := fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?r=m2internal&g=%s&a=%s&v=%s&e=zip", wsdlGroupId, wsdlArtifactId, version)
+	wsdlPath := fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=%s&e=zip&g=%s&r=m2internal&v=%s", wsdlArtifactId, wsdlGroupId, version)
 
 	deploymentRequest := NaisDeploymentRequest{
 		Application: application,
@@ -458,10 +458,12 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		assert.Equal(t, zone, payload.Scope.Zone)
 	})
 	t.Run("Marshalling Webservice payloads yields expected result", func(t *testing.T) {
+
 		payload, err := json.Marshal(buildResourcePayload(webserviceResource, class, environment, zone, hostname))
+		//payload = bytes.Replace(payload, []byte("\\u0026"), []byte("&"), -1)
 		assert.NoError(t, err)
 		n := len(payload)
-		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"scope\":\"fss\"},\"type\":\"RestService\",\"properties\":{\"url\":\"https://hostname/myPath\",\"description\":\"myDescription\"}}", string(payload[:n]))
+		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"scope\":\"fss\"},\"type\":\"WebserviceEndpoint\",\"properties\":{\"endpointurl\":\"https://hostname/myPath\",\"wsdlurl\":\"http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=myArtifactId&e=zip&g=myGroup&r=m2internal&v=2.1\",\"description\":\"myDescription\"}}", string(payload[:n]))
 	})
 	t.Run("Building RestService ResourcePayload with AllZones returns wider scope", func(t *testing.T) {
 		restResource.AllZones = allZones

@@ -188,9 +188,9 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Reply(200).File("testdata/fasitResponse.json")
 
 	gock.New("https://fasit.local").
-		Get("/api/v2/environments/"+namespace).
+		Get(fmt.Sprintf("/api/v2/environments/%s-test-cluster", namespace)).
 		Reply(200).
-		BodyString("anything")
+		JSON(map[string]string{"environmentclass": "u"})
 
 	gock.New("https://fasit.local").
 		Get("/api/v2/applications/"+appName).
@@ -239,7 +239,7 @@ func TestMissingResources(t *testing.T) {
 	gock.New("https://fasit.local").
 		Get("/api/v2/environments/namespace-clustername").
 		Reply(200).
-		BodyString("anything")
+		JSON(map[string]string{"environmentclass": "u"})
 	gock.New("https://fasit.local").
 		Get("/api/v2/applications/appname").
 		Reply(200).

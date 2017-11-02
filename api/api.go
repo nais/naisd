@@ -30,7 +30,6 @@ type NaisDeploymentRequest struct {
 	Zone         string `json:"zone"`
 	AppConfigUrl string `json:"appconfigurl,omitempty"`
 	NoAppConfig  bool   `json:"-"`
-	NoFasit      bool   `json:"-"`
 	Username     string `json:"username"`
 	Password     string `json:"password"`
 	Namespace    string `json:"namespace"`
@@ -136,7 +135,7 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 }
 
 func validateFasitRequirements(fasit FasitClientAdapter, application, fasitEnvironment string) error {
-	if err := fasit.GetFasitEnvironment(fasitEnvironment); err != nil {
+	if _, err := fasit.GetFasitEnvironment(fasitEnvironment); err != nil {
 		glog.Errorf("Environment '%s' does not exist in Fasit", fasitEnvironment)
 		return err
 	}
@@ -146,6 +145,13 @@ func validateFasitRequirements(fasit FasitClientAdapter, application, fasitEnvir
 	}
 
 	return nil
+}
+
+func hasResources(appConfig NaisAppConfig) bool {
+	if len(appConfig.FasitResources.Used) == 0 && len(appConfig.FasitResources.Exposed) == 0 {
+		return false
+	}
+	return true
 }
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
@@ -165,11 +171,13 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	fasitEnvironment := fasit.environmentNameFromNamespaceBuilder(deploymentRequest.Namespace, api.ClusterName)
+	var fasitEnvironmentClass string
 
-	if !deploymentRequest.NoFasit {
+	if hasResources(appConfig) {
 		if err := validateFasitRequirements(fasit, deploymentRequest.Application, fasitEnvironment); err != nil {
 			return &appError{err, "Validating requirements for deployment failed", http.StatusInternalServerError}
 		}
+		fasitEnvironmentClass, err = fasit.GetFasitEnvironment(fasitEnvironment)
 	}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
@@ -192,8 +200,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		ingressHostname = ingressHostnames[len(ingressHostnames)-1].Host
 	}
 
-	if !deploymentRequest.NoFasit {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname, api.ClusterName, api.ClusterSubdomain); err != nil {
+	if hasResources(appConfig) {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname, fasitEnvironmentClass, api.ClusterName, api.ClusterSubdomain); err != nil {
 			return &appError{err, "Failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}

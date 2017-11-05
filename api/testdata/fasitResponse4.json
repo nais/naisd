@@ -7,7 +7,7 @@
     "application": "myapp"
   },
   "properties": {
-    "applicationProperties": "key1=value1\r\nkey2=dc=preprod,dc=local"
+    "applicationProperties": "key1=value1\r\nkey2=dc=preprod,dc=local\nkey3=value3\n"
   },
   "secrets": {},
   "files": {},

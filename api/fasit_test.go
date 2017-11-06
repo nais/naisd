@@ -113,7 +113,6 @@ func TestUpdateResource(t *testing.T) {
 	environment := "environment"
 	class := "u"
 	hostname := "hostname"
-	id := 4242
 	exposedResource := ExposedResource{
 		Alias:        "alias1",
 		ResourceType: "RestService",
@@ -123,34 +122,36 @@ func TestUpdateResource(t *testing.T) {
 		Application: "application",
 		Zone: "zone",
 	}
+	naisResource := NaisResource{id:4242}
+
 	fasit := FasitClient{"https://fasit.local", "", "",}
 
 	defer gock.Off()
 
 	t.Run("updateResource returns error if fasit is unreachable", func(t *testing.T) {
-		_, err := fasit.updateResource(id, exposedResource, class, environment, hostname, deploymentRequest)
+		_, err := fasit.updateResource(naisResource, exposedResource, class, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 	})
 	gock.New("https://fasit.local").
-		Put("/api/v2/resources/" + fmt.Sprint(id)).
+		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
 		Reply(200)
 
 	t.Run("updateResource returns ID when called", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, class, environment, hostname, deploymentRequest)
+		createdResourceId, err := fasit.updateResource(naisResource, exposedResource, class, environment, hostname, deploymentRequest)
 		assert.NoError(t, err)
 		assert.True(t, gock.IsDone())
-		assert.Equal(t, id, createdResourceId)
+		assert.Equal(t, naisResource.id, createdResourceId)
 	})
 	gock.New("https://fasit.local").
-		Put("/api/v2/resources/" + fmt.Sprint(id)).
+		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
 		Reply(501).
 		BodyString("bish")
 	t.Run("updateResource errs when Fasit fails", func(t *testing.T) {
-		createdResourceId, err := fasit.updateResource(id, exposedResource, class, environment, hostname, deploymentRequest)
+		createdResourceId, err := fasit.updateResource(naisResource, exposedResource, class, environment, hostname, deploymentRequest)
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
@@ -213,7 +214,7 @@ func (fasit FakeFasitClient) createResource(resource ExposedResource, fasitEnvir
 
 var updateCalled bool
 
-func (fasit FakeFasitClient) updateResource(existingResourceId int, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
+func (fasit FakeFasitClient) updateResource(existingResource NaisResource, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
 	updateCalled = true
 	switch deploymentRequest.Zone {
 	case "failed":
@@ -432,7 +433,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		assert.Equal(t, "{\"application\":\"appName\",\"environment\":\"t1000\",\"version\":\"2.1\",\"exposedresources\":[{\"id\":1},{\"id\":2},{\"id\":3}],\"usedresources\":[],\"clustername\":\"nais\",\"domain\":\"devillo.no\"}", string(payload[:n]))
 	})
 	t.Run("Building RestService ResourcePayload", func(t *testing.T) {
-		payloadReturn := buildResourcePayload(restResource, class, environment, zone, hostname)
+		payloadReturn := buildResourcePayload(restResource, NaisResource{}, class, environment, zone, hostname)
 		payload, _ := payloadReturn.(RestResourcePayload)
 		assert.Equal(t, "RestService", payload.Type)
 		assert.Equal(t, alias, payload.Alias)
@@ -442,13 +443,13 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		assert.Equal(t, zone, payload.Scope.Zone)
 	})
 	t.Run("Marshalling restResource payloads yields expected result", func(t *testing.T) {
-		payload, err := json.Marshal(buildResourcePayload(restResource, class, environment, zone, hostname))
+		payload, err := json.Marshal(buildResourcePayload(restResource, NaisResource{}, class, environment, zone, hostname))
 		assert.NoError(t, err)
 		n := len(payload)
 		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"scope\":\"fss\"},\"type\":\"RestService\",\"properties\":{\"url\":\"https://hostname/myPath\",\"description\":\"myDescription\"}}", string(payload[:n]))
 	})
 	t.Run("Building WebserviceEndpoint ResourcePayload", func(t *testing.T) {
-		payloadReturn := buildResourcePayload(webserviceResource, class, environment, zone, hostname)
+		payloadReturn := buildResourcePayload(webserviceResource, NaisResource{}, class, environment, zone, hostname)
 		payload, _ := payloadReturn.(WebserviceResourcePayload)
 		assert.Equal(t, "WebserviceEndpoint", payload.Type)
 		assert.Equal(t, alias, payload.Alias)
@@ -459,20 +460,49 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	})
 	t.Run("Marshalling Webservice payloads yields expected result", func(t *testing.T) {
 
-		payload, err := json.Marshal(buildResourcePayload(webserviceResource, class, environment, zone, hostname))
-		//payload = bytes.Replace(payload, []byte("\\u0026"), []byte("&"), -1)
+		payload, err := json.Marshal(buildResourcePayload(webserviceResource, NaisResource{}, class, environment, zone, hostname))
+		payload = bytes.Replace(payload, []byte("\\u0026"), []byte("&"), -1)
 		assert.NoError(t, err)
 		n := len(payload)
 		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"scope\":\"fss\"},\"type\":\"WebserviceEndpoint\",\"properties\":{\"endpointurl\":\"https://hostname/myPath\",\"wsdlurl\":\"http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=myArtifactId&e=zip&g=myGroup&r=m2internal&v=2.1\",\"description\":\"myDescription\"}}", string(payload[:n]))
 	})
 	t.Run("Building RestService ResourcePayload with AllZones returns wider scope", func(t *testing.T) {
 		restResource.AllZones = allZones
-		payloadReturn := buildResourcePayload(restResource, class, environment, zone, hostname)
+		payloadReturn := buildResourcePayload(restResource, NaisResource{}, class, environment, zone, hostname)
 		payload, _ := payloadReturn.(RestResourcePayload)
 		assert.Equal(t, environment, payload.Scope.Environment)
 		assert.Empty(t, payload.Scope.Zone)
 	})
 }
+
+func TestGenerateScope(t *testing.T) {
+	resource := ExposedResource{AllZones: false}
+	existingResource := NaisResource{}
+	fasitEnvironmentClass := "u"
+	environment := "u1"
+	zone := "fss"
+	t.Run("default scope set when creating a resource", func(t *testing.T) {
+		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
+		defaultScope := Scope{EnvironmentClass:fasitEnvironmentClass,Environment:environment,Zone:zone}
+		assert.Equal(t, defaultScope, scope)
+
+	})
+	t.Run("All Zones returns wide scope", func(t *testing.T) {
+		resource.AllZones = true
+		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
+		allZoneScope := Scope{EnvironmentClass:fasitEnvironmentClass,Environment:environment}
+		assert.Equal(t, allZoneScope, scope)
+	})
+	t.Run("Updating a resource uses scope from existing resource", func(t *testing.T) {
+		existingResource.scope = Scope{EnvironmentClass:fasitEnvironmentClass,Zone:zone}
+		existingResource.id = 2
+		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
+		assert.Equal(t, existingResource.scope, scope)
+	})
+
+}
+
+
 
 func TestGetFasitEnvironment(t *testing.T) {
 	namespace := "namespace"

@@ -33,12 +33,16 @@ func newDefaultAppConfig() NaisAppConfig {
 		Port:  port,
 		Healthcheck: Healthcheck{
 			Readiness: Probe{
-				Path:         readinessPath,
-				InitialDelay: 20,
+				Path:             readinessPath,
+				InitialDelay:     20,
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
 			},
 			Liveness: Probe{
-				Path:         livenessPath,
-				InitialDelay: 20,
+				Path:             livenessPath,
+				InitialDelay:     20,
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
 			},
 		},
 		Resources: ResourceRequirements{

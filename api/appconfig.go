@@ -12,8 +12,10 @@ import (
 )
 
 type Probe struct {
-	Path         string
-	InitialDelay int `yaml:"initialDelay"`
+	Path             string
+	InitialDelay     int `yaml:"initialDelay"`
+	PeriodSeconds    int `yaml:"periodSeconds"`
+	FailureThreshold int `yaml:"failureThreshold"`
 }
 
 type Healthcheck struct {

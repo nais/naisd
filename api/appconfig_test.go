@@ -37,6 +37,10 @@ func TestAppConfigUnmarshal(t *testing.T) {
 	assert.Equal(t, "/path", appConfig.Prometheus.Path)
 	assert.Equal(t, 79, appConfig.Healthcheck.Liveness.InitialDelay)
 	assert.Equal(t, 79, appConfig.Healthcheck.Readiness.InitialDelay)
+	assert.Equal(t, 15, appConfig.Healthcheck.Liveness.FailureThreshold)
+	assert.Equal(t, 3, appConfig.Healthcheck.Readiness.FailureThreshold)
+	assert.Equal(t, 5, appConfig.Healthcheck.Liveness.PeriodSeconds)
+	assert.Equal(t, 10, appConfig.Healthcheck.Readiness.PeriodSeconds)
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {

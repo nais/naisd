@@ -130,7 +130,6 @@ func downloadAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig N
 				if err != nil {
 					return NaisAppConfig{}, err
 				}
-
 			}
 		}
 	}
@@ -154,13 +153,13 @@ func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error)
 	response, err := http.Get(url)
 	if err != nil {
 		glog.Errorf("Could not fetch %s", err)
-		return NaisAppConfig{}, err
+		return NaisAppConfig{}, fmt.Errorf("HTTP GET failed for url: %s. %s", url, err.Error())
 	}
 
 	defer response.Body.Close()
 
 	if response.StatusCode > 299 {
-		return NaisAppConfig{}, fmt.Errorf("got http status code %d\n", response.StatusCode)
+		return NaisAppConfig{}, fmt.Errorf("Got HTTP status code %d fetching manifest from URL: %s\n", response.StatusCode, url)
 	}
 
 	if body, err := ioutil.ReadAll(response.Body); err != nil {
@@ -168,7 +167,7 @@ func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error)
 	} else {
 		if err := yaml.Unmarshal(body, &appConfig); err != nil {
 			glog.Errorf("Could not unmarshal yaml %s", err)
-			return NaisAppConfig{}, err
+			return NaisAppConfig{}, fmt.Errorf("Unable to unmarshal yaml: %s", err.Error())
 		}
 		glog.Infof("Got manifest %s", appConfig)
 	}

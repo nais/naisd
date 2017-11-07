@@ -8,6 +8,10 @@ healthcheck: #Optional
   liveness:
     path: isalive
     initialDelay: 20
+    periodSeconds: 5     # How often (in seconds) to perform the probe. Default to 10 seconds
+    failureThreshold: 10 # when a Pod starts and the probe fails,
+                         # nais will try failureThreshold times before giving up and restarting the Pod
+                         # Defaults to 3
   readiness:
     path: isready
     initialDelay: 20

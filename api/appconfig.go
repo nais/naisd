@@ -71,9 +71,15 @@ type UsedResource struct {
 }
 
 type ExposedResource struct {
-	Alias        string
-	ResourceType string `yaml:"resourceType"`
-	Path         string
+	Alias			string
+	ResourceType	string `yaml:"resourceType"`
+	Path			string
+	Description		string
+	WsdlGroupId		string `yaml:"wsdlGroupId"`
+	WsdlArtifactId  string `yaml:"wsdlArtifactId"`
+	WsdlVersion		string `yaml:"wsdlVersion"`
+	SecurityToken	string `yaml:"securityToken"`
+	AllZones		bool   `yaml:"allZones"`
 }
 
 type ValidationErrors struct {

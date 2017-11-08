@@ -17,6 +17,7 @@ func main() {
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")
 	fasitUrl := flag.String("fasit-url", "https://fasit.example.no", "URL to fasit instance")
 	clusterSubdomain := flag.String("cluster-subdomain", "nais-example.nais.example.no", "Cluster sub-domain")
+	clusterName := flag.String("clustername", "kubernetes", "Name of the kubernetes cluster")
 
 	flag.Parse()
 
@@ -24,7 +25,7 @@ func main() {
 
 	glog.Infof("running on port %s", Port)
 	clientSet := newClientSet(*kubeconfig)
-	err := http.ListenAndServe(Port, api.NewApi(clientSet, *fasitUrl, *clusterSubdomain, api.NewDeploymentStatusViewer(clientSet)).Handler())
+	err := http.ListenAndServe(Port, api.NewApi(clientSet, *fasitUrl, *clusterSubdomain, *clusterName, api.NewDeploymentStatusViewer(clientSet)).Handler())
 	if err != nil {
 		panic(err)
 	}

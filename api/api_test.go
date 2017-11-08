@@ -142,6 +142,7 @@ func TestNoManifestGivesError(t *testing.T) {
 func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
+	environment := "environmentName"
 	image := "name/Container"
 	version := "123"
 	resourceAlias := "alias1"
@@ -150,15 +151,15 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", nil}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster",nil}
 
 	depReq := NaisDeploymentRequest{
 		Application:  appName,
 		Version:      version,
-		Environment:  namespace,
+		Environment:  environment,
 		AppConfigUrl: "http://repo.com/app",
 		Zone:         "zone",
-		Namespace:    "namespace",
+		Namespace:    namespace,
 	}
 
 	config := NaisAppConfig{
@@ -168,7 +169,9 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 			Used: []UsedResource{{resourceAlias, resourceType}},
 		},
 	}
+	response := "anything"
 	data, _ := yaml.Marshal(config)
+	appInstanceResponse, _ := yaml.Marshal(response)
 
 	defer gock.Off()
 
@@ -181,10 +184,25 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", resourceAlias).
 		MatchParam("type", resourceType).
-		MatchParam("environment", namespace).
+		MatchParam("environment", environment).
 		MatchParam("application", appName).
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
+
+	gock.New("https://fasit.local").
+		Get(fmt.Sprintf("/api/v2/environments/%s-test-cluster", namespace)).
+		Reply(200).
+		JSON(map[string]string{"environmentclass": "u"})
+
+	gock.New("https://fasit.local").
+		Get("/api/v2/applications/"+appName).
+		Reply(200).
+		BodyString("anything")
+
+		gock.New("https://fasit.local").
+		Post("/api/v2/applicationinstances/").
+		Reply(200).
+		BodyString(string(appInstanceResponse))
 
 	json, _ := json.Marshal(depReq)
 
@@ -220,7 +238,14 @@ func TestMissingResources(t *testing.T) {
 		Get("/app").
 		Reply(200).
 		BodyString(string(data))
-
+	gock.New("https://fasit.local").
+		Get("/api/v2/environments/namespace-clustername").
+		Reply(200).
+		JSON(map[string]string{"environmentclass": "u"})
+	gock.New("https://fasit.local").
+		Get("/api/v2/applications/appname").
+		Reply(200).
+		BodyString("anything")
 	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
 		Reply(404)
@@ -228,14 +253,14 @@ func TestMissingResources(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/deploy", strings.NewReader(CreateDefaultDeploymentRequest()))
 
 	rr := httptest.NewRecorder()
-	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", nil}
+	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", "clustername",nil}
 	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, 400, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("Failed to get resource: %s", resourceAlias))
+	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("Unable to fetch fasit resources: Resource not found in Fasit:"))
 }
 
 func CreateDefaultDeploymentRequest() string {

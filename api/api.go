@@ -19,6 +19,7 @@ type Api struct {
 	Clientset              kubernetes.Interface
 	FasitUrl               string
 	ClusterSubdomain       string
+	ClusterName            string
 	DeploymentStatusViewer DeploymentStatusViewer
 }
 
@@ -33,18 +34,35 @@ type NaisDeploymentRequest struct {
 	Password     string `json:"password"`
 	Namespace    string `json:"namespace"`
 }
+
+type AppError interface {
+	error
+	Code() int
+}
+
 type appError struct {
-	Error   error
-	Message string
-	Code    int
+	OriginalError error
+	Message       string
+	StatusCode    int
+}
+
+func (e appError) Code() int {
+	return e.StatusCode
+}
+func (e appError) Error() string {
+	if e.OriginalError != nil {
+		return fmt.Sprintf("%s: %s, (%d)", e.Message, e.OriginalError.Error(), e.StatusCode)
+	}
+	return fmt.Sprintf("%s: (%d)", e.Message, e.StatusCode)
+
 }
 
 type appHandler func(w http.ResponseWriter, r *http.Request) *appError
 
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil { // e is *appError, not os.Error.
-		glog.Errorf("%s: %s\n", e.Message, e.Error)
-		http.Error(w, e.Message, e.Code)
+		glog.Errorf(e.Error())
+		http.Error(w, e.Error(), e.StatusCode)
 	}
 }
 
@@ -72,11 +90,12 @@ func (api Api) Handler() http.Handler {
 	return mux
 }
 
-func NewApi(clientset kubernetes.Interface, fasitUrl string, clusterDomain string, d DeploymentStatusViewer) Api {
+func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName string, d DeploymentStatusViewer) Api {
 	return Api{
 		Clientset:              clientset,
 		FasitUrl:               fasitUrl,
 		ClusterSubdomain:       clusterDomain,
+		ClusterName:            clusterName,
 		DeploymentStatusViewer: d,
 	}
 }
@@ -115,6 +134,25 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 	return nil
 }
 
+func validateFasitRequirements(fasit FasitClientAdapter, application, fasitEnvironment string) error {
+	if _, err := fasit.GetFasitEnvironment(fasitEnvironment); err != nil {
+		glog.Errorf("Environment '%s' does not exist in Fasit", fasitEnvironment)
+		return err
+	}
+	if err := fasit.GetFasitApplication(application); err != nil {
+		glog.Errorf("Application '%s' does not exist in Fasit", application)
+		return err
+	}
+
+	return nil
+}
+
+func hasResources(appConfig NaisAppConfig) bool {
+	if len(appConfig.FasitResources.Used) == 0 && len(appConfig.FasitResources.Exposed) == 0 {
+		return false
+	}
+	return true
+}
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 
@@ -123,6 +161,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, fmt.Sprintf("Unable to unmarshal deployment request: %s", err.Error()), http.StatusBadRequest}
 	}
 
+	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
 	appConfig, err := GenerateAppConfig(deploymentRequest)
@@ -130,9 +170,21 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, fmt.Sprintf("Unable to fetch manifest: %s", err.Error()), http.StatusInternalServerError}
 	}
 
-	naisResources, err := fetchFasitResources(api.FasitUrl, deploymentRequest, appConfig)
+	fasitEnvironment := fasit.environmentNameFromNamespaceBuilder(deploymentRequest.Namespace, api.ClusterName)
+	var fasitEnvironmentClass string
+
+	if hasResources(appConfig) {
+		if err := validateFasitRequirements(fasit, deploymentRequest.Application, fasitEnvironment); err != nil {
+			return &appError{err, "Validating requirements for deployment failed", http.StatusInternalServerError}
+		}
+		fasitEnvironmentClass, err = fasit.GetFasitEnvironment(fasitEnvironment)
+	}
+
+	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
+
+	naisResources, err := fetchFasitResources(fasit, deploymentRequest, appConfig)
 	if err != nil {
-		return &appError{err, fmt.Sprintf("Unable to fetch fasit resources: %s", err.Error()), http.StatusBadRequest}
+		return &appError{err, "Unable to fetch fasit resources", http.StatusBadRequest}
 	}
 
 	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, api.ClusterSubdomain, api.Clientset)
@@ -141,6 +193,18 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
+
+	ingressHostnames := deploymentResult.Ingress.Spec.Rules
+	var ingressHostname string
+	if len(ingressHostnames) > 0 {
+		ingressHostname = ingressHostnames[len(ingressHostnames)-1].Host
+	}
+
+	if hasResources(appConfig) {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname, fasitEnvironmentClass, api.ClusterName, api.ClusterSubdomain); err != nil {
+			return &appError{err, "Failed while updating Fasit", http.StatusInternalServerError}
+		}
+	}
 
 	w.WriteHeader(200)
 	w.Write(createResponse(deploymentResult))

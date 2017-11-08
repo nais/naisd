@@ -9,8 +9,8 @@
       "application": "presys"
     },
     "properties": {
-      "contextRoots": "root",
-      "url": "url.with.root",
+      "contextRoots": "ctxroot",
+      "url": "subdomainwithctxroot.host.tld",
       "poolName": "pool_tst_presys_t0_https_auto"
     },
     "secrets": {},
@@ -39,7 +39,7 @@
       "application": "presys"
     },
     "properties": {
-      "url": "url.without.root",
+      "url": "subdomain.host.tld",
       "poolName": "pool_tst_presys_t0_https_auto"
     },
     "secrets": {},

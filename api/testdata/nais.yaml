@@ -9,6 +9,8 @@ healthcheck:
   liveness:
     path: isAlive2
     initialDelay: 79
+    periodSeconds: 5
+    failureThreshold: 15
   readiness:
     path: isReady2
     initialDelay: 79

@@ -158,7 +158,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
 	if err != nil {
-		return &appError{err, "Unable to unmarshal deployment request", http.StatusBadRequest}
+		return &appError{err, fmt.Sprintf("Unable to unmarshal deployment request: %s", err.Error()), http.StatusBadRequest}
 	}
 
 	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
@@ -167,7 +167,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	appConfig, err := GenerateAppConfig(deploymentRequest)
 	if err != nil {
-		return &appError{err, "Unable to fetch manifest", http.StatusInternalServerError}
+		return &appError{err, fmt.Sprintf("Unable to fetch manifest: %s", err.Error()), http.StatusInternalServerError}
 	}
 
 	fasitEnvironment := fasit.environmentNameFromNamespaceBuilder(deploymentRequest.Namespace, api.ClusterName)
@@ -189,7 +189,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, api.ClusterSubdomain, api.Clientset)
 	if err != nil {
-		return &appError{err, "Failed while creating or updating k8s-resources", http.StatusBadRequest}
+		return &appError{err, fmt.Sprintf("Failed while creating or updating k8s-resources: %s", err.Error()), http.StatusInternalServerError}
 	}
 
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()

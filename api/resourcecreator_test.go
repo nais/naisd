@@ -33,12 +33,16 @@ func newDefaultAppConfig() NaisAppConfig {
 		Port:  port,
 		Healthcheck: Healthcheck{
 			Readiness: Probe{
-				Path:         readinessPath,
-				InitialDelay: 20,
+				Path:             readinessPath,
+				InitialDelay:     20,
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
 			},
 			Liveness: Probe{
-				Path:         livenessPath,
-				InitialDelay: 20,
+				Path:             livenessPath,
+				InitialDelay:     20,
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
 			},
 		},
 		Resources: ResourceRequirements{
@@ -432,13 +436,13 @@ func TestIngress(t *testing.T) {
 			{
 				resourceType: "LoadBalancerConfig",
 				ingresses: map[string]string{
-					"app.adeo.no": "/context",
+					"app.adeo.no": "context",
 				},
 			},
 			{
 				resourceType: "LoadBalancerConfig",
 				ingresses: map[string]string{
-					"app2.adeo.no": "/context2",
+					"app2.adeo.no": "context2",
 				},
 			},
 		}

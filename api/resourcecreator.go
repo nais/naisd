@@ -154,6 +154,8 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 						},
 					},
 					InitialDelaySeconds: int32(appConfig.Healthcheck.Liveness.InitialDelay),
+					PeriodSeconds:       int32(appConfig.Healthcheck.Liveness.PeriodSeconds),
+					FailureThreshold:    int32(appConfig.Healthcheck.Liveness.FailureThreshold),
 				},
 				ReadinessProbe: &v1.Probe{
 					Handler: v1.Handler{
@@ -163,6 +165,8 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 						},
 					},
 					InitialDelaySeconds: int32(appConfig.Healthcheck.Readiness.InitialDelay),
+					PeriodSeconds:       int32(appConfig.Healthcheck.Readiness.PeriodSeconds),
+					FailureThreshold:    int32(appConfig.Healthcheck.Readiness.FailureThreshold),
 				},
 				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
@@ -357,7 +361,7 @@ func createIngressRule(serviceName, host, path string) v1beta1.IngressRule {
 							ServiceName: serviceName,
 							ServicePort: intstr.IntOrString{IntVal: 80},
 						},
-						Path: path,
+						Path: strings.Replace("/" + path, "//", "/", 1), // make sure we always begin with exactly one slash
 					},
 				},
 			},

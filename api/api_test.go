@@ -104,11 +104,12 @@ func TestDeployStatusHandler(t *testing.T) {
 func TestNoManifestGivesError(t *testing.T) {
 	api := Api{}
 
+	manifestUrl := "http://repo.com/app"
 	depReq := NaisDeploymentRequest{
 		Application:  "appname",
 		Version:      "",
 		Environment:  "",
-		AppConfigUrl: "http://repo.com/app",
+		AppConfigUrl: manifestUrl,
 		Zone:         "zone",
 		Namespace:    "namespace",
 	}
@@ -135,6 +136,7 @@ func TestNoManifestGivesError(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, 500, rr.Code)
+	assert.Contains(t, string(rr.Body.Bytes()), manifestUrl)
 }
 
 func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {

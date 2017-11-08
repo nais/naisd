@@ -20,12 +20,16 @@ func GetDefaultAppConfig(application string) NaisAppConfig {
 		},
 		Healthcheck: Healthcheck{
 			Liveness: Probe{
-				Path:         "isAlive",
-				InitialDelay: 20,
+				Path:             "isAlive",
+				InitialDelay:     20,
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
 			},
 			Readiness: Probe{
-				Path:         "isReady",
-				InitialDelay: 20,
+				Path:             "isReady",
+				InitialDelay:     20,
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
 			},
 		},
 		Ingress: Ingress{Enabled: true},

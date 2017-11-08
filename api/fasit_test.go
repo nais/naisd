@@ -619,9 +619,10 @@ func TestGettingListOfResources(t *testing.T) {
 	assert.Equal(t, alias2, resourcesReplies[1].name)
 	assert.Equal(t, alias3, resourcesReplies[2].name)
 	assert.Equal(t, alias4, resourcesReplies[3].name)
-	assert.Equal(t, 2, len(resourcesReplies[3].properties))
+	assert.Equal(t, 3, len(resourcesReplies[3].properties))
 	assert.Equal(t, "value1", resourcesReplies[3].properties["key1"])
 	assert.Equal(t, "dc=preprod,dc=local", resourcesReplies[3].properties["key2"])
+	assert.Equal(t, "value3", resourcesReplies[3].properties["key3"])
 }
 
 func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
@@ -708,11 +709,11 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 	t.Run("Parse array of load balancer config correctly", func(t *testing.T) {
 		b, _ := ioutil.ReadFile("testdata/fasitLbConfigResponse.json")
 		result, err := parseLoadBalancerConfig(b)
+
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(result))
-		assert.Equal(t, "root", result["url.with.root"])
-		assert.Equal(t, "", result["url.without.root"])
-
+		assert.Equal(t, "ctxroot", result["subdomainwithctxroot.host.tld"])
+		assert.Equal(t, "", result["subdomain.host.tld"])
 	})
 
 	t.Run("Err if no loadbalancer config is found", func(t *testing.T) {
@@ -724,7 +725,6 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 		result, err := parseLoadBalancerConfig([]byte(`[]`))
 		assert.NoError(t, err)
 		assert.Empty(t, result)
-
 	})
 }
 

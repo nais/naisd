@@ -36,16 +36,16 @@ type WebserviceResourcePayload struct {
 type WebserviceProperties struct {
 	EndpointUrl string `json:"endpointurl"`
 	WsdlUrl     string `json:"wsdlurl"`
-	Description string `json:"description"`
+	Description string `json:"description,omitempty"`
 }
 type RestProperties struct {
 	Url         string `json:"url"`
-	Description string `json:"description"`
+	Description string `json:"description,omitempty"`
 }
 type Scope struct {
 	EnvironmentClass string `json:"environmentclass"`
-	Environment      string `json:"environment"`
-	Zone             string `json:"scope"`
+	Environment      string `json:"environment,omitempty"`
+	Zone             string `json:"zone,omitempty"`
 }
 
 type Password struct {
@@ -458,6 +458,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resourc
 	resource.resourceType = fasitResource.ResourceType
 	resource.properties = fasitResource.Properties
 	resource.id = fasitResource.Id
+	resource.scope = fasitResource.Scope
 
 	if len(fasitResource.Secrets) > 0 {
 		secret, err := resolveSecret(fasitResource.Secrets, fasit.Username, fasit.Password)

@@ -38,6 +38,7 @@ func TestGettingResource(t *testing.T) {
 	assert.Equal(t, resourceType, resource.resourceType)
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
 	assert.Equal(t, "basta", resource.properties["username"])
+	assert.Equal(t, "p", resource.scope.EnvironmentClass)
 }
 
 func TestCreatingApplicationInstance(t *testing.T) {
@@ -446,7 +447,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		payload, err := json.Marshal(buildResourcePayload(restResource, NaisResource{}, class, environment, zone, hostname))
 		assert.NoError(t, err)
 		n := len(payload)
-		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"scope\":\"fss\"},\"type\":\"RestService\",\"properties\":{\"url\":\"https://hostname/myPath\",\"description\":\"myDescription\"}}", string(payload[:n]))
+		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"zone\":\"fss\"},\"type\":\"RestService\",\"properties\":{\"url\":\"https://hostname/myPath\",\"description\":\"myDescription\"}}", string(payload[:n]))
 	})
 	t.Run("Building WebserviceEndpoint ResourcePayload", func(t *testing.T) {
 		payloadReturn := buildResourcePayload(webserviceResource, NaisResource{}, class, environment, zone, hostname)
@@ -464,7 +465,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		payload = bytes.Replace(payload, []byte("\\u0026"), []byte("&"), -1)
 		assert.NoError(t, err)
 		n := len(payload)
-		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"scope\":\"fss\"},\"type\":\"WebserviceEndpoint\",\"properties\":{\"endpointurl\":\"https://hostname/myPath\",\"wsdlurl\":\"http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=myArtifactId&e=zip&g=myGroup&r=m2internal&v=2.1\",\"description\":\"myDescription\"}}", string(payload[:n]))
+		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"zone\":\"fss\"},\"type\":\"WebserviceEndpoint\",\"properties\":{\"endpointurl\":\"https://hostname/myPath\",\"wsdlurl\":\"http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=myArtifactId&e=zip&g=myGroup&r=m2internal&v=2.1\",\"description\":\"myDescription\"}}", string(payload[:n]))
 	})
 	t.Run("Building RestService ResourcePayload with AllZones returns wider scope", func(t *testing.T) {
 		restResource.AllZones = allZones
@@ -496,8 +497,12 @@ func TestGenerateScope(t *testing.T) {
 	t.Run("Updating a resource uses scope from existing resource", func(t *testing.T) {
 		existingResource.scope = Scope{EnvironmentClass:fasitEnvironmentClass,Zone:zone}
 		existingResource.id = 2
+		resource.AllZones = false
 		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
+		json, _ := json.Marshal(scope)
+		n := len(json)
 		assert.Equal(t, existingResource.scope, scope)
+		assert.Equal(t, "{\"environmentclass\":\"u\",\"zone\":\"fss\"}", string(json[:n]))
 	})
 
 }

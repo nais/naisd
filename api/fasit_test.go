@@ -465,7 +465,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		payload = bytes.Replace(payload, []byte("\\u0026"), []byte("&"), -1)
 		assert.NoError(t, err)
 		n := len(payload)
-		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"zone\":\"fss\"},\"type\":\"WebserviceEndpoint\",\"properties\":{\"endpointUrl\":\"https://hostname/myPath\",\"wsdlUrl\":\"http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=myArtifactId&e=zip&g=myGroup&r=m2internal&v=2.1\",\"description\":\"myDescription\"}}", string(payload[:n]))
+		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"zone\":\"fss\"},\"type\":\"WebserviceEndpoint\",\"properties\":{\"endpointUrl\":\"https://hostname/myPath\",\"wsdlUrl\":\"http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=myArtifactId&e=zip&g=myGroup&r=m2internal&v=2.1\",\"securityToken\":\"LDAP\",\"description\":\"myDescription\"}}", string(payload[:n]))
 	})
 	t.Run("Building RestService ResourcePayload with AllZones returns wider scope", func(t *testing.T) {
 		restResource.AllZones = allZones

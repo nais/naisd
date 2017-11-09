@@ -34,9 +34,10 @@ type WebserviceResourcePayload struct {
 	Properties WebserviceProperties `json:"properties"`
 }
 type WebserviceProperties struct {
-	EndpointUrl string `json:"endpointUrl"`
-	WsdlUrl     string `json:"wsdlUrl"`
-	Description string `json:"description,omitempty"`
+	EndpointUrl   string `json:"endpointUrl"`
+	WsdlUrl       string `json:"wsdlUrl"`
+	SecurityToken string `json:"securityToken""`
+	Description   string `json:"description,omitempty"`
 }
 type RestProperties struct {
 	Url         string `json:"url"`
@@ -85,7 +86,7 @@ type FasitResource struct {
 	Id           int
 	Alias        string
 	ResourceType string                 `json:"type"`
-	Scope		 Scope					`json:"scope"`
+	Scope        Scope                  `json:"scope"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
 	Certificates map[string]interface{} `json:"files"`
@@ -100,7 +101,7 @@ type NaisResource struct {
 	id           int
 	name         string
 	resourceType string
-	scope		 Scope
+	scope        Scope
 	properties   map[string]string
 	secret       map[string]string
 	certificates map[string][]byte
@@ -330,7 +331,7 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, fas
 	return resource, nil
 }
 
-func SafeMarshal(v interface{})([]byte, error){
+func SafeMarshal(v interface{}) ([]byte, error) {
 	/*	String values encode as JSON strings coerced to valid UTF-8, replacing invalid bytes with the Unicode replacement rune.
 	The angle brackets "<" and ">" are escaped to "\u003c" and "\u003e" to keep some browsers from misinterpreting JSON output as HTML.
 	Ampersand "&" is also escaped to "\u0026" for the same reason. This escaping can be disabled using an Encoder that had SetEscapeHTML(false) called on it.	*/
@@ -700,7 +701,7 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 	} else if strings.EqualFold("WebserviceEndpoint", resource.ResourceType) {
 		Url, _ := url.Parse("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect")
 		q := url.Values{}
-		q.Add("r","m2internal")
+		q.Add("r", "m2internal")
 		q.Add("g", resource.WsdlGroupId)
 		q.Add("a", resource.WsdlArtifactId)
 		q.Add("v", resource.WsdlVersion)
@@ -712,7 +713,8 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 			Alias: resource.Alias,
 			Properties: WebserviceProperties{
 				EndpointUrl: "https://" + hostname + resource.Path,
-				WsdlUrl: Url.String(),
+				WsdlUrl:     Url.String(),
+				SecurityToken: resource.SecurityToken,
 				Description: resource.Description,
 			},
 			Scope: generateScope(resource, existingResource, fasitEnvironmentClass, fasitEnvironment, zone),

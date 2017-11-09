@@ -35,7 +35,7 @@ type WebserviceResourcePayload struct {
 }
 type WebserviceProperties struct {
 	EndpointUrl string `json:"endpointUrl"`
-	WsdlUrl     string `json:"wsdlurl"`
+	WsdlUrl     string `json:"wsdlUrl"`
 	Description string `json:"description,omitempty"`
 }
 type RestProperties struct {

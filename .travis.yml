@@ -21,6 +21,7 @@ script:
 - git add --all
 - git commit -m "auto-update by travis [skip ci]"
 - git push https://$GH_TOKEN@github.com/nais/charts
+- cd ..
 deploy:
   provider: releases
   api_key: $GH_TOKEN

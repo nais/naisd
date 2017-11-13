@@ -8,7 +8,7 @@ before_script:
 - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
 - git clone https://github.com/nais/charts
 script:
-- make install test linux
+- make install test linux cli-dist
 - /bin/bash bump.sh $GH_TOKEN
 - git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags https://$GH_TOKEN@github.com/nais/naisd
 - make docker-build push-dockerhub
@@ -21,6 +21,14 @@ script:
 - git add --all
 - git commit -m "auto-update by travis [skip ci]"
 - git push https://$GH_TOKEN@github.com/nais/charts
+deploy:
+  provider: releases
+  api_key: $GH_TOKEN
+  file_glob: true
+  file: "nais-*"
+  skip_cleanup: true
+  on:
+    branch: master
 branches:
   only:
   - master

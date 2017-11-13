@@ -25,7 +25,7 @@ cli:
 
 
 cli-dist:
-	sudo docker run --rm -v \
+	docker run --rm -v \
 		${PWD}\:/go/src/github.com/nais/naisd \
 		-w /go/src/github.com/nais/naisd \
 		-e GOOS=linux \
@@ -33,7 +33,7 @@ cli-dist:
 		${GO_IMG} go build -o nais-linux-amd64 -ldflags="-s -w" ./cli/nais.go
 	xz nais-linux-amd64
 
-	sudo docker run --rm -v \
+	docker run --rm -v \
 		${PWD}\:/go/src/github.com/nais/naisd \
 		-w /go/src/github.com/nais/naisd \
 		-e GOOS=darwin \
@@ -41,7 +41,7 @@ cli-dist:
 		${GO_IMG} go build -o nais-darwin-amd64 -ldflags="-s -w" ./cli/nais.go
 	xz nais-darwin-amd64
 
-	sudo docker run --rm -v \
+	docker run --rm -v \
 		${PWD}\:/go/src/github.com/nais/naisd \
 		-w /go/src/github.com/nais/naisd \
 		-e GOOS=windows \

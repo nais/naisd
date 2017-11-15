@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
@@ -86,6 +87,7 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Get("/isalive"), appHandler(api.isAlive))
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
+	mux.Handle(pat.Get("/version"), appHandler(api.version))
 	mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
 	return mux
 }
@@ -131,6 +133,16 @@ func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *
 func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "isAlive"}).Inc()
 	fmt.Fprint(w, "")
+	return nil
+}
+
+func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
+	response := map[string]string{"version": version.Version, "revision": version.Revision}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		return &appError{err, "Unable to encode JSON", 500}
+	}
+
 	return nil
 }
 

@@ -208,7 +208,9 @@ func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedR
 
 func getResourceIds(usedResources []NaisResource) (usedResourceIds []int) {
 	for _, resource := range usedResources {
-		usedResourceIds = append(usedResourceIds, resource.id)
+		if resource.resourceType != "LoadBalancerConfig" {
+			usedResourceIds = append(usedResourceIds, resource.id)
+		}
 	}
 	return usedResourceIds
 }
@@ -712,10 +714,10 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 			Type:  "WebserviceEndpoint",
 			Alias: resource.Alias,
 			Properties: WebserviceProperties{
-				EndpointUrl: "https://" + hostname + resource.Path,
-				WsdlUrl:     Url.String(),
+				EndpointUrl:   "https://" + hostname + resource.Path,
+				WsdlUrl:       Url.String(),
 				SecurityToken: resource.SecurityToken,
-				Description: resource.Description,
+				Description:   resource.Description,
 			},
 			Scope: generateScope(resource, existingResource, fasitEnvironmentClass, fasitEnvironment, zone),
 		}

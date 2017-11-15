@@ -183,7 +183,7 @@ func TestGetLoadBalancerConfig(t *testing.T) {
 
 }
 func TestGetResourceId(t *testing.T) {
-	naisResources := []NaisResource{{id: 1}, {id: 2},}
+	naisResources := []NaisResource{{id: 1}, {id: 2},{id:0, resourceType:"LoadBalancerConfig"}}
 	resourceIds := getResourceIds(naisResources)
 	assert.Equal(t, []int{1, 2}, resourceIds)
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/nais/naisd/api/version"
+	ver "github.com/nais/naisd/api/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
@@ -137,7 +137,7 @@ func (api Api) isAlive(w http.ResponseWriter, _ *http.Request) *appError {
 }
 
 func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
-	response := map[string]string{"version": version.Version, "revision": version.Revision}
+	response := map[string]string{"version": ver.Version, "revision": ver.Revision}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		return &appError{err, "Unable to encode JSON", 500}

@@ -167,7 +167,7 @@ func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error)
 	defer response.Body.Close()
 
 	if response.StatusCode > 299 {
-		return NaisAppConfig{}, fmt.Errorf("Got HTTP status code %d fetching manifest from URL: %s\n", response.StatusCode, url)
+		return NaisAppConfig{}, fmt.Errorf("Got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
 	}
 
 	if body, err := ioutil.ReadAll(response.Body); err != nil {

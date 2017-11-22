@@ -222,12 +222,13 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 func TestMissingResources(t *testing.T) {
 	resourceAlias := "alias1"
+	resourceType := "db"
 
 	config := NaisAppConfig{
 		Image: "name/Container",
 		Port:  321,
 		FasitResources: FasitResources{
-			Used: []UsedResource{{resourceAlias, "db"}},
+			Used: []UsedResource{{resourceAlias, resourceType}},
 		},
 	}
 	data, _ := yaml.Marshal(config)
@@ -260,7 +261,8 @@ func TestMissingResources(t *testing.T) {
 
 	assert.Equal(t, 400, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("Unable to fetch fasit resources: Resource not found in Fasit:"))
+
+	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("Unable to get resource %s (%s)", resourceAlias, resourceType))
 }
 
 func CreateDefaultDeploymentRequest() string {

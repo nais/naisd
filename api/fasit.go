@@ -112,7 +112,7 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 	for _, request := range resourcesRequests {
 		resource, appErr := fasit.getScopedResource(request, environment, application, zone)
 		if appErr != nil {
-			return []NaisResource{}, appErr
+			return []NaisResource{}, fmt.Errorf("Unable to get resource %s (%s). %s",request.Alias, request.ResourceType, appErr)
 		}
 		resources = append(resources, resource)
 	}
@@ -288,13 +288,13 @@ func (fasit FasitClient) doRequest(r *http.Request) ([]byte, AppError) {
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode == 404 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return []byte{}, appError{err, "Resource not found in Fasit", http.StatusNotFound}
+		return []byte{}, appError{nil, "Item not found in Fasit", http.StatusNotFound}
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return []byte{}, appError{err, "Error contacting Fasit", resp.StatusCode}
+		return []byte{}, appError{nil, "Error contacting Fasit", resp.StatusCode}
 	}
 
 	return body, nil

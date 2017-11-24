@@ -33,6 +33,7 @@ type NaisDeploymentRequest struct {
 	NoAppConfig  bool   `json:"-"`
 	Username     string `json:"username"`
 	Password     string `json:"password"`
+	OnBehalfOf	 string `json:"onbehalfof,omitempty"`
 	Namespace    string `json:"namespace"`
 }
 

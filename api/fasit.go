@@ -132,6 +132,10 @@ func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploym
 	req, err := http.NewRequest("POST", fasitPath, bytes.NewBuffer(payload))
 	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
 	req.Header.Set("Content-Type", "application/json")
+	if deploymentRequest.OnBehalfOf != "" {
+		glog.Infof("I am setting onbehalfofheader to: %s", deploymentRequest.OnBehalfOf)
+		req.Header.Set("x-onbehalfof", deploymentRequest.OnBehalfOf)
+	}
 
 	_, appErr := fasit.doRequest(req)
 	if appErr != nil {
@@ -356,6 +360,10 @@ func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironme
 
 	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
 	req.Header.Set("Content-Type", "application/json")
+	if deploymentRequest.OnBehalfOf != "" {
+		req.Header.Set("x-onbehalfof", deploymentRequest.OnBehalfOf)
+	}
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -399,6 +407,9 @@ func (fasit FasitClient) updateResource(existingResource NaisResource, resource 
 	glog.Infof("Putting to: %s/api/v2/resources/%d", fasit.FasitUrl, existingResource.id)
 	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
 	req.Header.Set("Content-Type", "application/json")
+	if deploymentRequest.OnBehalfOf != "" {
+		req.Header.Set("x-onbehalfof", deploymentRequest.OnBehalfOf)
+	}
 
 	_, appErr := fasit.doRequest(req)
 	if appErr != nil {

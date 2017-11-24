@@ -148,6 +148,24 @@ func TestUpdateResource(t *testing.T) {
 	gock.New("https://fasit.local").
 		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
+		HeaderPresent("x-onbehalfof").
+		MatchHeader("Content-Type", "application/json").
+		Reply(200)
+
+	t.Run("x-onbehalfof header not set when no OnBehalfOf flag is present", func(t *testing.T) {
+		createdResourceId, _ := fasit.updateResource(naisResource, exposedResource, class, environment, hostname, deploymentRequest)
+		assert.False(t, gock.IsDone())
+		assert.Equal(t, naisResource.id, createdResourceId)
+	})
+	t.Run("OnBehalfOf flag sets x-onbehalfof header", func(t *testing.T) {
+		deploymentRequest.OnBehalfOf = "username"
+		createdResourceId, _ := fasit.updateResource(naisResource, exposedResource, class, environment, hostname, deploymentRequest)
+		assert.True(t, gock.IsDone())
+		assert.Equal(t, naisResource.id, createdResourceId)
+	})
+	gock.New("https://fasit.local").
+		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
+		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
 		Reply(501).
 		BodyString("bish")
@@ -156,6 +174,7 @@ func TestUpdateResource(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, 0, createdResourceId)
 	})
+
 }
 
 func TestGetLoadBalancerConfig(t *testing.T) {

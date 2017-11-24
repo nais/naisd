@@ -155,7 +155,7 @@ func TestUpdateResource(t *testing.T) {
 	t.Run("x-onbehalfof header not set when no OnBehalfOf flag is present", func(t *testing.T) {
 		createdResourceId, _ := fasit.updateResource(naisResource, exposedResource, class, environment, hostname, deploymentRequest)
 		assert.False(t, gock.IsDone())
-		assert.Equal(t, naisResource.id, createdResourceId)
+		assert.Equal(t, 0, createdResourceId)
 	})
 	t.Run("OnBehalfOf flag sets x-onbehalfof header", func(t *testing.T) {
 		deploymentRequest.OnBehalfOf = "username"

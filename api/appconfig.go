@@ -189,6 +189,7 @@ func ValidateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 		validateReplicasMin,
 		validateMinIsSmallerThanMax,
 		validateCpuThreshold,
+		validateResources,
 	}
 
 	var validationErrors ValidationErrors
@@ -201,6 +202,25 @@ func ValidateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 	return validationErrors
 }
 
+func validateResources(appConfig NaisAppConfig) *ValidationError {
+	for _, resource := range appConfig.FasitResources.Exposed {
+		if resource.ResourceType == "" || resource.Alias == "" {
+			return &ValidationError{
+				"Alias and ResourceType must be specified",
+				map[string]string{"Alias": resource.Alias},
+			}
+		}
+	}
+	for _, resource := range appConfig.FasitResources.Used {
+		if resource.ResourceType == "" || resource.Alias == "" {
+			return &ValidationError{
+				"Alias and ResourceType must be specified",
+				map[string]string{"Alias": resource.Alias},
+			}
+		}
+	}
+	return nil
+}
 func validateImage(appConfig NaisAppConfig) *ValidationError {
 	if strings.LastIndex(appConfig.Image, ":") > strings.LastIndex(appConfig.Image, "/") {
 		return &ValidationError{

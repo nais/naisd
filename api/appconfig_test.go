@@ -215,3 +215,29 @@ func TestValidateImage(t *testing.T) {
 		})
 	}
 }
+func TestValidateResource(t *testing.T) {
+	invalidConfig := NaisAppConfig{
+		FasitResources:FasitResources{
+			Exposed: []ExposedResource{{Alias:"alias1"},},
+			Used: []UsedResource{{ResourceType:"restService"},},
+		},
+	}
+	invalidConfig2 := NaisAppConfig{
+		FasitResources:FasitResources{
+			Exposed: []ExposedResource{{ResourceType:"restService"},},
+			Used: []UsedResource{{Alias:"alias1"},},
+		},
+	}
+	validConfig := NaisAppConfig{
+		FasitResources:FasitResources{
+			Exposed: []ExposedResource{{ResourceType:"restService", Alias:"alias1"},},
+			Used: []UsedResource{{ResourceType: "restService", Alias:"alias2"},},
+		},
+	}
+	err := validateResources(invalidConfig)
+	err2 := validateResources(invalidConfig2)
+	noErr := validateResources(validConfig)
+	assert.Equal(t, "Alias and ResourceType must be specified", err.ErrorMessage)
+	assert.Equal(t, "Alias and ResourceType must be specified", err2.ErrorMessage)
+	assert.Nil(t, noErr)
+}

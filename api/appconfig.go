@@ -40,23 +40,15 @@ type PrometheusConfig struct {
 }
 
 type NaisAppConfig struct {
-	Image          string
-	Port           int
-	Healthcheck    Healthcheck
-	Lifecycle      Lifecycle
-	Prometheus     PrometheusConfig
-	Replicas       Replicas
-	Ingress        Ingress
-	Resources      ResourceRequirements
-	FasitResources FasitResources `yaml:"fasitResources"`
-}
-
-type Hook struct {
-	Path string
-}
-
-type Lifecycle struct {
-	PreStop Hook `yaml:"preStop"`
+	Image           string
+	Port            int
+	Healthcheck     Healthcheck
+	PreStopHookPath string `yaml:"preStopHookPath"`
+	Prometheus      PrometheusConfig
+	Replicas        Replicas
+	Ingress         Ingress
+	Resources       ResourceRequirements
+	FasitResources  FasitResources `yaml:"fasitResources"`
 }
 
 type Ingress struct {

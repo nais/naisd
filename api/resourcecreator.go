@@ -170,7 +170,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 				},
 				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
-				Lifecycle:       createLifeCycle(appConfig.Lifecycle),
+				Lifecycle:       createLifeCycle(appConfig.PreStopHookPath),
 			},
 		},
 
@@ -187,12 +187,12 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 	return podSpec
 }
 
-func createLifeCycle(lifecycle Lifecycle) *v1.Lifecycle {
-	if len(lifecycle.PreStop.Path) > 0 {
+func createLifeCycle(path string) *v1.Lifecycle {
+	if len(path) > 0 {
 		return &v1.Lifecycle{
 			PreStop: &v1.Handler{
 				HTTPGet: &v1.HTTPGetAction{
-					Path: lifecycle.PreStop.Path,
+					Path: path,
 					Port: intstr.FromString(DefaultPortName),
 				},
 			},

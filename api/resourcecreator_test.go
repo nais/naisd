@@ -324,7 +324,7 @@ func TestDeployment(t *testing.T) {
 		path := "/stop"
 
 		appConfig := newDefaultAppConfig()
-		appConfig.Lifecycle.PreStop.Path = path
+		appConfig.PreStopHookPath = path
 
 		d, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, appConfig, naisResources, clientset)
 		assert.NoError(t, err)

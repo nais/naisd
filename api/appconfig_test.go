@@ -41,7 +41,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 	assert.Equal(t, 3, appConfig.Healthcheck.Readiness.FailureThreshold)
 	assert.Equal(t, 5, appConfig.Healthcheck.Liveness.PeriodSeconds)
 	assert.Equal(t, 10, appConfig.Healthcheck.Readiness.PeriodSeconds)
-	assert.Equal(t, "/stop", appConfig.Lifecycle.PreStop.Path)
+	assert.Equal(t, "/stop", appConfig.PreStopHookPath)
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
@@ -67,7 +67,7 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, 20, appConfig.Healthcheck.Readiness.InitialDelay)
 	assert.Equal(t, 20, appConfig.Healthcheck.Liveness.InitialDelay)
 	assert.Equal(t, true, appConfig.Ingress.Enabled)
-	assert.Empty(t, appConfig.Lifecycle.PreStop.Path)
+	assert.Empty(t, appConfig.PreStopHookPath)
 
 }
 

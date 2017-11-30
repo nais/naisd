@@ -14,9 +14,7 @@ healthcheck:
   readiness:
     path: isReady2
     initialDelay: 79
-lifecycle:
-  preStop:
-    path: "/stop"
+preStopHookPath: "/stop"
 resources:
   limits:
     cpu: 100m

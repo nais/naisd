@@ -41,6 +41,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 	assert.Equal(t, 3, appConfig.Healthcheck.Readiness.FailureThreshold)
 	assert.Equal(t, 5, appConfig.Healthcheck.Liveness.PeriodSeconds)
 	assert.Equal(t, 10, appConfig.Healthcheck.Readiness.PeriodSeconds)
+	assert.Equal(t, "/stop", appConfig.PreStopHookPath)
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
@@ -66,6 +67,8 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, 20, appConfig.Healthcheck.Readiness.InitialDelay)
 	assert.Equal(t, 20, appConfig.Healthcheck.Liveness.InitialDelay)
 	assert.Equal(t, true, appConfig.Ingress.Enabled)
+	assert.Empty(t, appConfig.PreStopHookPath)
+
 }
 
 func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
@@ -217,21 +220,21 @@ func TestValidateImage(t *testing.T) {
 }
 func TestValidateResource(t *testing.T) {
 	invalidConfig := NaisAppConfig{
-		FasitResources:FasitResources{
-			Exposed: []ExposedResource{{Alias:"alias1"},},
-			Used: []UsedResource{{ResourceType:"restService"},},
+		FasitResources: FasitResources{
+			Exposed: []ExposedResource{{Alias: "alias1"}},
+			Used:    []UsedResource{{ResourceType: "restService"}},
 		},
 	}
 	invalidConfig2 := NaisAppConfig{
-		FasitResources:FasitResources{
-			Exposed: []ExposedResource{{ResourceType:"restService"},},
-			Used: []UsedResource{{Alias:"alias1"},},
+		FasitResources: FasitResources{
+			Exposed: []ExposedResource{{ResourceType: "restService"}},
+			Used:    []UsedResource{{Alias: "alias1"}},
 		},
 	}
 	validConfig := NaisAppConfig{
-		FasitResources:FasitResources{
-			Exposed: []ExposedResource{{ResourceType:"restService", Alias:"alias1"},},
-			Used: []UsedResource{{ResourceType: "restService", Alias:"alias2"},},
+		FasitResources: FasitResources{
+			Exposed: []ExposedResource{{ResourceType: "restService", Alias: "alias1"}},
+			Used:    []UsedResource{{ResourceType: "restService", Alias: "alias2"}},
 		},
 	}
 	err := validateResources(invalidConfig)

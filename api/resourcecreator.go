@@ -170,8 +170,10 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 				},
 				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
+				Lifecycle:       createLifeCycle(appConfig.PreStopHookPath),
 			},
 		},
+
 		RestartPolicy: v1.RestartPolicyAlways,
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
@@ -183,6 +185,21 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 	}
 
 	return podSpec
+}
+
+func createLifeCycle(path string) *v1.Lifecycle {
+	if len(path) > 0 {
+		return &v1.Lifecycle{
+			PreStop: &v1.Handler{
+				HTTPGet: &v1.HTTPGetAction{
+					Path: path,
+					Port: intstr.FromString(DefaultPortName),
+				},
+			},
+		}
+	}
+
+	return &v1.Lifecycle{}
 }
 
 func hasCertificate(naisResources []NaisResource) bool {
@@ -361,7 +378,7 @@ func createIngressRule(serviceName, host, path string) v1beta1.IngressRule {
 							ServiceName: serviceName,
 							ServicePort: intstr.IntOrString{IntVal: 80},
 						},
-						Path: strings.Replace("/" + path, "//", "/", 1), // make sure we always begin with exactly one slash
+						Path: strings.Replace("/"+path, "//", "/", 1), // make sure we always begin with exactly one slash
 					},
 				},
 			},

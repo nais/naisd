@@ -40,14 +40,15 @@ type PrometheusConfig struct {
 }
 
 type NaisAppConfig struct {
-	Image          string
-	Port           int
-	Healthcheck    Healthcheck
-	Prometheus     PrometheusConfig
-	Replicas       Replicas
-	Ingress        Ingress
-	Resources      ResourceRequirements
-	FasitResources FasitResources `yaml:"fasitResources"`
+	Image           string
+	Port            int
+	Healthcheck     Healthcheck
+	PreStopHookPath string `yaml:"preStopHookPath"`
+	Prometheus      PrometheusConfig
+	Replicas        Replicas
+	Ingress         Ingress
+	Resources       ResourceRequirements
+	FasitResources  FasitResources `yaml:"fasitResources"`
 }
 
 type Ingress struct {
@@ -71,15 +72,15 @@ type UsedResource struct {
 }
 
 type ExposedResource struct {
-	Alias			string
-	ResourceType	string `yaml:"resourceType"`
-	Path			string
-	Description		string
-	WsdlGroupId		string `yaml:"wsdlGroupId"`
-	WsdlArtifactId  string `yaml:"wsdlArtifactId"`
-	WsdlVersion		string `yaml:"wsdlVersion"`
-	SecurityToken	string `yaml:"securityToken"`
-	AllZones		bool   `yaml:"allZones"`
+	Alias          string
+	ResourceType   string `yaml:"resourceType"`
+	Path           string
+	Description    string
+	WsdlGroupId    string `yaml:"wsdlGroupId"`
+	WsdlArtifactId string `yaml:"wsdlArtifactId"`
+	WsdlVersion    string `yaml:"wsdlVersion"`
+	SecurityToken  string `yaml:"securityToken"`
+	AllZones       bool   `yaml:"allZones"`
 }
 
 type ValidationErrors struct {

@@ -78,6 +78,20 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			nil,
 		}
 		assert.Equal(t, "TEST_RESOURCE_KEY", ResourceEnvironmentVariableName(resource, "key"))
+
+		resource = NaisResource{
+			1,
+			"test.resource",
+			"applicationproperties",
+			Scope{"u", "u1", "fss"},
+			map[string]string{
+				"foo.var-with.mixed_stuff": "fizz",
+			},
+			map[string]string{},
+			map[string][]byte{},
+			nil,
+		}
+		assert.Equal(t, "FOO_VAR_WITH_MIXED_STUFF", ResourceEnvironmentVariableName(resource, "foo.var-with.mixed_stuff"))
 	})
 }
 

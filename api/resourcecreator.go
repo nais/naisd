@@ -59,11 +59,15 @@ func ResourceVariableName(resource NaisResource, key string) string {
 	}
 
 	if strings.Contains(name, ".") {
-		return strings.Replace(name, ".", "_", -1)
+		name = strings.Replace(name, ".", "_", -1)
 	}
 
 	if strings.Contains(name, ":") {
-		return strings.Replace(name, ":", "_", -1)
+		name = strings.Replace(name, ":", "_", -1)
+	}
+
+	if strings.Contains(name, "-") {
+		return strings.Replace(name, "-", "_", -1)
 	}
 	return name
 }

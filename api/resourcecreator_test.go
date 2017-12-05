@@ -95,6 +95,90 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 	})
 }
 
+func TestCreateEnvironmentVariables(t *testing.T) {
+	t.Run("Property mappings", func(t *testing.T) {
+		deploymentRequest := NaisDeploymentRequest{
+			Application: "myapp",
+			Version:     "1",
+			Environment: "t0",
+			Zone:        "fss",
+			Username:    "username",
+			Password:    "password",
+			Namespace:   "default",
+		}
+		appConfig := newDefaultAppConfig()
+
+		naisResources := []NaisResource{
+			NaisResource{
+				1,
+				"myappDB",
+				"datasource",
+				Scope{"u", "u1", "fss"},
+				map[string]string{
+					"url":      "datasourceUrl",
+					"username": "myusername",
+				},
+				map[string]string{
+					"password": "mypassword",
+				},
+				map[string][]byte{},
+				nil,
+			},
+			NaisResource{
+				2,
+				"extraprops",
+				"applicationproperties",
+				Scope{"u", "u1", "fss"},
+				map[string]string{
+					"foo.var-with.mixed_stuff": "fizz",
+				},
+				map[string]string{},
+				map[string][]byte{},
+				nil,
+			},
+		}
+
+		appConfig.FasitResources.PropertyMap = append(appConfig.FasitResources.PropertyMap, PropertyMap{
+			Map: "myappDB.url",
+			To:  "MYDB_URL",
+		})
+		appConfig.FasitResources.PropertyMap = append(appConfig.FasitResources.PropertyMap, PropertyMap{
+			Map: "myappDB.password",
+			To:  "MYDB_PW",
+		})
+		appConfig.FasitResources.PropertyMap = append(appConfig.FasitResources.PropertyMap, PropertyMap{
+			Map: "foo.var-with.mixed_stuff",
+			To:  "MY_CUSTOM_PROPERTY",
+		})
+
+		envVars := createEnvironmentVariables(deploymentRequest, appConfig, naisResources)
+
+		assert.Equal(t, "MYDB_URL", createResourceEnvironementVariable(naisResources[0], appConfig.FasitResources.PropertyMap, "url"))
+		assert.Equal(t, "MYAPPDB_USERNAME", createResourceEnvironementVariable(naisResources[0], appConfig.FasitResources.PropertyMap, "username"))
+		assert.Equal(t, "MYDB_PW", createResourceEnvironementVariable(naisResources[0], appConfig.FasitResources.PropertyMap, "password"))
+		assert.Equal(t, "MY_CUSTOM_PROPERTY", createResourceEnvironementVariable(naisResources[1], appConfig.FasitResources.PropertyMap, "foo.var-with.mixed_stuff"))
+
+		assert.Equal(t, "APP_VERSION", envVars[0].Name)
+
+		if envVars[1].Name == "MYDB_URL" {
+			assert.Equal(t, "MYDB_URL", envVars[1].Name)
+			assert.Equal(t, "datasourceUrl", envVars[1].Value)
+			assert.Equal(t, "MYAPPDB_USERNAME", envVars[2].Name)
+			assert.Equal(t, "myusername", envVars[2].Value)
+		} else {
+			assert.Equal(t, "MYAPPDB_USERNAME", envVars[1].Name)
+			assert.Equal(t, "myusername", envVars[1].Value)
+			assert.Equal(t, "MYDB_URL", envVars[2].Name)
+			assert.Equal(t, "datasourceUrl", envVars[2].Value)
+		}
+
+		assert.Equal(t, "MYDB_PW", envVars[3].Name)
+		assert.Equal(t, "MY_CUSTOM_PROPERTY", envVars[4].Name)
+		assert.Equal(t, "fizz", envVars[4].Value)
+
+	})
+}
+
 func TestService(t *testing.T) {
 	service := createServiceDef(appName, namespace)
 	service.Spec.ClusterIP = clusterIP

@@ -62,8 +62,14 @@ type Replicas struct {
 }
 
 type FasitResources struct {
-	Used    []UsedResource
-	Exposed []ExposedResource
+	Used        []UsedResource
+	PropertyMap []PropertyMap `yaml:"propertyMap"`
+	Exposed     []ExposedResource
+}
+
+type PropertyMap struct {
+	Map string
+	To  string
 }
 
 type UsedResource struct {

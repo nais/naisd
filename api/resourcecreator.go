@@ -172,7 +172,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 					PeriodSeconds:       int32(appConfig.Healthcheck.Readiness.PeriodSeconds),
 					FailureThreshold:    int32(appConfig.Healthcheck.Readiness.FailureThreshold),
 				},
-				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
+				Env:             createEnvironmentVariables(deploymentRequest, appConfig, naisResources),
 				ImagePullPolicy: v1.PullIfNotPresent,
 				Lifecycle:       createLifeCycle(appConfig.PreStopHookPath),
 			},
@@ -256,18 +256,28 @@ func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resou
 	return v1.VolumeMount{}
 }
 
-func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) []v1.EnvVar {
+func createResourceEnvironementVariable(resource NaisResource, propertyMap []PropertyMap, variableName string) string {
+	for _, propertyMap := range propertyMap {
+		if propertyMap.Map == variableName || propertyMap.Map == resource.name+"."+variableName {
+			return propertyMap.To
+		}
+	}
+
+	return ResourceEnvironmentVariableName(resource, variableName)
+}
+
+func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) []v1.EnvVar {
 	envVars := createDefaultEnvironmentVariables(deploymentRequest.Version)
 
 	for _, res := range naisResources {
 		for variableName, v := range res.properties {
-			envVar := v1.EnvVar{ResourceEnvironmentVariableName(res, variableName), v, nil}
+			envVar := v1.EnvVar{createResourceEnvironementVariable(res, appConfig.FasitResources.PropertyMap, variableName), v, nil}
 			envVars = append(envVars, envVar)
 		}
 		if res.secret != nil {
 			for k := range res.secret {
 				envVar := v1.EnvVar{
-					Name: ResourceEnvironmentVariableName(res, k),
+					Name: createResourceEnvironementVariable(res, appConfig.FasitResources.PropertyMap, k),
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{

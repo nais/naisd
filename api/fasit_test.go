@@ -3,12 +3,12 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
+	"io/ioutil"
 	"strings"
 	"testing"
-	"io/ioutil"
-	"fmt"
 )
 
 func TestGettingResource(t *testing.T) {
@@ -30,7 +30,7 @@ func TestGettingResource(t *testing.T) {
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
-	resource, err := fasit.getScopedResource(ResourceRequest{alias, resourceType}, environment, application, zone)
+	resource, err := fasit.getScopedResource(ResourceRequest{alias, resourceType, map[string]string{"username": "DB_USER"}}, environment, application, zone)
 
 	assert.Nil(t, err)
 	assert.Equal(t, alias, resource.name)
@@ -38,6 +38,7 @@ func TestGettingResource(t *testing.T) {
 	assert.Equal(t, resourceType, resource.resourceType)
 	assert.Equal(t, "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta", resource.properties["url"])
 	assert.Equal(t, "basta", resource.properties["username"])
+	assert.Equal(t, "DB_USER", resource.propertyMap["username"])
 	assert.Equal(t, "p", resource.scope.EnvironmentClass)
 }
 
@@ -74,7 +75,7 @@ func TestCreatingResource(t *testing.T) {
 	}
 	deploymentRequest := NaisDeploymentRequest{
 		Application: "application",
-		Zone: "zone",
+		Zone:        "zone",
 	}
 
 	fasit := FasitClient{"https://fasit.local", "", ""}
@@ -121,11 +122,11 @@ func TestUpdateResource(t *testing.T) {
 	}
 	deploymentRequest := NaisDeploymentRequest{
 		Application: "application",
-		Zone: "zone",
+		Zone:        "zone",
 	}
-	naisResource := NaisResource{id:4242}
+	naisResource := NaisResource{id: 4242}
 
-	fasit := FasitClient{"https://fasit.local", "", "",}
+	fasit := FasitClient{"https://fasit.local", "", ""}
 
 	defer gock.Off()
 
@@ -134,7 +135,7 @@ func TestUpdateResource(t *testing.T) {
 		assert.Error(t, err)
 	})
 	gock.New("https://fasit.local").
-		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
+		Put("/api/v2/resources/"+fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
 		Reply(200)
@@ -146,7 +147,7 @@ func TestUpdateResource(t *testing.T) {
 		assert.Equal(t, naisResource.id, createdResourceId)
 	})
 	gock.New("https://fasit.local").
-		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
+		Put("/api/v2/resources/"+fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
 		HeaderPresent("x-onbehalfof").
 		MatchHeader("Content-Type", "application/json").
@@ -164,7 +165,7 @@ func TestUpdateResource(t *testing.T) {
 		assert.Equal(t, naisResource.id, createdResourceId)
 	})
 	gock.New("https://fasit.local").
-		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
+		Put("/api/v2/resources/"+fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
 		Reply(501).
@@ -202,7 +203,7 @@ func TestGetLoadBalancerConfig(t *testing.T) {
 
 }
 func TestGetResourceId(t *testing.T) {
-	naisResources := []NaisResource{{id: 1}, {id: 2},{id:0, resourceType:"LoadBalancerConfig"}}
+	naisResources := []NaisResource{{id: 1}, {id: 2}, {id: 0, resourceType: "LoadBalancerConfig"}}
 	resourceIds := getResourceIds(naisResources)
 	assert.Equal(t, []int{1, 2}, resourceIds)
 }
@@ -244,6 +245,7 @@ func (fasit FakeFasitClient) updateResource(existingResource NaisResource, resou
 
 	}
 }
+
 var createApplicationInstanceCalled bool
 
 func (fasit FakeFasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error {
@@ -267,7 +269,7 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 
 	deploymentRequest := NaisDeploymentRequest{
 		Application: "application",
-		Zone: "zone",
+		Zone:        "zone",
 	}
 	exposedResources := []ExposedResource{exposedResource, exposedResource}
 
@@ -301,7 +303,7 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 		updateCalled = false
 		deploymentRequest.Zone = "zone"
 		deploymentRequest.Application = "application"
-		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, class, environment,deploymentRequest)
+		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, class, environment, deploymentRequest)
 		assert.NoError(t, err)
 		assert.Equal(t, []int{1, 1}, resourceIds)
 		assert.True(t, updateCalled)
@@ -361,25 +363,24 @@ func TestUpdateFasit(t *testing.T) {
 
 	t.Run("Calling updateFasit with resources returns no error", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, hostname, class, clustername,"")
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, hostname, class, clustername, "")
 		assert.NoError(t, err)
 		assert.True(t, createApplicationInstanceCalled)
 	})
 	t.Run("Calling updateFasit without hostname when you have exposed resources fails", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", class, clustername,"")
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", class, clustername, "")
 		assert.Error(t, err)
 		assert.False(t, createApplicationInstanceCalled)
 	})
 	t.Run("Calling updateFasit without hostname when you have no exposed resources works", func(t *testing.T) {
 		createApplicationInstanceCalled = false
 		appConfig.FasitResources.Exposed = nil
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", class, clustername,"")
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", class, clustername, "")
 		assert.NoError(t, err)
 		assert.True(t, createApplicationInstanceCalled)
 	})
 }
-
 
 func TestBuildingFasitPayloads(t *testing.T) {
 	application := "appName"
@@ -423,8 +424,8 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		SecurityToken:  securityToken,
 		Description:    description,
 	}
-	exposedResources := []Resource{Resource{1},Resource{2},Resource{3}}
-	usedResources := []Resource{Resource{4},Resource{5},Resource{6}}
+	exposedResources := []Resource{Resource{1}, Resource{2}, Resource{3}}
+	usedResources := []Resource{Resource{4}, Resource{5}, Resource{6}}
 
 	t.Run("Building ApplicationInstancePayload", func(t *testing.T) {
 		payload := buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, exposedResourceIds, usedResourceIds)
@@ -505,18 +506,18 @@ func TestGenerateScope(t *testing.T) {
 	zone := "fss"
 	t.Run("default scope set when creating a resource", func(t *testing.T) {
 		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
-		defaultScope := Scope{EnvironmentClass:fasitEnvironmentClass,Environment:environment,Zone:zone}
+		defaultScope := Scope{EnvironmentClass: fasitEnvironmentClass, Environment: environment, Zone: zone}
 		assert.Equal(t, defaultScope, scope)
 
 	})
 	t.Run("All Zones returns wide scope", func(t *testing.T) {
 		resource.AllZones = true
 		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
-		allZoneScope := Scope{EnvironmentClass:fasitEnvironmentClass,Environment:environment}
+		allZoneScope := Scope{EnvironmentClass: fasitEnvironmentClass, Environment: environment}
 		assert.Equal(t, allZoneScope, scope)
 	})
 	t.Run("Updating a resource uses scope from existing resource", func(t *testing.T) {
-		existingResource.scope = Scope{EnvironmentClass:fasitEnvironmentClass,Zone:zone}
+		existingResource.scope = Scope{EnvironmentClass: fasitEnvironmentClass, Zone: zone}
 		existingResource.id = 2
 		resource.AllZones = false
 		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
@@ -527,8 +528,6 @@ func TestGenerateScope(t *testing.T) {
 	})
 
 }
-
-
 
 func TestGetFasitEnvironment(t *testing.T) {
 	namespace := "namespace"
@@ -627,10 +626,10 @@ func TestGettingListOfResources(t *testing.T) {
 		Reply(200).File("testdata/fasitResponse4.json")
 
 	resources := []ResourceRequest{}
-	resources = append(resources, ResourceRequest{alias, resourceType})
-	resources = append(resources, ResourceRequest{alias2, resourceType})
-	resources = append(resources, ResourceRequest{alias3, resourceType})
-	resources = append(resources, ResourceRequest{alias4, "applicationproperties"})
+	resources = append(resources, ResourceRequest{alias, resourceType, nil})
+	resources = append(resources, ResourceRequest{alias2, resourceType, nil})
+	resources = append(resources, ResourceRequest{alias3, resourceType, nil})
+	resources = append(resources, ResourceRequest{alias4, "applicationproperties", nil})
 
 	resourcesReplies, err := fasit.GetScopedResources(resources, environment, application, zone)
 
@@ -655,7 +654,7 @@ func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
 		MatchParam("alias", "alias").
 		Reply(200).File("testdata/fasitResponse-arbitrary-keys.json")
 
-	resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "DataSource"}, "dev", "app", "zone")
+	resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "DataSource", nil}, "dev", "app", "zone")
 	assert.Nil(t, appError)
 
 	assert.Equal(t, "1", resource.properties["a"])
@@ -677,7 +676,7 @@ func TestResolvingSecret(t *testing.T) {
 		HeaderPresent("Authorization").
 		Reply(200).BodyString("hemmelig")
 
-	resource, appError := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource"}, "dev", "app", "zone")
+	resource, appError := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource", nil}, "dev", "app", "zone")
 
 	assert.Nil(t, appError)
 
@@ -699,7 +698,7 @@ func TestResolveCertificates(t *testing.T) {
 			Get("/api/v2/resources/3024713/file/keystore").
 			Reply(200).Body(bytes.NewReader([]byte("Some binary format")))
 
-		resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "Certificate", nil}, "dev", "app", "zone")
 
 		assert.Nil(t, appError)
 
@@ -716,7 +715,7 @@ func TestResolveCertificates(t *testing.T) {
 			Reply(200).File("testdata/fasitFilesNoCertifcateResponse.json").
 			Done()
 
-		resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "Certificate"}, "dev", "app", "zone")
+		resource, appError := fasit.getScopedResource(ResourceRequest{"alias", "Certificate", nil}, "dev", "app", "zone")
 
 		assert.Nil(t, appError)
 
@@ -757,37 +756,37 @@ func TestBuildEnvironmentNameFromNamespace(t *testing.T) {
 	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
 		namespace := "t1"
 		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t,namespace, environmentName)
+		assert.Equal(t, namespace, environmentName)
 	})
 	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
 		namespace := "t1000"
 		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t,namespace, environmentName)
+		assert.Equal(t, namespace, environmentName)
 	})
 	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
 		namespace := "q1"
 		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t,namespace, environmentName)
+		assert.Equal(t, namespace, environmentName)
 	})
 	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
 		namespace := "p"
 		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t,namespace, environmentName)
+		assert.Equal(t, namespace, environmentName)
 	})
 	t.Run("'default' namespace returns clustername", func(t *testing.T) {
 		namespace := "default"
 		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t,clusterName, environmentName)
+		assert.Equal(t, clusterName, environmentName)
 	})
 	t.Run("empty namespace returns clustername", func(t *testing.T) {
 		namespace := ""
 		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t,clusterName, environmentName)
+		assert.Equal(t, clusterName, environmentName)
 	})
 	t.Run("'project' specific namespaces returns clustername + namespace", func(t *testing.T) {
 		namespace := "projectX"
 		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t,namespace + "-" + clusterName, environmentName)
+		assert.Equal(t, namespace+"-"+clusterName, environmentName)
 	})
 }
 

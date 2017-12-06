@@ -68,7 +68,8 @@ type FasitResources struct {
 
 type UsedResource struct {
 	Alias        string
-	ResourceType string `yaml:"resourceType"`
+	ResourceType string            `yaml:"resourceType"`
+	PropertyMap  map[string]string `yaml:"propertyMap"`
 }
 
 type ExposedResource struct {

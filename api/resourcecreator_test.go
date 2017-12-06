@@ -74,10 +74,11 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			Scope{"u", "u1", "fss"},
 			map[string]string{},
 			map[string]string{},
+			map[string]string{},
 			map[string][]byte{},
 			nil,
 		}
-		assert.Equal(t, "TEST_RESOURCE_KEY", ResourceEnvironmentVariableName(resource, "key"))
+		assert.Equal(t, "TEST_RESOURCE_KEY", createResourceEnvironmentVariable(resource, "key"))
 
 		resource = NaisResource{
 			1,
@@ -88,10 +89,52 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 				"foo.var-with.mixed_stuff": "fizz",
 			},
 			map[string]string{},
+			map[string]string{},
 			map[string][]byte{},
 			nil,
 		}
-		assert.Equal(t, "FOO_VAR_WITH_MIXED_STUFF", ResourceEnvironmentVariableName(resource, "foo.var-with.mixed_stuff"))
+		assert.Equal(t, "FOO_VAR_WITH_MIXED_STUFF", createResourceEnvironmentVariable(resource, "foo.var-with.mixed_stuff"))
+	})
+
+	t.Run("Property mapping should decide variable name", func(t *testing.T) {
+		resource := NaisResource{
+			1,
+			"test.resource",
+			"applicationproperties",
+			Scope{"u", "u1", "fss"},
+			map[string]string{
+				"foo.var-with.mixed_stuff": "fizz",
+			},
+			map[string]string{
+				"foo.var-with.mixed_stuff": "SOMETHING_NEW",
+			},
+			map[string]string{},
+			map[string][]byte{},
+			nil,
+		}
+		assert.Equal(t, "SOMETHING_NEW", createResourceEnvironmentVariable(resource, "foo.var-with.mixed_stuff"))
+
+		resource = NaisResource{
+			1,
+			"test.resource",
+			"datasource",
+			Scope{"u", "u1", "fss"},
+			map[string]string{
+				"url":      "fizzbuzz",
+				"username": "fizz",
+				"password": "buzz",
+			},
+			map[string]string{
+				"username": "DB_USER",
+				"password": "DB_PW",
+			},
+			map[string]string{},
+			map[string][]byte{},
+			nil,
+		}
+		assert.Equal(t, "TEST_RESOURCE_URL", createResourceEnvironmentVariable(resource, "url"))
+		assert.Equal(t, "DB_USER", createResourceEnvironmentVariable(resource, "username"))
+		assert.Equal(t, "DB_PW", createResourceEnvironmentVariable(resource, "password"))
 	})
 }
 
@@ -141,6 +184,7 @@ func TestDeployment(t *testing.T) {
 	resource2Name := "r2"
 	resource2Type := "db"
 	resource2Key := "key2"
+	resource2KeyMapping := "MY_KEY2"
 	resource2Value := "value2"
 	secret2Key := "password"
 	secret2Value := "anothersecret"
@@ -168,6 +212,7 @@ func TestDeployment(t *testing.T) {
 			resource1Type,
 			Scope{"u", "u1", "fss"},
 			map[string]string{resource1Key: resource1Value},
+			map[string]string{},
 			map[string]string{secret1Key: secret1Value},
 			map[string][]byte{cert1Key: cert1Value},
 			nil,
@@ -178,6 +223,9 @@ func TestDeployment(t *testing.T) {
 			resource2Type,
 			Scope{"u", "u1", "fss"},
 			map[string]string{resource2Key: resource2Value},
+			map[string]string{
+				resource2Key: resource2KeyMapping,
+			},
 			map[string]string{secret2Key: secret2Value},
 			map[string][]byte{cert2Key: cert2Value},
 			nil,
@@ -191,6 +239,7 @@ func TestDeployment(t *testing.T) {
 				"key1": "value1",
 			},
 			map[string]string{},
+			map[string]string{},
 			nil,
 			nil,
 		},
@@ -203,6 +252,7 @@ func TestDeployment(t *testing.T) {
 				"key2.Property": "dc=preprod,dc=local",
 			},
 			map[string]string{},
+			map[string]string{},
 			nil,
 			nil,
 		},
@@ -212,6 +262,7 @@ func TestDeployment(t *testing.T) {
 			invalidlyNamedResourceTypeDot,
 			Scope{"u", "u1", "fss"},
 			map[string]string{invalidlyNamedResourceKeyDot: invalidlyNamedResourceValueDot},
+			map[string]string{},
 			map[string]string{invalidlyNamedResourceSecretKeyDot: invalidlyNamedResourceSecretValueDot},
 			nil,
 			nil,
@@ -222,6 +273,7 @@ func TestDeployment(t *testing.T) {
 			invalidlyNamedResourceTypeColon,
 			Scope{"u", "u1", "fss"},
 			map[string]string{invalidlyNamedResourceKeyColon: invalidlyNamedResourceValueColon},
+			map[string]string{},
 			map[string]string{invalidlyNamedResourceSecretKeyColon: invalidlyNamedResourceSecretValueColon},
 			nil,
 			nil,
@@ -291,7 +343,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, strings.ToUpper(resource1Name+"_"+secret1Key), env[2].Name)
 		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[2].ValueFrom)
 
-		assert.Equal(t, strings.ToUpper(resource2Name+"_"+resource2Key), env[3].Name)
+		assert.Equal(t, resource2KeyMapping, env[3].Name)
 		assert.Equal(t, "value2", env[3].Value)
 
 		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[4].Name)
@@ -360,6 +412,7 @@ func TestDeployment(t *testing.T) {
 				Scope{"u", "u1", "fss"},
 				nil,
 				nil,
+				nil,
 				map[string][]byte{updatedCertKey: updatedCertValue},
 				nil,
 			},
@@ -402,6 +455,7 @@ func TestDeployment(t *testing.T) {
 				resource1Name,
 				resource1Type,
 				Scope{"u", "u1", "fss"},
+				nil,
 				nil,
 				nil,
 				nil,
@@ -514,8 +568,28 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	files2 := map[string][]byte{fileKey2: fileValue2}
 
 	naisResources := []NaisResource{
-		{1, resource1Name, resource1Type, Scope{"u", "u1", "fss"}, map[string]string{resource1Key: resource1Value}, map[string]string{secret1Key: secret1Value}, files1, nil},
-		{1, resource2Name, resource2Type, Scope{"u", "u1", "fss"}, map[string]string{resource2Key: resource2Value}, map[string]string{secret2Key: secret2Value}, files2, nil}}
+		{
+			1,
+			resource1Name,
+			resource1Type,
+			Scope{"u", "u1", "fss"},
+			map[string]string{resource1Key: resource1Value},
+			map[string]string{},
+			map[string]string{secret1Key: secret1Value},
+			files1,
+			nil,
+		}, {
+			1,
+			resource2Name,
+			resource2Type,
+			Scope{"u", "u1", "fss"},
+			map[string]string{resource2Key: resource2Value},
+			map[string]string{},
+			map[string]string{secret2Key: secret2Value},
+			files2,
+			nil,
+		},
+	}
 
 	secret := createSecretDef(naisResources, nil, appName, namespace)
 	secret.ObjectMeta.ResourceVersion = resourceVersion
@@ -549,7 +623,18 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		updatedSecretValue := "newsecret"
 		updatedFileValue := []byte("newfile")
 		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: appName}, []NaisResource{
-			{1, resource1Name, resource1Type, Scope{"u", "u1", "fss"}, nil, map[string]string{secret1Key: updatedSecretValue}, map[string][]byte{fileKey1: updatedFileValue}, nil}}, clientset)
+			{
+				1,
+				resource1Name,
+				resource1Type,
+				Scope{"u", "u1", "fss"},
+				nil,
+				map[string]string{},
+				map[string]string{secret1Key: updatedSecretValue},
+				map[string][]byte{fileKey1: updatedFileValue},
+				nil,
+			},
+		}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
@@ -616,6 +701,7 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 			Scope{"u", "u1", "fss"},
 			nil,
 			nil,
+			nil,
 			map[string][]byte{"key": []byte("value")},
 			nil,
 		},
@@ -661,7 +747,19 @@ func TestCreateK8sResources(t *testing.T) {
 		},
 	}
 
-	naisResources := []NaisResource{{1, "resourceName", "resourceType", Scope{"u", "u1", "fss"}, map[string]string{"resourceKey": "resource1Value"}, map[string]string{"secretKey": "secretValue"}, nil, nil}}
+	naisResources := []NaisResource{
+		{
+			1,
+			"resourceName",
+			"resourceType",
+			Scope{"u", "u1", "fss"},
+			map[string]string{"resourceKey": "resource1Value"},
+			nil,
+			map[string]string{"secretKey": "secretValue"},
+			nil,
+			nil,
+		},
+	}
 
 	service := createServiceDef(appName, namespace)
 
@@ -684,7 +782,18 @@ func TestCreateK8sResources(t *testing.T) {
 	})
 
 	naisResourcesNoSecret := []NaisResource{
-		{1, "resourceName", "resourceType", Scope{"u", "u1", "fss"}, map[string]string{"resourceKey": "resource1Value"}, map[string]string{}, nil, nil}}
+		{
+			1,
+			"resourceName",
+			"resourceType",
+			Scope{"u", "u1", "fss"},
+			map[string]string{"resourceKey": "resource1Value"},
+			map[string]string{},
+			map[string]string{},
+			nil,
+			nil,
+		},
+	}
 
 	t.Run("omits secret creation when no secret resources ex", func(t *testing.T) {
 		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())

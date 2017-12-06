@@ -256,18 +256,26 @@ func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resou
 	return v1.VolumeMount{}
 }
 
+func createResourceEnvironmentVariable(resource NaisResource, variableName string) string {
+	if value, ok := resource.propertyMap[variableName]; ok {
+		return value
+	}
+
+	return ResourceEnvironmentVariableName(resource, variableName)
+}
+
 func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) []v1.EnvVar {
 	envVars := createDefaultEnvironmentVariables(deploymentRequest.Version)
 
 	for _, res := range naisResources {
 		for variableName, v := range res.properties {
-			envVar := v1.EnvVar{ResourceEnvironmentVariableName(res, variableName), v, nil}
+			envVar := v1.EnvVar{createResourceEnvironmentVariable(res, variableName), v, nil}
 			envVars = append(envVars, envVar)
 		}
 		if res.secret != nil {
 			for k := range res.secret {
 				envVar := v1.EnvVar{
-					Name: ResourceEnvironmentVariableName(res, k),
+					Name: createResourceEnvironmentVariable(res, k),
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{

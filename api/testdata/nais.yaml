@@ -29,6 +29,8 @@ fasitResources:
   used:
   - alias: mydb
     resourceType: datasource
+    propertyMap:
+      username: DB_USER
   - alias: someservice
     resourceType: restservice
   exposed:

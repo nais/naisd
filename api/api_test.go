@@ -151,7 +151,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster",nil}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", nil}
 
 	depReq := NaisDeploymentRequest{
 		Application:  appName,
@@ -166,7 +166,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Image: image,
 		Port:  321,
 		FasitResources: FasitResources{
-			Used: []UsedResource{{resourceAlias, resourceType}},
+			Used: []UsedResource{{resourceAlias, resourceType, nil}},
 		},
 	}
 	response := "anything"
@@ -195,11 +195,11 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		JSON(map[string]string{"environmentclass": "u"})
 
 	gock.New("https://fasit.local").
-		Get("/api/v2/applications/"+appName).
+		Get("/api/v2/applications/" + appName).
 		Reply(200).
 		BodyString("anything")
 
-		gock.New("https://fasit.local").
+	gock.New("https://fasit.local").
 		Post("/api/v2/applicationinstances/").
 		Reply(200).
 		BodyString(string(appInstanceResponse))
@@ -228,7 +228,7 @@ func TestMissingResources(t *testing.T) {
 		Image: "name/Container",
 		Port:  321,
 		FasitResources: FasitResources{
-			Used: []UsedResource{{resourceAlias, resourceType}},
+			Used: []UsedResource{{resourceAlias, resourceType, nil}},
 		},
 	}
 	data, _ := yaml.Marshal(config)
@@ -254,7 +254,7 @@ func TestMissingResources(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/deploy", strings.NewReader(CreateDefaultDeploymentRequest()))
 
 	rr := httptest.NewRecorder()
-	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", "clustername",nil}
+	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", "clustername", nil}
 	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
@@ -277,7 +277,6 @@ func CreateDefaultDeploymentRequest() string {
 
 	return string(json)
 }
-
 
 func TestValidateDeploymentRequest(t *testing.T) {
 	t.Run("Empty fields should be marked invalid", func(t *testing.T) {

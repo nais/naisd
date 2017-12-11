@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
@@ -8,11 +9,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
-	"strconv"
-	"bytes"
-	"strings"
-	"regexp"
 	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 func init() {
@@ -85,8 +85,8 @@ type FasitClientAdapter interface {
 type FasitResource struct {
 	Id           int
 	Alias        string
-	ResourceType string                 `json:"type"`
-	Scope        Scope                  `json:"scope"`
+	ResourceType string `json:"type"`
+	Scope        Scope  `json:"scope"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
 	Certificates map[string]interface{} `json:"files"`
@@ -95,6 +95,7 @@ type FasitResource struct {
 type ResourceRequest struct {
 	Alias        string
 	ResourceType string
+	PropertyMap  map[string]string
 }
 
 type NaisResource struct {
@@ -103,6 +104,7 @@ type NaisResource struct {
 	resourceType string
 	scope        Scope
 	properties   map[string]string
+	propertyMap  map[string]string
 	secret       map[string]string
 	certificates map[string][]byte
 	ingresses    map[string]string
@@ -112,7 +114,7 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 	for _, request := range resourcesRequests {
 		resource, appErr := fasit.getScopedResource(request, environment, application, zone)
 		if appErr != nil {
-			return []NaisResource{}, fmt.Errorf("Unable to get resource %s (%s). %s",request.Alias, request.ResourceType, appErr)
+			return []NaisResource{}, fmt.Errorf("Unable to get resource %s (%s). %s", request.Alias, request.ResourceType, appErr)
 		}
 		resources = append(resources, resource)
 	}
@@ -222,7 +224,11 @@ func getResourceIds(usedResources []NaisResource) (usedResourceIds []int) {
 func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) (naisresources []NaisResource, err error) {
 	var resourceRequests []ResourceRequest
 	for _, resource := range appConfig.FasitResources.Used {
-		resourceRequests = append(resourceRequests, ResourceRequest{Alias: resource.Alias, ResourceType: resource.ResourceType})
+		resourceRequests = append(resourceRequests, ResourceRequest{
+			Alias:        resource.Alias,
+			ResourceType: resource.ResourceType,
+			PropertyMap:  resource.PropertyMap,
+		})
 	}
 
 	naisresources, err = fasit.GetScopedResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
@@ -330,7 +336,7 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, fas
 		return NaisResource{}, appError{err, "Could not unmarshal body", 500}
 	}
 
-	resource, err := fasit.mapToNaisResource(fasitResource)
+	resource, err := fasit.mapToNaisResource(fasitResource, resourcesRequest.PropertyMap)
 	if err != nil {
 		return NaisResource{}, appError{err, "Unable to map response to Nais resource", 500}
 	}
@@ -339,8 +345,8 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, fas
 
 func SafeMarshal(v interface{}) ([]byte, error) {
 	/*	String values encode as JSON strings coerced to valid UTF-8, replacing invalid bytes with the Unicode replacement rune.
-	The angle brackets "<" and ">" are escaped to "\u003c" and "\u003e" to keep some browsers from misinterpreting JSON output as HTML.
-	Ampersand "&" is also escaped to "\u0026" for the same reason. This escaping can be disabled using an Encoder that had SetEscapeHTML(false) called on it.	*/
+		The angle brackets "<" and ">" are escaped to "\u003c" and "\u003e" to keep some browsers from misinterpreting JSON output as HTML.
+		Ampersand "&" is also escaped to "\u0026" for the same reason. This escaping can be disabled using an Encoder that had SetEscapeHTML(false) called on it.	*/
 	b, err := json.Marshal(v)
 	b = bytes.Replace(b, []byte("\\u0026"), []byte("&"), -1)
 	return b, err
@@ -442,7 +448,7 @@ func (fasit FasitClient) GetFasitEnvironment(environmentName string) (string, er
 	return fasitEnvironment.EnvironmentClass, nil
 }
 
-func (fasit FasitClient) GetFasitApplication(application string) (error) {
+func (fasit FasitClient) GetFasitApplication(application string) error {
 	requestCounter.With(nil).Inc()
 	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/applications/"+application, nil)
 	if err != nil {
@@ -467,10 +473,11 @@ func (fasit FasitClient) GetFasitApplication(application string) (error) {
 	return fmt.Errorf("Could not find application %s in Fasit", application)
 }
 
-func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource) (resource NaisResource, err error) {
+func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, propertyMap map[string]string) (resource NaisResource, err error) {
 	resource.name = fasitResource.Alias
 	resource.resourceType = fasitResource.ResourceType
 	resource.properties = fasitResource.Properties
+	resource.propertyMap = propertyMap
 	resource.id = fasitResource.Id
 	resource.scope = fasitResource.Scope
 

@@ -30,7 +30,6 @@ type NaisDeploymentRequest struct {
 	Environment  string `json:"environment"`
 	Zone         string `json:"zone"`
 	AppConfigUrl string `json:"appconfigurl,omitempty"`
-	NoAppConfig  bool   `json:"-"`
 	Username     string `json:"username"`
 	Password     string `json:"password"`
 	OnBehalfOf	 string `json:"onbehalfof,omitempty"`

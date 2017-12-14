@@ -47,7 +47,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{NoAppConfig: true})
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, "docker.adeo.no:5000/", appConfig.Image)
@@ -121,20 +121,6 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 		assert.Equal(t, application, appConfig.Image)
 		assert.True(t, gock.IsPending())
 	})
-}
-
-func TestNoAppConfigFlagCreatesAppconfigFromDefaults(t *testing.T) {
-	image := "docker.adeo.no:5000/" + appName
-	const repopath = "https://appconfig.repo"
-	defer gock.Off()
-	gock.New(repopath).
-		Reply(200)
-
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath, NoAppConfig: true, Application: appName, Version: version})
-
-	assert.NoError(t, err)
-	assert.Equal(t, image, appConfig.Image, "If no Image provided, a default is created")
-	assert.True(t, gock.IsPending(), "No calls to appConfigUrl registered")
 }
 
 func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {

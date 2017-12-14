@@ -121,30 +121,27 @@ func GenerateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig N
 }
 
 func downloadAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
-	var appConfig NaisAppConfig
-
-	if !deploymentRequest.NoAppConfig {
-		if len(deploymentRequest.AppConfigUrl) > 0 {
-			appConfig, err = fetchAppConfig(deploymentRequest.AppConfigUrl, &appConfig)
-			if err != nil {
-				return NaisAppConfig{}, err
-			} else {
-				return appConfig, nil
-			}
-		} else {
-			urls := createAppConfigUrls(deploymentRequest.Application, deploymentRequest.Version)
-			for _,url := range urls{
-				appConfig, err = fetchAppConfig(url, &appConfig)
-				if err == nil {
-					return appConfig, nil
-				}
-			}
-
-			glog.Infof("No manifest found on URLs %s\n", urls)
+	// manifest url is provided in deployment request
+	if len(deploymentRequest.AppConfigUrl) > 0 {
+		appConfig, err := fetchAppConfig(deploymentRequest.AppConfigUrl)
+		if err != nil {
 			return NaisAppConfig{}, err
+		} else {
+			return appConfig, nil
 		}
 	}
-	return NaisAppConfig{}, nil
+
+	// not provided, using defaults
+	urls := createAppConfigUrls(deploymentRequest.Application, deploymentRequest.Version)
+	for _, url := range urls {
+		appConfig, err := fetchAppConfig(url)
+		if err == nil {
+			return appConfig, nil
+		}
+	}
+
+	glog.Infof("No manifest found on URLs %s\n", urls)
+	return NaisAppConfig{}, err
 }
 
 func createAppConfigUrls(application, version string) []string {
@@ -158,8 +155,7 @@ func createAppConfigUrls(application, version string) []string {
 func AddDefaultAppconfigValues(config *NaisAppConfig, application string) error {
 	return mergo.Merge(config, GetDefaultAppConfig(application))
 }
-func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error) {
-
+func fetchAppConfig(url string) (NaisAppConfig, error) {
 	glog.Infof("Fetching manifest from URL %s\n", url)
 	response, err := http.Get(url)
 	if err != nil {
@@ -176,13 +172,14 @@ func fetchAppConfig(url string, appConfig *NaisAppConfig) (NaisAppConfig, error)
 	if body, err := ioutil.ReadAll(response.Body); err != nil {
 		return NaisAppConfig{}, err
 	} else {
+		var appConfig NaisAppConfig
 		if err := yaml.Unmarshal(body, &appConfig); err != nil {
 			glog.Errorf("Could not unmarshal yaml %s", err)
 			return NaisAppConfig{}, fmt.Errorf("Unable to unmarshal yaml: %s", err.Error())
 		}
 		glog.Infof("Got manifest %s", appConfig)
+		return appConfig, err
 	}
-	return *appConfig, err
 }
 
 func ValidateAppConfig(appConfig NaisAppConfig) ValidationErrors {

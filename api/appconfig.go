@@ -121,7 +121,6 @@ func GenerateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig N
 }
 
 func downloadAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
-
 	var appConfig NaisAppConfig
 
 	if !deploymentRequest.NoAppConfig {
@@ -129,29 +128,31 @@ func downloadAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig N
 			appConfig, err = fetchAppConfig(deploymentRequest.AppConfigUrl, &appConfig)
 			if err != nil {
 				return NaisAppConfig{}, err
+			} else {
+				return appConfig, nil
 			}
 		} else {
 			urls := createAppConfigUrls(deploymentRequest.Application, deploymentRequest.Version)
-
-			appConfig, err = fetchAppConfig(urls[0], &appConfig)
-			if err != nil {
-				glog.Infof("No manifest found on URL %s\n", urls[0])
-				appConfig, err = fetchAppConfig(urls[1], &appConfig)
-				if err != nil {
-					return NaisAppConfig{}, err
+			for _,url := range urls{
+				appConfig, err = fetchAppConfig(url, &appConfig)
+				if err == nil {
+					return appConfig, nil
 				}
 			}
+
+			glog.Infof("No manifest found on URLs %s\n", urls)
+			return NaisAppConfig{}, err
 		}
 	}
-	return appConfig, nil
+	return NaisAppConfig{}, nil
 }
 
-func createAppConfigUrls(application, version string) [2]string {
-	var urls = [2]string{}
-	baseUrl := "http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais"
-	urls[0] = fmt.Sprintf("%s/%s/%s/nais.yaml", baseUrl, application, version)
-	urls[1] = fmt.Sprintf("%s/%s/%s/%s.yaml", baseUrl, application, version, application+"-"+version)
-	return urls
+func createAppConfigUrls(application, version string) []string {
+	return []string{
+		fmt.Sprintf("https://repo.adeo.no/repository/raw/nais/%s/%s/nais.yaml", application, version),
+		fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/nais.yaml", application, version),
+		fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/%s.yaml", application, version, application+"-"+version),
+	}
 }
 
 func AddDefaultAppconfigValues(config *NaisAppConfig, application string) error {

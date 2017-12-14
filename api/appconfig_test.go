@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 	"testing"
@@ -90,17 +89,16 @@ func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
 }
 
 func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
-	baseUrl := "http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais"
 	application := "appName"
 	version := "42"
-
-	var firstRepoPath = fmt.Sprintf("%s/%s/%s/nais.yaml", baseUrl, application, version)
-	var secondRepoPath = fmt.Sprintf("%s/%s/%s/%s.yaml", baseUrl, application, version, application+"-"+version)
-	t.Run("When no manifest found at first default URL, the second is called", func(t *testing.T) {
+	urls := createAppConfigUrls(application, version)
+	t.Run("When no manifest found at first or second default URL, the third is called", func(t *testing.T) {
 		defer gock.Off()
-		gock.New(firstRepoPath).
+		gock.New(urls[0]).
 			Reply(404)
-		gock.New(secondRepoPath).
+		gock.New(urls[1]).
+			Reply(404)
+		gock.New(urls[2]).
 			Reply(200).
 			JSON(map[string]string{"image": application})
 
@@ -111,10 +109,10 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 	})
 	t.Run("When manifest found at first default URL, the second is not called", func(t *testing.T) {
 		defer gock.Off()
-		gock.New(firstRepoPath).
+		gock.New(urls[0]).
 			Reply(200).
 			JSON(map[string]string{"image": application})
-		gock.New(secondRepoPath).
+		gock.New(urls[1]).
 			Reply(200).
 			JSON(map[string]string{"image": "incorrect"})
 

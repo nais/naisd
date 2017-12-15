@@ -1,8 +1,19 @@
 package api
 
 const (
-	DefaultPortName = "http"
+	DefaultPortName         = "http"
+	NavTruststoreFasitAlias = "nav_truststore"
 )
+
+func DefaultResourceRequests() []ResourceRequest {
+	return []ResourceRequest{
+		{
+			Alias:        NavTruststoreFasitAlias,
+			ResourceType: "certificate",
+			PropertyMap:  nil,
+		},
+	}
+}
 
 func GetDefaultAppConfig(application string) NaisAppConfig {
 

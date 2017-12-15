@@ -222,7 +222,7 @@ func getResourceIds(usedResources []NaisResource) (usedResourceIds []int) {
 }
 
 func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) (naisresources []NaisResource, err error) {
-	var resourceRequests []ResourceRequest
+	resourceRequests := DefaultResourceRequests()
 	for _, resource := range appConfig.FasitResources.Used {
 		resourceRequests = append(resourceRequests, ResourceRequest{
 			Alias:        resource.Alias,

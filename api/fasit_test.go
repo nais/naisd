@@ -323,6 +323,11 @@ func TestResourceError(t *testing.T) {
 	defer gock.Off()
 	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
+		MatchParam("alias", NavTruststoreFasitAlias).
+		Reply(200).File("testdata/fasitResponse.json")
+
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
 		Reply(404).BodyString("not found")
 
 	resourceAlias := "resourcealias"

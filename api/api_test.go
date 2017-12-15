@@ -174,6 +174,10 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	appInstanceResponse, _ := yaml.Marshal(response)
 
 	defer gock.Off()
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
+		MatchParam("alias", NavTruststoreFasitAlias).
+		Reply(200).File("testdata/fasitResponse.json")
 
 	gock.New("http://repo.com").
 		Get("/app").
@@ -234,7 +238,10 @@ func TestMissingResources(t *testing.T) {
 	data, _ := yaml.Marshal(config)
 
 	defer gock.Off()
-
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
+		MatchParam("alias", NavTruststoreFasitAlias).
+		Reply(200).File("testdata/fasitResponse.json")
 	gock.New("http://repo.com").
 		Get("/app").
 		Reply(200).

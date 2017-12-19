@@ -288,6 +288,17 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 				envVars = append(envVars, envVar)
 			}
 		}
+
+		if res.certificates != nil {
+			for k, _ := range res.certificates {
+				envVar := v1.EnvVar{
+					Name:  createResourceEnvironmentVariable(res, k) + "_PATH",
+					Value: "/var/run/secrets/naisd.io/" + k,
+				}
+				envVars = append(envVars, envVar)
+
+			}
+		}
 	}
 	return envVars
 }

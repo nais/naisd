@@ -214,7 +214,7 @@ func TestDeployment(t *testing.T) {
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{},
 			map[string]string{secret1Key: secret1Value},
-			map[string][]byte{cert1Key: cert1Value},
+			nil,
 			nil,
 		},
 		{
@@ -227,7 +227,7 @@ func TestDeployment(t *testing.T) {
 				resource2Key: resource2KeyMapping,
 			},
 			map[string]string{secret2Key: secret2Value},
-			map[string][]byte{cert2Key: cert2Value},
+			nil,
 			nil,
 		},
 		{
@@ -276,6 +276,33 @@ func TestDeployment(t *testing.T) {
 			map[string]string{},
 			map[string]string{invalidlyNamedResourceSecretKeyColon: invalidlyNamedResourceSecretValueColon},
 			nil,
+			nil,
+		},
+	}
+
+	naisCertResources := []NaisResource{
+		{
+			1,
+			resource1Name,
+			"certificate",
+			Scope{"u", "u1", "fss"},
+			map[string]string{resource1Key: resource1Value},
+			map[string]string{},
+			map[string]string{secret1Key: secret1Value},
+			map[string][]byte{cert1Key: cert1Value},
+			nil,
+		},
+		{
+			1,
+			resource2Name,
+			resource2Type,
+			Scope{"u", "u1", "fss"},
+			map[string]string{resource2Key: resource2Value},
+			map[string]string{
+				resource2Key: resource2KeyMapping,
+			},
+			map[string]string{secret2Key: secret2Value},
+			map[string][]byte{cert2Key: cert2Value},
 			nil,
 		},
 	}
@@ -432,7 +459,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultAppConfig(), naisResources, clientset)
+		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultAppConfig(), naisCertResources, clientset)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
@@ -445,6 +472,19 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+
+	})
+
+	t.Run("Env variable is created for file secrets ", func(t *testing.T) {
+		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultAppConfig(), naisCertResources, clientset)
+
+		envVars := deployment.Spec.Template.Spec.Containers[0].Env
+
+		assert.Equal(t, 7, len(envVars))
+		assert.Equal(t, "R1_CERT1KEY_PATH", envVars[3].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/cert1key", envVars[3].Value)
+		assert.Equal(t, "R2_CERT2KEY_PATH", envVars[6].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/cert2key", envVars[6].Value)
 
 	})
 

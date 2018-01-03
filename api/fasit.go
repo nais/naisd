@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -612,6 +613,9 @@ func resolveSecret(secrets map[string]map[string]string, username string, passwo
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
+		if requestDump, e := httputil.DumpRequest(req, false); e == nil {
+			glog.Errorf("Fasit request: ", requestDump)
+		}
 		return map[string]string{}, fmt.Errorf("Fasit gave errormessage when resolving secret: %s" + strconv.Itoa(resp.StatusCode))
 	}
 

@@ -6,7 +6,7 @@
 
 k8s in-cluster daemon with API for performing NAIS-operations
 
-Basic outline
+##Basic outline
 
 1. HTTP POST to API with name of application, version and environment
 2. Fetches app-config from internal artifact repository

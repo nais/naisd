@@ -109,7 +109,7 @@ func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *
 	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(namespace, deployName)
 
 	if err != nil {
-		return &appError{err, "Deployment not found ", http.StatusNotFound}
+		return &appError{err, "deployment not found ", http.StatusNotFound}
 	}
 
 	switch status {
@@ -140,7 +140,7 @@ func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
 	response := map[string]string{"version": ver.Version, "revision": ver.Revision}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		return &appError{err, "Unable to encode JSON", 500}
+		return &appError{err, "unable to encode JSON", 500}
 	}
 
 	return nil
@@ -170,7 +170,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
 	if err != nil {
-		return &appError{err, "Unable to unmarshal deployment request", http.StatusBadRequest}
+		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
 	}
 
 	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
@@ -179,7 +179,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	appConfig, err := GenerateAppConfig(deploymentRequest)
 	if err != nil {
-		return &appError{err, "Unable to generate appconfig/nais.yaml", http.StatusInternalServerError}
+		return &appError{err, "unable to generate appconfig/nais.yaml", http.StatusInternalServerError}
 	}
 
 	fasitEnvironment := fasit.environmentNameFromNamespaceBuilder(deploymentRequest.Namespace, api.ClusterName)
@@ -187,7 +187,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	if hasResources(appConfig) {
 		if err := validateFasitRequirements(fasit, deploymentRequest.Application, fasitEnvironment); err != nil {
-			return &appError{err, "Validating requirements for deployment failed", http.StatusInternalServerError}
+			return &appError{err, "validating requirements for deployment failed", http.StatusInternalServerError}
 		}
 		fasitEnvironmentClass, err = fasit.GetFasitEnvironment(fasitEnvironment)
 	}
@@ -196,12 +196,12 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	naisResources, err := fetchFasitResources(fasit, deploymentRequest, appConfig)
 	if err != nil {
-		return &appError{err, "Unable to fetch fasit resources", http.StatusBadRequest}
+		return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
 	}
 
 	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, api.ClusterSubdomain, api.Clientset)
 	if err != nil {
-		return &appError{err, "Failed while creating or updating k8s-resources", http.StatusInternalServerError}
+		return &appError{err, "failed while creating or updating k8s-resources", http.StatusInternalServerError}
 	}
 
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
@@ -214,7 +214,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	if hasResources(appConfig) {
 		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname, fasitEnvironmentClass, fasitEnvironment, api.ClusterSubdomain); err != nil {
-			return &appError{err, "Failed while updating Fasit", http.StatusInternalServerError}
+			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}
 
@@ -265,7 +265,7 @@ func (r NaisDeploymentRequest) Validate() []error {
 	}
 
 	if r.Zone != "fss" && r.Zone != "sbs" && r.Zone != "iapp" {
-		errs = append(errs, errors.New("Zone can only be fss, sbs or iapp"))
+		errs = append(errs, errors.New("zone can only be fss, sbs or iapp"))
 	}
 
 	return errs
@@ -274,12 +274,12 @@ func (r NaisDeploymentRequest) Validate() []error {
 func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, error) {
 	requestBody, err := ioutil.ReadAll(body)
 	if err != nil {
-		return NaisDeploymentRequest{}, fmt.Errorf("Could not read deployment request body %s", err)
+		return NaisDeploymentRequest{}, fmt.Errorf("could not read deployment request body %s", err)
 	}
 
 	var deploymentRequest NaisDeploymentRequest
 	if err = json.Unmarshal(requestBody, &deploymentRequest); err != nil {
-		return NaisDeploymentRequest{}, fmt.Errorf("Could not unmarshal body %s", err)
+		return NaisDeploymentRequest{}, fmt.Errorf("could not unmarshal body %s", err)
 	}
 
 	return deploymentRequest, nil

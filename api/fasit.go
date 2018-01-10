@@ -261,7 +261,7 @@ func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentReque
 
 	if len(appConfig.FasitResources.Exposed) > 0 {
 		if len(hostname) == 0 {
-			return fmt.Errorf("Unable to create resources when no ingress nor loadbalancer is specified.")
+			return fmt.Errorf("unable to create resources when no ingress nor loadbalancer is specified")
 		}
 		exposedResourceIds, err = CreateOrUpdateFasitResources(fasit, appConfig.FasitResources.Exposed, hostname, fasitEnvironmentClass, fasitEnvironment, deploymentRequest)
 		if err != nil {
@@ -299,13 +299,13 @@ func (fasit FasitClient) doRequest(r *http.Request) ([]byte, AppError) {
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode == 404 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return []byte{}, appError{nil, "Item not found in Fasit", http.StatusNotFound}
+		return []byte{}, appError{nil, fmt.Sprintf("item not found in Fasit: %s", string(body)), http.StatusNotFound}
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return []byte{}, appError{nil, "Error contacting Fasit", resp.StatusCode}
+		return []byte{}, appError{nil, fmt.Sprintf("error contacting Fasit: %s", string(body)), resp.StatusCode}
 	}
 
 	return body, nil
@@ -334,12 +334,12 @@ func (fasit FasitClient) getScopedResource(resourcesRequest ResourceRequest, fas
 	err = json.Unmarshal(body, &fasitResource)
 	if err != nil {
 		errorCounter.WithLabelValues("unmarshal_body").Inc()
-		return NaisResource{}, appError{err, "Could not unmarshal body", 500}
+		return NaisResource{}, appError{err, "could not unmarshal body", 500}
 	}
 
 	resource, err := fasit.mapToNaisResource(fasitResource, resourcesRequest.PropertyMap)
 	if err != nil {
-		return NaisResource{}, appError{err, "Unable to map response to Nais resource", 500}
+		return NaisResource{}, appError{err, "unable to map response to Nais resource", 500}
 	}
 	return resource, nil
 }
@@ -356,13 +356,13 @@ func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironme
 	payload, err := SafeMarshal(buildResourcePayload(resource, NaisResource{}, fasitEnvironmentClass, environment, deploymentRequest.Zone, hostname))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
-		return 0, fmt.Errorf("Unable to create payload (%s)", err)
+		return 0, fmt.Errorf("unable to create payload (%s)", err)
 	}
 
 	req, err := http.NewRequest("POST", fasit.FasitUrl+"/api/v2/resources/", bytes.NewBuffer(payload))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
-		return 0, fmt.Errorf("Unable to create request: %s", err)
+		return 0, fmt.Errorf("unable to create request: %s", err)
 	}
 
 	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
@@ -375,7 +375,7 @@ func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironme
 	resp, err := client.Do(req)
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
-		return 0, fmt.Errorf("Unable to contact Fasit: %s", err)
+		return 0, fmt.Errorf("unable to contact Fasit: %s", err)
 	}
 
 	defer resp.Body.Close()
@@ -385,13 +385,13 @@ func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironme
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "POST").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return 0, fmt.Errorf("Fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
+		return 0, fmt.Errorf("fasit returned: %s (%s)", body, strconv.Itoa(resp.StatusCode))
 	}
 
 	location := strings.Split(resp.Header.Get("Location"), "/")
 	id, err := strconv.Atoi(location[len(location)-1])
 	if err != nil {
-		return 0, fmt.Errorf("Didn't receive a valid resource ID from Fasit: %s", err)
+		return 0, fmt.Errorf("didn't receive a valid resource ID from Fasit: %s", err)
 	}
 
 	return id, nil
@@ -403,13 +403,13 @@ func (fasit FasitClient) updateResource(existingResource NaisResource, resource 
 	glog.Infof("Updating resource with the following payload: %s", payload)
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
-		return 0, fmt.Errorf("Unable to create payload (%s)", err)
+		return 0, fmt.Errorf("unable to create payload (%s)", err)
 	}
 
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/api/v2/resources/%d", fasit.FasitUrl, existingResource.id), bytes.NewBuffer(payload))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
-		return 0, fmt.Errorf("Unable to create request: %s", err)
+		return 0, fmt.Errorf("unable to create request: %s", err)
 	}
 	glog.Infof("Putting to: %s/api/v2/resources/%d", fasit.FasitUrl, existingResource.id)
 	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
@@ -430,7 +430,7 @@ func (fasit FasitClient) GetFasitEnvironment(environmentName string) (string, er
 	requestCounter.With(nil).Inc()
 	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/environments/"+environmentName, nil)
 	if err != nil {
-		return "", fmt.Errorf("Could not create request: %s", err)
+		return "", fmt.Errorf("could not create request: %s", err)
 	}
 
 	resp, appErr := fasit.doRequest(req)
@@ -443,7 +443,7 @@ func (fasit FasitClient) GetFasitEnvironment(environmentName string) (string, er
 	}
 	var fasitEnvironment FasitEnvironment
 	if err := json.Unmarshal(resp, &fasitEnvironment); err != nil {
-		return "", fmt.Errorf("Unable to read environmentclass from response: %s", err)
+		return "", fmt.Errorf("unable to read environmentclass from response: %s", err)
 	}
 
 	return fasitEnvironment.EnvironmentClass, nil
@@ -453,25 +453,25 @@ func (fasit FasitClient) GetFasitApplication(application string) error {
 	requestCounter.With(nil).Inc()
 	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/applications/"+application, nil)
 	if err != nil {
-		return fmt.Errorf("Could not create request: %s", err)
+		return fmt.Errorf("could not create request: %s", err)
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
-		return fmt.Errorf("Unable to contact Fasit: %s", err)
+		return fmt.Errorf("unable to contact Fasit: %s", err)
 	}
 	defer resp.Body.Close()
 
 	if err != nil {
-		return fmt.Errorf("Error contacting Fasit: %s", err)
+		return fmt.Errorf("error contacting Fasit: %s", err)
 	}
 
 	if resp.StatusCode == 200 {
 		return nil
 	}
-	return fmt.Errorf("Could not find application %s in Fasit", application)
+	return fmt.Errorf("could not find application %s in Fasit", application)
 }
 
 func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, propertyMap map[string]string) (resource NaisResource, err error) {
@@ -486,7 +486,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, property
 		secret, err := resolveSecret(fasitResource.Secrets, fasit.Username, fasit.Password)
 		if err != nil {
 			errorCounter.WithLabelValues("resolve_secret").Inc()
-			return NaisResource{}, fmt.Errorf("Unable to resolve secret: %s", err)
+			return NaisResource{}, fmt.Errorf("unable to resolve secret: %s", err)
 		}
 		resource.secret = secret
 	}
@@ -545,7 +545,7 @@ func parseLoadBalancerConfig(config []byte) (map[string]string, error) {
 	json, err := gabs.ParseJSON(config)
 	if err != nil {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return nil, fmt.Errorf("Error parsing load balancer config: %s ", config)
+		return nil, fmt.Errorf("error parsing load balancer config: %s ", config)
 	}
 
 	ingresses := make(map[string]string)
@@ -575,19 +575,19 @@ func parseFilesObject(files map[string]interface{}) (fileName string, fileUrl st
 	json, err := gabs.Consume(files)
 	if err != nil {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return "", "", fmt.Errorf("Error parsing fasit json: %s ", files)
+		return "", "", fmt.Errorf("error parsing fasit json: %s ", files)
 	}
 
 	fileName, fileNameFound := json.Path("keystore.filename").Data().(string)
 	if !fileNameFound {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return "", "", fmt.Errorf("Error parsing fasit json. Filename not found: %s ", files)
+		return "", "", fmt.Errorf("error parsing fasit json. Filename not found: %s ", files)
 	}
 
 	fileUrl, fileUrlfound := json.Path("keystore.ref").Data().(string)
 	if !fileUrlfound {
 		errorCounter.WithLabelValues("error_fasit").Inc()
-		return "", "", fmt.Errorf("Error parsing fasit json. Fileurl not found: %s ", files)
+		return "", "", fmt.Errorf("error parsing fasit json. Fileurl not found: %s ", files)
 	}
 
 	return fileName, fileUrl, nil
@@ -607,7 +607,7 @@ func resolveSecret(secrets map[string]map[string]string, username string, passwo
 	resp, err := client.Do(req)
 	if err != nil {
 		errorCounter.WithLabelValues("contact_fasit").Inc()
-		return map[string]string{}, fmt.Errorf("Error contacting fasit when resolving secret: %s", err)
+		return map[string]string{}, fmt.Errorf("error contacting fasit when resolving secret: %s", err)
 	}
 
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
@@ -616,7 +616,7 @@ func resolveSecret(secrets map[string]map[string]string, username string, passwo
 		if requestDump, e := httputil.DumpRequest(req, false); e == nil {
 			glog.Errorf("Fasit request: ", requestDump)
 		}
-		return map[string]string{}, fmt.Errorf("Fasit gave errormessage when resolving secret: %s" + strconv.Itoa(resp.StatusCode))
+		return map[string]string{}, fmt.Errorf("fasit gave errormessage when resolving secret: %s" + strconv.Itoa(resp.StatusCode))
 	}
 
 	defer resp.Body.Close()

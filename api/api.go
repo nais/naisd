@@ -149,11 +149,11 @@ func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
 func validateFasitRequirements(fasit FasitClientAdapter, application, fasitEnvironment string) error {
 	if _, err := fasit.GetFasitEnvironment(fasitEnvironment); err != nil {
 		glog.Errorf("Environment '%s' does not exist in Fasit", fasitEnvironment)
-		return err
+		return fmt.Errorf("unable to get fasit environment: %s. %s", fasitEnvironment, err)
 	}
 	if err := fasit.GetFasitApplication(application); err != nil {
 		glog.Errorf("Application '%s' does not exist in Fasit", application)
-		return err
+		return fmt.Errorf("unable to get fasit application: %s. %s", application, err)
 	}
 
 	return nil

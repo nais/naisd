@@ -60,7 +60,6 @@ func TestDeployStatusHandler(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 		assert.Equal(t, http.StatusNotFound, rr.Code)
-
 	})
 
 	t.Run("Correct http code for a given deploy status", func(t *testing.T) {

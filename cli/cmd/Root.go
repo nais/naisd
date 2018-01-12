@@ -14,6 +14,6 @@ var RootCmd = &cobra.Command{
 	Short: "Nais is the CLI for the Nais PAAS",
 	Long:  "Nais is the CLI for the Nais PAAS",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Velkommen til enn skikkelig nais plattform!!")
+		fmt.Println("Velkommen til en skikkelig nais plattform!!")
 	},
 }

@@ -47,7 +47,16 @@ func TestAppConfigUnmarshal(t *testing.T) {
 }
 
 func TestAppConfigUsesDefaultValues(t *testing.T) {
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{})
+
+	const repopath = "https://appconfig.repo"
+	defer gock.Off()
+
+	gock.New(repopath).
+		Reply(200).
+		File("testdata/nais_minimal.yaml")
+
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	//appConfig, err := GenerateAppConfig(NaisDeploymentRequest{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, "docker.adeo.no:5000/", appConfig.Image)

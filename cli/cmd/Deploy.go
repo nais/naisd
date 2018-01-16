@@ -141,6 +141,8 @@ var deployCmd = &cobra.Command{
 			elapsed := time.Since(start)
 			fmt.Printf("Deploy successful, took %v\n", elapsed)
 		}
+
+		api.NotifyGrafanaAboutDeploy(strings["app"], strings["cluster"], strings["namespace"], strings["version"])
 	},
 }
 

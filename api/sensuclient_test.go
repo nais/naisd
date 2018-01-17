@@ -15,7 +15,7 @@ func TestSensuClient(t *testing.T) {
 
 		message, err := GenerateDeployMessage(&application, &clusterName, &namespace, &version)
 		assert.NoError(t, err)
-		expected_message_prefix := "{\"name\":\"naisd.deployment\",\"type\":\"metric\",\"handlers\":[\"events_nano\"],\"output\":\"naisd.deployment,application=TestApp,clusterName=nais-dev,namespace=nais version=\\\"42.0.0\\\""
-		assert.Equal(t, true, strings.HasPrefix(string(message), expected_message_prefix))
+		expectedMessagePrefix := "{\"name\":\"naisd.deployment\",\"type\":\"metric\",\"handlers\":[\"events_nano\"],\"output\":\"naisd.deployment,application=TestApp,clusterName=nais-dev,namespace=nais version=\\\"42.0.0\\\""
+		assert.Equal(t, true, strings.HasPrefix(string(message), expectedMessagePrefix))
 	})
 }

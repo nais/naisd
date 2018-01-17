@@ -11,15 +11,15 @@ import (
 )
 
 const (
-	DEFAULT_SENSU_HOST = "sensu.nais:3030"
-	STOP_CHARACTER     = "\r\n\r\n"
+	defaultSensuHost = "sensu.nais:3030"
+	stopCharacter    = "\n"
 )
 
-type Message struct {
-	Name         string   `json:"name"`
-	Message_type string   `json:"type"`
-	Handlers     []string `json:"handlers"`
-	Output       string   `json:"output"`
+type message struct {
+	Name        string   `json:"name"`
+	MessageType string   `json:"type"`
+	Handlers    []string `json:"handlers"`
+	Output      string   `json:"output"`
 }
 
 func unixTimeInNano() int64 {
@@ -29,9 +29,9 @@ func unixTimeInNano() int64 {
 func GenerateDeployMessage(application *string, clusterName *string, namespace *string, version *string) ([]byte, error) {
 	timestamp := unixTimeInNano()
 	output := fmt.Sprintf("naisd.deployment,application=%s,clusterName=%s,namespace=%s version=\"%s\" %d", *application, *clusterName, *namespace, *version, timestamp)
-	m := Message{"naisd.deployment", "metric", []string{"events_nano"}, output}
-	b, err := json.Marshal(m)
+	m := message{"naisd.deployment", "metric", []string{"events_nano"}, output}
 
+	b, err := json.Marshal(m)
 	if err != nil {
 		errMsg := fmt.Sprintf("Can't marshal message for Sensu. Message was: %s\nError was: %s", m, err)
 		return nil, errors.New(errMsg)
@@ -41,8 +41,7 @@ func GenerateDeployMessage(application *string, clusterName *string, namespace *
 }
 
 func sendMessage(message []byte) error {
-	conn, err := net.Dial("tcp", DEFAULT_SENSU_HOST)
-
+	conn, err := net.Dial("tcp", defaultSensuHost)
 	if err != nil {
 		errMsg := fmt.Sprintf("Problem connecting to sensu on %s\nError was: %s", DEFAULT_SENSU_HOST, err)
 		return errors.New(errMsg)
@@ -51,11 +50,10 @@ func sendMessage(message []byte) error {
 	defer conn.Close()
 
 	conn.Write(message)
-	conn.Write([]byte(STOP_CHARACTER))
+	conn.Write([]byte(stopCharacter))
 
 	buff := make([]byte, 1024)
 	_, err = conn.Read(buff)
-
 	if err != nil {
 		errMsg := fmt.Sprintf("Problem reading response from sensu\nError was: %s", err)
 		return errors.New(errMsg)
@@ -65,10 +63,9 @@ func sendMessage(message []byte) error {
 	if string(buff[:i]) != "ok" {
 		errMsg := fmt.Sprintf("Sensu repsonded with something other than 'ok'. Response was: '%s'", string(buff))
 		return errors.New(errMsg)
-	} else {
-		glog.Info("Notified Sensu about deployment, sent the following message: ", string(message))
 	}
 
+	glog.Info("Notified Sensu about deployment, sent the following message: ", string(message))
 	return nil
 }
 

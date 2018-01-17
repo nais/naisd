@@ -43,7 +43,7 @@ func GenerateDeployMessage(application *string, clusterName *string, namespace *
 func sendMessage(message []byte) error {
 	conn, err := net.Dial("tcp", defaultSensuHost)
 	if err != nil {
-		errMsg := fmt.Sprintf("Problem connecting to sensu on %s\nError was: %s", DEFAULT_SENSU_HOST, err)
+		errMsg := fmt.Sprintf("Problem connecting to sensu on %s\nError was: %s", defaultSensuHost, err)
 		return errors.New(errMsg)
 	}
 

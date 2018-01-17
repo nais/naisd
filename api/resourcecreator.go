@@ -29,10 +29,7 @@ func createServiceDef(application, namespace string) *v1.Service {
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
-		ObjectMeta: v1.ObjectMeta{
-			Name:      application,
-			Namespace: namespace,
-		},
+		ObjectMeta: createObjectMeta(application,namespace),
 		Spec: v1.ServiceSpec{
 			Type:     v1.ServiceTypeClusterIP,
 			Selector: map[string]string{"app": application},
@@ -93,11 +90,8 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 				Kind:       "Deployment",
 				APIVersion: "apps/v1beta1",
 			},
-			ObjectMeta: v1.ObjectMeta{
-				Name:      deploymentRequest.Application,
-				Namespace: deploymentRequest.Namespace,
-			},
-			Spec: createDeploymentSpec(deploymentRequest, appConfig, naisResources),
+			ObjectMeta: createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace),
+			Spec:       createDeploymentSpec(deploymentRequest, appConfig, naisResources),
 		}
 		return deployment
 	}
@@ -122,22 +116,20 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, appConfig Nai
 		ProgressDeadlineSeconds: int32p(300),
 		RevisionHistoryLimit:    int32p(10),
 		Template: v1.PodTemplateSpec{
-			ObjectMeta: createObjectMeta(deploymentRequest, appConfig),
+			ObjectMeta: createPodObjectMetaWithPrometheusAnnotations(deploymentRequest, appConfig),
 			Spec:       createPodSpec(deploymentRequest, appConfig, naisResources),
 		},
 	}
 }
 
-func createObjectMeta(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
-	return v1.ObjectMeta{
-		Name:   deploymentRequest.Application,
-		Labels: map[string]string{"app": deploymentRequest.Application},
-		Annotations: map[string]string{
-			"prometheus.io/scrape": strconv.FormatBool(appConfig.Prometheus.Enabled),
-			"prometheus.io/port":   DefaultPortName,
-			"prometheus.io/path":   appConfig.Prometheus.Path,
-		},
+func createPodObjectMetaWithPrometheusAnnotations(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
+	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
+	objectMeta.Annotations = map[string]string{
+		"prometheus.io/scrape": strconv.FormatBool(appConfig.Prometheus.Enabled),
+		"prometheus.io/port":   DefaultPortName,
+		"prometheus.io/path":   appConfig.Prometheus.Path,
 	}
+	return objectMeta
 }
 
 func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1.PodSpec {
@@ -335,12 +327,9 @@ func createSecretDef(naisResources []NaisResource, existingSecret *v1.Secret, ap
 				Kind:       "Secret",
 				APIVersion: "v1",
 			},
-			ObjectMeta: v1.ObjectMeta{
-				Name:      application,
-				Namespace: namespace,
-			},
-			Data: createSecretData(naisResources),
-			Type: "Opaque",
+			ObjectMeta: createObjectMeta(application,namespace),
+			Data:       createSecretData(naisResources),
+			Type:       "Opaque",
 		}
 
 		if len(secret.Data) > 0 {
@@ -374,11 +363,8 @@ func createIngressDef(subdomain, application, namespace string) *v1beta1.Ingress
 			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
-		ObjectMeta: v1.ObjectMeta{
-			Name:      application,
-			Namespace: namespace,
-		},
-		Spec: v1beta1.IngressSpec{},
+		ObjectMeta: createObjectMeta(application, namespace),
+		Spec:       v1beta1.IngressSpec{},
 	}
 }
 
@@ -423,11 +409,8 @@ func createOrUpdateAutoscalerDef(min, max, cpuTargetPercentage int, existingAuto
 				Kind:       "HorizontalPodAutoscaler",
 				APIVersion: "autoscaling/v1",
 			},
-			ObjectMeta: v1.ObjectMeta{
-				Name:      application,
-				Namespace: namespace,
-			},
-			Spec: createAutoscalerSpec(min, max, cpuTargetPercentage, application),
+			ObjectMeta: createObjectMeta(application,namespace),
+			Spec:       createAutoscalerSpec(min, max, cpuTargetPercentage, application),
 		}
 	}
 }
@@ -674,4 +657,12 @@ func createOrUpdateSecretResource(secretSpec *v1.Secret, namespace string, k8sCl
 
 func int32p(i int32) *int32 {
 	return &i
+}
+
+func createObjectMeta(applicationName string, namespace string) (v1.ObjectMeta) {
+	return v1.ObjectMeta{
+		Name:      applicationName,
+		Namespace: namespace,
+		Labels: map[string]string{"app": applicationName},
+	}
 }

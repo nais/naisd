@@ -1,25 +1,25 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang/glog"
 	"net"
 	"time"
-	"github.com/golang/glog"
-	"bytes"
 )
 
 const (
 	DEFAULT_SENSU_HOST = "sensu.nais:3030"
-	STOP_CHARACTER = "\r\n\r\n"
+	STOP_CHARACTER     = "\r\n\r\n"
 )
 
 type Message struct {
-	Name string `json:"name"`
-	Message_type string `json:"type"`
-	Handlers []string `json:"handlers"`
-	Output string `json:"output"`
+	Name         string   `json:"name"`
+	Message_type string   `json:"type"`
+	Handlers     []string `json:"handlers"`
+	Output       string   `json:"output"`
 }
 
 func unixTimeInNano() int64 {

@@ -32,7 +32,7 @@ type NaisDeploymentRequest struct {
 	AppConfigUrl string `json:"appconfigurl,omitempty"`
 	Username     string `json:"username"`
 	Password     string `json:"password"`
-	OnBehalfOf	 string `json:"onbehalfof,omitempty"`
+	OnBehalfOf   string `json:"onbehalfof,omitempty"`
 	Namespace    string `json:"namespace"`
 }
 

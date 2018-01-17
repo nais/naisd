@@ -218,7 +218,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		}
 	}
 
-	NotifyGrafanaAboutDeploy(&deploymentRequest.Application, &api.ClusterName, &deploymentRequest.Namespace, &deploymentRequest.Version)
+	NotifySensuAboutDeploy(&deploymentRequest.Application, &api.ClusterName, &deploymentRequest.Namespace, &deploymentRequest.Version)
 
 	w.WriteHeader(200)
 	w.Write(createResponse(deploymentResult))

@@ -69,7 +69,7 @@ func sendMessage(message []byte) error {
 	return nil
 }
 
-func NotifyGrafanaAboutDeploy(application *string, clusterName *string, namespace *string, version *string) {
+func NotifySensuAboutDeploy(application *string, clusterName *string, namespace *string, version *string) {
 	message, err := GenerateDeployMessage(application, clusterName, namespace, version)
 	if err != nil {
 		glog.Errorln(err)

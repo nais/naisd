@@ -26,9 +26,9 @@ func unixTimeInNano() int64 {
 	return time.Now().UnixNano()
 }
 
-func GenerateDeployMessage(application *string, clusterName *string, namespace *string, version *string) ([]byte, error) {
+func GenerateDeployMessage(deploymentRequest *NaisDeploymentRequest, clusterName *string) ([]byte, error) {
 	timestamp := unixTimeInNano()
-	output := fmt.Sprintf("naisd.deployment,application=%s,clusterName=%s,namespace=%s version=\"%s\" %d", *application, *clusterName, *namespace, *version, timestamp)
+	output := fmt.Sprintf("naisd.deployment,application=%s,clusterName=%s,namespace=%s version=\"%s\" %d", deploymentRequest.Application, *clusterName, deploymentRequest.Namespace, deploymentRequest.Version, timestamp)
 	m := message{"naisd.deployment", "metric", []string{"events_nano"}, output}
 
 	b, err := json.Marshal(m)
@@ -69,8 +69,8 @@ func sendMessage(message []byte) error {
 	return nil
 }
 
-func NotifySensuAboutDeploy(application *string, clusterName *string, namespace *string, version *string) {
-	message, err := GenerateDeployMessage(application, clusterName, namespace, version)
+func NotifySensuAboutDeploy(deploymentRequest *NaisDeploymentRequest, clusterName *string) {
+	message, err := GenerateDeployMessage(deploymentRequest, clusterName)
 	if err != nil {
 		glog.Errorln(err)
 		return

@@ -583,6 +583,27 @@ func TestIngress(t *testing.T) {
 
 	})
 
+	t.Run("sbs ingress are added", func(t *testing.T) {
+		clientset := fake.NewSimpleClientset(ingress) //Avoid interfering with other tests in suite.
+		var naisResources []NaisResource
+
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: "testapp", Zone: ZONE_SBS, Environment: "testenv"}, subDomain, naisResources, clientset)
+		rules := ingress.Spec.Rules
+
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(rules))
+
+		firstRule := rules[0]
+		assert.Equal(t, "testapp.example.no", firstRule.Host)
+		assert.Equal(t, 1, len(firstRule.HTTP.Paths))
+		assert.Equal(t, "/", firstRule.HTTP.Paths[0].Path)
+
+		secondRule := rules[1]
+		assert.Equal(t, "tjenester-testenv.nav.no", secondRule.Host)
+		assert.Equal(t, 1, len(secondRule.HTTP.Paths))
+		assert.Equal(t, "/testapp", secondRule.HTTP.Paths[0].Path)
+	})
+
 }
 
 func TestCreateOrUpdateSecret(t *testing.T) {
@@ -863,4 +884,14 @@ func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSo
 			Key: resName + "_" + resKey,
 		},
 	}
+}
+
+func TestCreateSBSPublicHostname(t *testing.T) {
+
+	t.Run("p", func(t *testing.T) {
+		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "p"}))
+		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "t6"}))
+		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "q6"}))
+	})
+
 }

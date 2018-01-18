@@ -376,6 +376,15 @@ func createIngressHostname(application, namespace, subdomain string) string {
 	}
 }
 
+func createSBSPublicHostname(request NaisDeploymentRequest) string {
+	environment := request.Environment
+	if environment != ENVIRONMENT_P {
+		return fmt.Sprintf("tjenester-%s.nav.no", environment)
+	} else {
+		return fmt.Sprintf("tjenester.nav.no")
+	}
+}
+
 func createIngressRule(serviceName, host, path string) v1beta1.IngressRule {
 	return v1beta1.IngressRule{
 		Host: host,
@@ -499,6 +508,10 @@ func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomai
 
 	defaultIngressRule := createIngressRule(deploymentRequest.Application, createIngressHostname(deploymentRequest.Application, deploymentRequest.Namespace, clusterSubdomain), "")
 	ingressRules = append(ingressRules, defaultIngressRule)
+
+	if deploymentRequest.Zone == ZONE_SBS {
+		ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application, createSBSPublicHostname(deploymentRequest), deploymentRequest.Application))
+	}
 
 	for _, naisResource := range naisResources {
 		if naisResource.resourceType == "LoadBalancerConfig" && len(naisResource.ingresses) > 0 {

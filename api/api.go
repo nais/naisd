@@ -32,7 +32,7 @@ type NaisDeploymentRequest struct {
 	AppConfigUrl string `json:"appconfigurl,omitempty"`
 	Username     string `json:"username"`
 	Password     string `json:"password"`
-	OnBehalfOf	 string `json:"onbehalfof,omitempty"`
+	OnBehalfOf   string `json:"onbehalfof,omitempty"`
 	Namespace    string `json:"namespace"`
 }
 
@@ -217,6 +217,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}
+
+	NotifySensuAboutDeploy(&deploymentRequest, &api.ClusterName)
 
 	w.WriteHeader(200)
 	w.Write(createResponse(deploymentResult))

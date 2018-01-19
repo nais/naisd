@@ -381,7 +381,7 @@ func createSBSPublicHostname(request NaisDeploymentRequest) string {
 	if environment != ENVIRONMENT_P {
 		return fmt.Sprintf("tjenester-%s.nav.no", environment)
 	} else {
-		return fmt.Sprintf("tjenester.nav.no")
+		return "tjenester.nav.no"
 	}
 }
 

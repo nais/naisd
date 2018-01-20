@@ -48,30 +48,7 @@ func createServiceDef(application, namespace string) *v1.Service {
 
 }
 
-func ResourceVariableName(resource NaisResource, key string) string {
-	name := resource.name + "_" + key
 
-	if resource.resourceType == "applicationproperties" {
-		name = key
-	}
-
-	if strings.Contains(name, ".") {
-		name = strings.Replace(name, ".", "_", -1)
-	}
-
-	if strings.Contains(name, ":") {
-		name = strings.Replace(name, ":", "_", -1)
-	}
-
-	if strings.Contains(name, "-") {
-		return strings.Replace(name, "-", "_", -1)
-	}
-	return name
-}
-
-func ResourceEnvironmentVariableName(resource NaisResource, key string) string {
-	return strings.ToUpper(ResourceVariableName(resource, key))
-}
 
 func validLabelName(str string) string {
 	tmpStr := strings.Replace(str, "_", "-", -1)
@@ -80,10 +57,16 @@ func validLabelName(str string) string {
 
 // Creates a Kubernetes Deployment object
 // If existingDeployment is provided, this is updated with modifiable fields
-func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) *v1beta1.Deployment {
+func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) (*v1beta1.Deployment, error) {
+	spec, err := createDeploymentSpec(deploymentRequest, appConfig, naisResources)
+
+	if err != nil {
+		return nil, err
+	}
+
 	if existingDeployment != nil {
-		existingDeployment.Spec = createDeploymentSpec(deploymentRequest, appConfig, naisResources)
-		return existingDeployment
+		existingDeployment.Spec = spec
+		return existingDeployment, nil
 	} else {
 		deployment := &v1beta1.Deployment{
 			TypeMeta: unversioned.TypeMeta{
@@ -91,13 +74,19 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 				APIVersion: "apps/v1beta1",
 			},
 			ObjectMeta: createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace),
-			Spec:       createDeploymentSpec(deploymentRequest, appConfig, naisResources),
+			Spec:       spec,
 		}
-		return deployment
+		return deployment, nil
 	}
 }
 
-func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1beta1.DeploymentSpec {
+func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) (v1beta1.DeploymentSpec, error) {
+	spec, err := createPodSpec(deploymentRequest, appConfig, naisResources)
+
+	if err != nil {
+		return v1beta1.DeploymentSpec{}, err
+	}
+
 	return v1beta1.DeploymentSpec{
 		Replicas: int32p(1),
 		Strategy: v1beta1.DeploymentStrategy{
@@ -117,9 +106,9 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, appConfig Nai
 		RevisionHistoryLimit:    int32p(10),
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: createPodObjectMetaWithPrometheusAnnotations(deploymentRequest, appConfig),
-			Spec:       createPodSpec(deploymentRequest, appConfig, naisResources),
+			Spec:       spec,
 		},
-	}
+	}, nil
 }
 
 func createPodObjectMetaWithPrometheusAnnotations(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
@@ -132,7 +121,13 @@ func createPodObjectMetaWithPrometheusAnnotations(deploymentRequest NaisDeployme
 	return objectMeta
 }
 
-func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) v1.PodSpec {
+func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) (v1.PodSpec, error) {
+	envVars, err := createEnvironmentVariables(deploymentRequest, naisResources)
+
+	if err != nil {
+		return v1.PodSpec{}, err
+	}
+
 	podSpec := v1.PodSpec{
 		Containers: []v1.Container{
 			{
@@ -164,7 +159,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 					PeriodSeconds:       int32(appConfig.Healthcheck.Readiness.PeriodSeconds),
 					FailureThreshold:    int32(appConfig.Healthcheck.Readiness.FailureThreshold),
 				},
-				Env:             createEnvironmentVariables(deploymentRequest, naisResources),
+				Env:             envVars,
 				ImagePullPolicy: v1.PullIfNotPresent,
 				Lifecycle:       createLifeCycle(appConfig.PreStopHookPath),
 			},
@@ -180,7 +175,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 		container.VolumeMounts = append(container.VolumeMounts, createCertificateVolumeMount(deploymentRequest, naisResources))
 	}
 
-	return podSpec
+	return podSpec, nil
 }
 
 func createLifeCycle(path string) *v1.Lifecycle {
@@ -248,51 +243,82 @@ func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resou
 	return v1.VolumeMount{}
 }
 
-func createResourceEnvironmentVariable(resource NaisResource, variableName string) string {
-	if value, ok := resource.propertyMap[variableName]; ok {
-		return value
+func checkForDuplicates(envVars []v1.EnvVar, envVar v1.EnvVar, property string, resource NaisResource) error {
+	for _, existingEnvVar := range envVars {
+		if envVar.Name == existingEnvVar.Name {
+			return fmt.Errorf("found duplicate environment variable %s when adding %s for %s (%s)" +
+				" Change the Fasit alias or use propertyMap to create unique variable names",
+				existingEnvVar.Name, property, resource.name, resource.resourceType)
+		}
+
+		if envVar.ValueFrom == nil || envVar.ValueFrom.SecretKeyRef == nil ||
+			existingEnvVar.ValueFrom == nil || existingEnvVar.ValueFrom.SecretKeyRef == nil {
+			continue
+		}
+
+		if envVar.ValueFrom.SecretKeyRef.Key == existingEnvVar.ValueFrom.SecretKeyRef.Key {
+			return fmt.Errorf("found duplicate secret key ref %s between %s and %s when adding %s for %s (%s)" +
+				" Change the Fasit alias or use propertyMap to create unique variable names",
+				existingEnvVar.ValueFrom.SecretKeyRef.Key, existingEnvVar.Name, envVar.Name,
+				property, resource.name, resource.resourceType)
+		}
 	}
 
-	return ResourceEnvironmentVariableName(resource, variableName)
+	return nil
 }
 
-func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) []v1.EnvVar {
+func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) ([]v1.EnvVar, error) {
 	envVars := createDefaultEnvironmentVariables(deploymentRequest.Version)
 
 	for _, res := range naisResources {
 		for variableName, v := range res.properties {
-			envVar := v1.EnvVar{createResourceEnvironmentVariable(res, variableName), v, nil}
+			envVar := v1.EnvVar{res.ToEnvironmentVariable(variableName), v, nil}
+
+			if err := checkForDuplicates(envVars, envVar, variableName, res); err != nil {
+				return nil, err
+			}
+
 			envVars = append(envVars, envVar)
 		}
 		if res.secret != nil {
 			for k := range res.secret {
 				envVar := v1.EnvVar{
-					Name: createResourceEnvironmentVariable(res, k),
+					Name: res.ToEnvironmentVariable(k),
 					ValueFrom: &v1.EnvVarSource{
 						SecretKeyRef: &v1.SecretKeySelector{
 							LocalObjectReference: v1.LocalObjectReference{
 								Name: deploymentRequest.Application,
 							},
-							Key: ResourceVariableName(res, k),
+							Key: res.ToResourceVariable(k),
 						},
 					},
 				}
+
+				if err := checkForDuplicates(envVars, envVar, k, res); err != nil {
+					return nil, err
+				}
+
 				envVars = append(envVars, envVar)
 			}
 		}
 
 		if res.certificates != nil {
-			for k, _ := range res.certificates {
+			for k := range res.certificates {
 				envVar := v1.EnvVar{
-					Name:  createResourceEnvironmentVariable(res, k) + "_PATH",
+					Name:  res.ToEnvironmentVariable(k) + "_PATH",
 					Value: "/var/run/secrets/naisd.io/" + k,
 				}
+
+				if err := checkForDuplicates(envVars, envVar, k, res); err != nil {
+					return nil, err
+				}
+
 				envVars = append(envVars, envVar)
 
 			}
 		}
 	}
-	return envVars
+	return envVars, nil
 }
 
 func createDefaultEnvironmentVariables(version string) []v1.EnvVar {
@@ -344,7 +370,7 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 	for _, res := range naisResources {
 		if res.secret != nil {
 			for k, v := range res.secret {
-				data[ResourceVariableName(res, k)] = []byte(v)
+				data[res.ToResourceVariable(k)] = []byte(v)
 			}
 		}
 		if res.certificates != nil {
@@ -532,7 +558,12 @@ func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, appConfig
 		return nil, fmt.Errorf("Unable to get existing deployment: %s", err)
 	}
 
-	deploymentDef := createDeploymentDef(naisResources, appConfig, deploymentRequest, existingDeployment)
+	deploymentDef, err := createDeploymentDef(naisResources, appConfig, deploymentRequest, existingDeployment)
+
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create deployment: %s", err)
+	}
+
 	return createOrUpdateDeploymentResource(deploymentDef, deploymentRequest.Namespace, k8sClient)
 }
 

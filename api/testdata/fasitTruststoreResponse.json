@@ -1,0 +1,34 @@
+{
+  "type": "certificate",
+  "alias": "nav_truststore",
+  "scope": {
+    "environmentclass": "t",
+    "zone": "fss",
+    "application": "testapp"
+  },
+  "properties": {
+    "keystorealias": "app-key"
+  },
+  "secrets": {},
+  "files": {
+    "keystore": {
+      "filename": "keystore",
+      "ref": "https://fasit.local/api/v2/resources/3024713/file/keystore"
+    }
+  },
+  "usedbyapplications": [],
+  "dodgy": false,
+  "id": 3024713,
+  "revision": 3107163,
+  "created": "2017-08-29T15:21:42.621",
+  "updated": "2017-09-11T11:51:45.473",
+  "lifecycle": {},
+  "accesscontrol": {
+    "environmentclass": "t",
+    "adgroups": []
+  },
+  "links": {
+    "self": "https://fasit.local/api/v2/resources/3024713",
+    "revisions": "https://fasit.local/api/v2/resources/3024713/revisions"
+  }
+}

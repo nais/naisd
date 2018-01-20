@@ -65,79 +65,6 @@ func newDefaultAppConfig() NaisAppConfig {
 
 }
 
-func TestResourceEnvironmentVariableName(t *testing.T) {
-	t.Run("Resource should be underscored and uppercased", func(t *testing.T) {
-		resource := NaisResource{
-			1,
-			"test.resource",
-			"type",
-			Scope{"u", "u1", "fss"},
-			map[string]string{},
-			map[string]string{},
-			map[string]string{},
-			map[string][]byte{},
-			nil,
-		}
-		assert.Equal(t, "TEST_RESOURCE_KEY", createResourceEnvironmentVariable(resource, "key"))
-
-		resource = NaisResource{
-			1,
-			"test.resource",
-			"applicationproperties",
-			Scope{"u", "u1", "fss"},
-			map[string]string{
-				"foo.var-with.mixed_stuff": "fizz",
-			},
-			map[string]string{},
-			map[string]string{},
-			map[string][]byte{},
-			nil,
-		}
-		assert.Equal(t, "FOO_VAR_WITH_MIXED_STUFF", createResourceEnvironmentVariable(resource, "foo.var-with.mixed_stuff"))
-	})
-
-	t.Run("Property mapping should decide variable name", func(t *testing.T) {
-		resource := NaisResource{
-			1,
-			"test.resource",
-			"applicationproperties",
-			Scope{"u", "u1", "fss"},
-			map[string]string{
-				"foo.var-with.mixed_stuff": "fizz",
-			},
-			map[string]string{
-				"foo.var-with.mixed_stuff": "SOMETHING_NEW",
-			},
-			map[string]string{},
-			map[string][]byte{},
-			nil,
-		}
-		assert.Equal(t, "SOMETHING_NEW", createResourceEnvironmentVariable(resource, "foo.var-with.mixed_stuff"))
-
-		resource = NaisResource{
-			1,
-			"test.resource",
-			"datasource",
-			Scope{"u", "u1", "fss"},
-			map[string]string{
-				"url":      "fizzbuzz",
-				"username": "fizz",
-				"password": "buzz",
-			},
-			map[string]string{
-				"username": "DB_USER",
-				"password": "DB_PW",
-			},
-			map[string]string{},
-			map[string][]byte{},
-			nil,
-		}
-		assert.Equal(t, "TEST_RESOURCE_URL", createResourceEnvironmentVariable(resource, "url"))
-		assert.Equal(t, "DB_USER", createResourceEnvironmentVariable(resource, "username"))
-		assert.Equal(t, "DB_PW", createResourceEnvironmentVariable(resource, "password"))
-	})
-}
-
 func TestService(t *testing.T) {
 	service := createServiceDef(appName, namespace)
 	service.Spec.ClusterIP = clusterIP
@@ -307,7 +234,10 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	deployment := createDeploymentDef(naisResources, newDefaultAppConfig(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
+	deployment, err := createDeploymentDef(naisResources, newDefaultAppConfig(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
+
+	assert.Nil(t, err)
+
 	deployment.ObjectMeta.ResourceVersion = resourceVersion
 
 	clientset := fake.NewSimpleClientset(deployment)
@@ -653,8 +583,8 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, "", secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, otherAppName, secret.ObjectMeta.Name)
 		assert.Equal(t, 4, len(secret.Data))
-		assert.Equal(t, []byte(secret1Value), secret.Data["r1_alias_"+secret1Key])
-		assert.Equal(t, []byte(secret2Value), secret.Data[resource2Name+"_"+secret2Key])
+		assert.Equal(t, []byte(secret1Value), secret.Data[naisResources[0].ToResourceVariable(secret1Key)])
+		assert.Equal(t, []byte(secret2Value), secret.Data[naisResources[1].ToResourceVariable(secret2Key)])
 		assert.Equal(t, fileValue1, secret.Data[fileKey1])
 		assert.Equal(t, fileValue2, secret.Data[fileKey2])
 	})
@@ -852,6 +782,68 @@ func TestCreateK8sResources(t *testing.T) {
 		assert.Empty(t, deploymentResult.Ingress)
 	})
 
+}
+
+func TestCheckForDuplicates(t *testing.T) {
+	t.Run("duplicate environment variables should error", func(t *testing.T) {
+		resource1 := NaisResource{
+			name:         "srvapp",
+			resourceType: "credential",
+			properties:   map[string]string{},
+			secret: map[string]string{
+				"password": "foo",
+			},
+		}
+		resource2 := NaisResource{
+			name:         "srvapp",
+			resourceType: "certificate",
+			properties:   map[string]string{},
+			secret: map[string]string{
+				"password": "bar",
+			},
+		}
+
+		deploymentRequest := NaisDeploymentRequest{
+			Application: "myapp",
+			Version:     "1",
+		}
+
+		_, err := createEnvironmentVariables(deploymentRequest, []NaisResource{resource1, resource2})
+
+		assert.NotNil(t, err)
+		assert.Equal(t, "found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
+			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
+	})
+
+	t.Run("duplicate secret key ref should error", func(t *testing.T) {
+		envVar1 := v1.EnvVar{
+			Name: "MY_PASSWORD",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: &v1.SecretKeySelector{
+					Key: "my_password",
+				},
+			},
+		}
+		envVar2 := v1.EnvVar{
+			Name: "OTHER_PASSWORD",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: &v1.SecretKeySelector{
+					Key: "my_password",
+				},
+			},
+		}
+		resource2 := NaisResource{
+			name: "other",
+			resourceType: "credential",
+			properties: map[string]string{},
+		}
+
+		err := checkForDuplicates([]v1.EnvVar{envVar1}, envVar2, "password", resource2)
+
+		assert.NotNil(t, err)
+		assert.Equal(t, "found duplicate secret key ref my_password between MY_PASSWORD and OTHER_PASSWORD when adding password for other (credential)" +
+			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
+	})
 }
 
 func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSource {

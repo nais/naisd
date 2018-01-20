@@ -442,6 +442,37 @@ func TestDeployment(t *testing.T) {
 		assert.Empty(t, spec.Containers[0].VolumeMounts, "Unexpected volume mounts.")
 
 	})
+
+	t.Run("duplicate environment variables should error", func(t *testing.T) {
+		resource1 := NaisResource{
+			name:         "srvapp",
+			resourceType: "credential",
+			properties:   map[string]string{},
+			secret: map[string]string{
+				"password": "foo",
+			},
+		}
+		resource2 := NaisResource{
+			name:         "srvapp",
+			resourceType: "certificate",
+			properties:   map[string]string{},
+			secret: map[string]string{
+				"password": "bar",
+			},
+		}
+
+		deploymentRequest := NaisDeploymentRequest{
+			Namespace: "default",
+			Application: "myapp",
+			Version:     "1",
+		}
+
+		_, err := createOrUpdateDeployment(deploymentRequest, newDefaultAppConfig(), []NaisResource{resource1, resource2}, clientset)
+
+		assert.NotNil(t, err)
+		assert.Equal(t, "Unable to create deployment: found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
+			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
+	})
 }
 
 func TestIngress(t *testing.T) {

@@ -396,7 +396,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	version := "2.1"
 	exposedResourceIds := []int{1, 2, 3}
 	usedResourceIds := []int{4, 5, 6}
-	zone := "fss"
+	zone := ZONE_FSS
 	alias := "resourceAlias"
 	path := "/myPath"
 	hostname := "hostname"
@@ -508,7 +508,7 @@ func TestGenerateScope(t *testing.T) {
 	existingResource := NaisResource{}
 	fasitEnvironmentClass := "u"
 	environment := "u1"
-	zone := "fss"
+	zone := ZONE_FSS
 	t.Run("default scope set when creating a resource", func(t *testing.T) {
 		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
 		defaultScope := Scope{EnvironmentClass: fasitEnvironmentClass, Environment: environment, Zone: zone}

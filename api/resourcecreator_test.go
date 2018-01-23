@@ -71,7 +71,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			1,
 			"test.resource",
 			"type",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{},
 			map[string]string{},
 			map[string]string{},
@@ -84,7 +84,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			1,
 			"test.resource",
 			"applicationproperties",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{
 				"foo.var-with.mixed_stuff": "fizz",
 			},
@@ -101,7 +101,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			1,
 			"test.resource",
 			"applicationproperties",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{
 				"foo.var-with.mixed_stuff": "fizz",
 			},
@@ -118,7 +118,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			1,
 			"test.resource",
 			"datasource",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{
 				"url":      "fizzbuzz",
 				"username": "fizz",
@@ -210,7 +210,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			resource1Name,
 			resource1Type,
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{},
 			map[string]string{secret1Key: secret1Value},
@@ -221,7 +221,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			resource2Name,
 			resource2Type,
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{
 				resource2Key: resource2KeyMapping,
@@ -234,7 +234,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			"resource3",
 			"applicationproperties",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{
 				"key1": "value1",
 			},
@@ -247,7 +247,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			"resource4",
 			"applicationproperties",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{
 				"key2.Property": "dc=preprod,dc=local",
 			},
@@ -260,7 +260,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			invalidlyNamedResourceNameDot,
 			invalidlyNamedResourceTypeDot,
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{invalidlyNamedResourceKeyDot: invalidlyNamedResourceValueDot},
 			map[string]string{},
 			map[string]string{invalidlyNamedResourceSecretKeyDot: invalidlyNamedResourceSecretValueDot},
@@ -271,7 +271,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			invalidlyNamedResourceNameColon,
 			invalidlyNamedResourceTypeColon,
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{invalidlyNamedResourceKeyColon: invalidlyNamedResourceValueColon},
 			map[string]string{},
 			map[string]string{invalidlyNamedResourceSecretKeyColon: invalidlyNamedResourceSecretValueColon},
@@ -285,7 +285,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			resource1Name,
 			"certificate",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{},
 			map[string]string{secret1Key: secret1Value},
@@ -296,7 +296,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			resource2Name,
 			resource2Type,
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{
 				resource2Key: resource2KeyMapping,
@@ -436,7 +436,7 @@ func TestDeployment(t *testing.T) {
 				1,
 				resource1Name,
 				resource1Type,
-				Scope{"u", "u1", "fss"},
+				Scope{"u", "u1", ZONE_FSS},
 				nil,
 				nil,
 				nil,
@@ -494,7 +494,7 @@ func TestDeployment(t *testing.T) {
 				1,
 				resource1Name,
 				resource1Type,
-				Scope{"u", "u1", "fss"},
+				Scope{"u", "u1", ZONE_FSS},
 				nil,
 				nil,
 				nil,
@@ -583,6 +583,27 @@ func TestIngress(t *testing.T) {
 
 	})
 
+	t.Run("sbs ingress are added", func(t *testing.T) {
+		clientset := fake.NewSimpleClientset(ingress) //Avoid interfering with other tests in suite.
+		var naisResources []NaisResource
+
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: "testapp", Zone: ZONE_SBS, Environment: "testenv"}, subDomain, naisResources, clientset)
+		rules := ingress.Spec.Rules
+
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(rules))
+
+		firstRule := rules[0]
+		assert.Equal(t, "testapp.example.no", firstRule.Host)
+		assert.Equal(t, 1, len(firstRule.HTTP.Paths))
+		assert.Equal(t, "/", firstRule.HTTP.Paths[0].Path)
+
+		secondRule := rules[1]
+		assert.Equal(t, "tjenester-testenv.nav.no", secondRule.Host)
+		assert.Equal(t, 1, len(secondRule.HTTP.Paths))
+		assert.Equal(t, "/testapp", secondRule.HTTP.Paths[0].Path)
+	})
+
 }
 
 func TestCreateOrUpdateSecret(t *testing.T) {
@@ -612,7 +633,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 			1,
 			resource1Name,
 			resource1Type,
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{},
 			map[string]string{secret1Key: secret1Value},
@@ -622,7 +643,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 			1,
 			resource2Name,
 			resource2Type,
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{},
 			map[string]string{secret2Key: secret2Value},
@@ -667,7 +688,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 				1,
 				resource1Name,
 				resource1Type,
-				Scope{"u", "u1", "fss"},
+				Scope{"u", "u1", ZONE_FSS},
 				nil,
 				map[string]string{},
 				map[string]string{secret1Key: updatedSecretValue},
@@ -738,7 +759,7 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 			1,
 			"name",
 			"resourcrType",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			nil,
 			nil,
 			nil,
@@ -792,7 +813,7 @@ func TestCreateK8sResources(t *testing.T) {
 			1,
 			"resourceName",
 			"resourceType",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{"resourceKey": "resource1Value"},
 			nil,
 			map[string]string{"secretKey": "secretValue"},
@@ -826,7 +847,7 @@ func TestCreateK8sResources(t *testing.T) {
 			1,
 			"resourceName",
 			"resourceType",
-			Scope{"u", "u1", "fss"},
+			Scope{"u", "u1", ZONE_FSS},
 			map[string]string{"resourceKey": "resource1Value"},
 			map[string]string{},
 			map[string]string{},
@@ -863,4 +884,14 @@ func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSo
 			Key: resName + "_" + resKey,
 		},
 	}
+}
+
+func TestCreateSBSPublicHostname(t *testing.T) {
+
+	t.Run("p", func(t *testing.T) {
+		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "p"}))
+		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "t6"}))
+		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "q6"}))
+	})
+
 }

@@ -266,7 +266,7 @@ func (r NaisDeploymentRequest) Validate() []error {
 		}
 	}
 
-	if r.Zone != "fss" && r.Zone != "sbs" && r.Zone != "iapp" {
+	if r.Zone != ZONE_FSS && r.Zone != ZONE_SBS && r.Zone != ZONE_IAPP {
 		errs = append(errs, errors.New("zone can only be fss, sbs or iapp"))
 	}
 

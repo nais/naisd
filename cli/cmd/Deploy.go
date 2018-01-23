@@ -151,7 +151,7 @@ func init() {
 	deployCmd.Flags().StringP("version", "v", "", "version you want to deploy")
 	deployCmd.Flags().StringP("cluster", "c", "", "the cluster you want to deploy to")
 	deployCmd.Flags().StringP("environment", "e", "t0", "environment you want to use")
-	deployCmd.Flags().StringP("zone", "z", "fss", "the zone the app will be in")
+	deployCmd.Flags().StringP("zone", "z", api.ZONE_FSS, "the zone the app will be in")
 	deployCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")
 	deployCmd.Flags().StringP("username", "u", "", "the username")
 	deployCmd.Flags().StringP("password", "p", "", "the password")

@@ -111,6 +111,36 @@ type NaisResource struct {
 	ingresses    map[string]string
 }
 
+func (nr NaisResource) ToEnvironmentVariable(property string) string {
+	return strings.ToUpper(nr.ToResourceVariable(property))
+}
+
+func (nr NaisResource) ToResourceVariable(property string) string {
+	if value, ok := nr.propertyMap[property]; ok {
+		property = value
+	} else if nr.resourceType != "applicationproperties" {
+		property = nr.name + "_" + property
+	}
+
+	return strings.ToLower(nr.normalizePropertyName(property))
+}
+
+func (nr NaisResource) normalizePropertyName(name string) string {
+	if strings.Contains(name, ".") {
+		name = strings.Replace(name, ".", "_", -1)
+	}
+
+	if strings.Contains(name, ":") {
+		name = strings.Replace(name, ":", "_", -1)
+	}
+
+	if strings.Contains(name, "-") {
+		name = strings.Replace(name, "-", "_", -1)
+	}
+
+	return name
+}
+
 func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error) {
 	for _, request := range resourcesRequests {
 		resource, appErr := fasit.getScopedResource(request, environment, application, zone)

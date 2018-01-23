@@ -176,7 +176,12 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	gock.New("https://fasit.local").
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", NavTruststoreFasitAlias).
-		Reply(200).File("testdata/fasitResponse.json")
+		Reply(200).File("testdata/fasitTruststoreResponse.json")
+
+	gock.New("https://fasit.local").
+		Get("/api/v2/resources/3024713/file/keystore").
+		Reply(200).
+		BodyString("")
 
 	gock.New("http://repo.com").
 		Get("/app").
@@ -220,7 +225,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n", string(rr.Body.Bytes()))
+	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n", string(rr.Body.Bytes()))
 }
 
 func TestMissingResources(t *testing.T) {

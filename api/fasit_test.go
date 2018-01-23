@@ -11,6 +11,85 @@ import (
 	"testing"
 )
 
+func TestResourceEnvironmentVariableName(t *testing.T) {
+	t.Run("Resource should be underscored and uppercased", func(t *testing.T) {
+		resource := NaisResource{
+			1,
+			"test.resource",
+			"type",
+			Scope{"u", "u1", ZONE_FSS},
+			map[string]string{},
+			map[string]string{},
+			map[string]string{},
+			map[string][]byte{},
+			nil,
+		}
+		assert.Equal(t, "TEST_RESOURCE_KEY", resource.ToEnvironmentVariable("key"))
+		assert.Equal(t, "test_resource_key", resource.ToResourceVariable("key"))
+
+		resource = NaisResource{
+			1,
+			"test.resource",
+			"applicationproperties",
+			Scope{"u", "u1", ZONE_FSS},
+			map[string]string{
+				"foo.var-with.mixed_stuff": "fizz",
+			},
+			map[string]string{},
+			map[string]string{},
+			map[string][]byte{},
+			nil,
+		}
+		assert.Equal(t, "FOO_VAR_WITH_MIXED_STUFF", resource.ToEnvironmentVariable("foo.var-with.mixed_stuff"))
+		assert.Equal(t, "foo_var_with_mixed_stuff", resource.ToResourceVariable("foo.var-with.mixed_stuff"))
+	})
+
+	t.Run("Property mapping should decide variable name", func(t *testing.T) {
+		resource := NaisResource{
+			1,
+			"test.resource",
+			"applicationproperties",
+			Scope{"u", "u1", ZONE_FSS},
+			map[string]string{
+				"foo.var-with.mixed_stuff": "fizz",
+			},
+			map[string]string{
+				"foo.var-with.mixed_stuff": "SOMETHING_NEW",
+			},
+			map[string]string{},
+			map[string][]byte{},
+			nil,
+		}
+		assert.Equal(t, "SOMETHING_NEW", resource.ToEnvironmentVariable("foo.var-with.mixed_stuff"))
+		assert.Equal(t, "something_new", resource.ToResourceVariable("foo.var-with.mixed_stuff"))
+
+		resource = NaisResource{
+			1,
+			"test.resource",
+			"datasource",
+			Scope{"u", "u1", ZONE_FSS},
+			map[string]string{
+				"url":      "fizzbuzz",
+				"username": "fizz",
+				"password": "buzz",
+			},
+			map[string]string{
+				"username": "DB_USER",
+				"password": "DB_PW",
+			},
+			map[string]string{},
+			map[string][]byte{},
+			nil,
+		}
+		assert.Equal(t, "TEST_RESOURCE_URL", resource.ToEnvironmentVariable("url"))
+		assert.Equal(t, "test_resource_url", resource.ToResourceVariable("url"))
+		assert.Equal(t, "DB_USER", resource.ToEnvironmentVariable("username"))
+		assert.Equal(t, "db_user", resource.ToResourceVariable("username"))
+		assert.Equal(t, "DB_PW", resource.ToEnvironmentVariable("password"))
+		assert.Equal(t, "db_pw", resource.ToResourceVariable("password"))
+	})
+}
+
 func TestGettingResource(t *testing.T) {
 	alias := "alias1"
 	resourceType := "datasource"

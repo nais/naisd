@@ -14,7 +14,7 @@ func TestAppConfigUnmarshal(t *testing.T) {
 		Reply(200).
 		File("testdata/nais.yaml")
 
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{ManifestUrl: repopath})
 
 	assert.NoError(t, err)
 
@@ -55,7 +55,7 @@ func TestAppConfigUsesDefaultValues(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_minimal.yaml")
 
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{ManifestUrl: repopath})
 	//appConfig, err := GenerateAppConfig(NaisDeploymentRequest{})
 
 	assert.NoError(t, err)
@@ -89,7 +89,7 @@ func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_partial.yaml")
 
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{ManifestUrl: repopath})
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, appConfig.Replicas.Min)
@@ -139,7 +139,7 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_error.yaml")
 
-	_, err := GenerateAppConfig(NaisDeploymentRequest{AppConfigUrl: repopath})
+	_, err := GenerateAppConfig(NaisDeploymentRequest{ManifestUrl: repopath})
 	assert.Error(t, err)
 }
 

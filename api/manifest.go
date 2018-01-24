@@ -122,8 +122,8 @@ func GenerateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig N
 
 func downloadAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
 	// manifest url is provided in deployment request
-	if len(deploymentRequest.AppConfigUrl) > 0 {
-		appConfig, err := fetchAppConfig(deploymentRequest.AppConfigUrl)
+	if len(deploymentRequest.ManifestUrl) > 0 {
+		appConfig, err := fetchAppConfig(deploymentRequest.ManifestUrl)
 		if err != nil {
 			return NaisAppConfig{}, err
 		} else {

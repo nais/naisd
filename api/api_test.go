@@ -105,12 +105,12 @@ func TestNoManifestGivesError(t *testing.T) {
 
 	manifestUrl := "http://repo.com/app"
 	depReq := NaisDeploymentRequest{
-		Application:  "appname",
-		Version:      "",
-		Environment:  "",
-		AppConfigUrl: manifestUrl,
-		Zone:         "zone",
-		Namespace:    "namespace",
+		Application: "appname",
+		Version:     "",
+		Environment: "",
+		ManifestUrl: manifestUrl,
+		Zone:        "zone",
+		Namespace:   "namespace",
 	}
 
 	defer gock.Off()
@@ -153,12 +153,12 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", nil}
 
 	depReq := NaisDeploymentRequest{
-		Application:  appName,
-		Version:      version,
-		Environment:  environment,
-		AppConfigUrl: "http://repo.com/app",
-		Zone:         "zone",
-		Namespace:    namespace,
+		Application: appName,
+		Version:     version,
+		Environment: environment,
+		ManifestUrl: "http://repo.com/app",
+		Zone:        "zone",
+		Namespace:   namespace,
 	}
 
 	config := NaisAppConfig{
@@ -278,12 +278,12 @@ func TestMissingResources(t *testing.T) {
 
 func CreateDefaultDeploymentRequest() string {
 	json, _ := json.Marshal(NaisDeploymentRequest{
-		Application:  "appname",
-		Version:      "123",
-		Environment:  "namespace",
-		AppConfigUrl: "http://repo.com/app",
-		Zone:         "zone",
-		Namespace:    "namespace",
+		Application: "appname",
+		Version:     "123",
+		Environment: "namespace",
+		ManifestUrl: "http://repo.com/app",
+		Zone:        "zone",
+		Namespace:   "namespace",
 	})
 
 	return string(json)

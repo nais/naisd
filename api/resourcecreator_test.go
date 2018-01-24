@@ -745,12 +745,12 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 
 func TestCreateK8sResources(t *testing.T) {
 	deploymentRequest := NaisDeploymentRequest{
-		Application:  appName,
-		Version:      version,
-		Environment:  namespace,
-		AppConfigUrl: "http://repo.com/app",
-		Zone:         "zone",
-		Namespace:    namespace,
+		Application: appName,
+		Version:     version,
+		Environment: namespace,
+		ManifestUrl: "http://repo.com/app",
+		Zone:        "zone",
+		Namespace:   namespace,
 	}
 
 	appConfig := NaisAppConfig{

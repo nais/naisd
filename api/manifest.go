@@ -148,11 +148,8 @@ func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 func GetManifestUrl(req NaisDeploymentRequest) string {
 	if len(req.AppConfigUrl) > 0 {
 		return req.AppConfigUrl
-	} else if len(req.ManifestUrl) > 0 {
-		return req.ManifestUrl
 	}
-
-	return ""
+	return req.ManifestUrl
 }
 
 func createManifestUrl(application, version string) []string {

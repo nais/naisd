@@ -34,24 +34,24 @@ var validateCmd = &cobra.Command{
 
 		fmt.Println("Validating the file: " + file)
 
-		var appConfig api.NaisAppConfig
+		var manifest api.NaisManifest
 
-		if err := yaml.Unmarshal(naisYaml, &appConfig); err != nil {
+		if err := yaml.Unmarshal(naisYaml, &manifest); err != nil {
 			fmt.Printf("Error while unmarshalling yaml. %v", err)
 			os.Exit(1)
 		}
 
-		if err := api.AddDefaultAppconfigValues(&appConfig, "appName"); err != nil {
+		if err := api.AddDefaultManifestValues(&manifest, "appName"); err != nil {
 			fmt.Printf("Error while adding default values yaml. %v", err)
 			os.Exit(1)
 		}
 
 		if output {
-			conf, _ := yaml.Marshal(appConfig)
+			conf, _ := yaml.Marshal(manifest)
 			fmt.Println(string(conf))
 		}
 
-		validationErrors := api.ValidateAppConfig(appConfig)
+		validationErrors := api.ValidateManifest(manifest)
 		if len(validationErrors.Errors) != 0 {
 			fmt.Println("Found errors while validating " + file)
 			fmt.Printf("%v", validationErrors)
@@ -62,6 +62,6 @@ var validateCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(validateCmd)
-	validateCmd.Flags().StringP("file", "f", "nais.yaml", "path to appconfig")
-	validateCmd.Flags().BoolP("output", "o", false, "prints full appconfig including defaults if tr")
+	validateCmd.Flags().StringP("file", "f", "nais.yaml", "path to manifest")
+	validateCmd.Flags().BoolP("output", "o", false, "prints full manifest including defaults")
 }

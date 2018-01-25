@@ -81,7 +81,7 @@ var deployCmd = &cobra.Command{
 			"namespace":    &deployRequest.Namespace,
 			"username":     &deployRequest.Username,
 			"password":     &deployRequest.Password,
-			"manifest-url": &deployRequest.AppConfigUrl,
+			"manifest-url": &deployRequest.ManifestUrl,
 			"cluster":      &cluster,
 		}
 

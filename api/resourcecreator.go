@@ -57,8 +57,8 @@ func validLabelName(str string) string {
 
 // Creates a Kubernetes Deployment object
 // If existingDeployment is provided, this is updated with modifiable fields
-func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) (*v1beta1.Deployment, error) {
-	spec, err := createDeploymentSpec(deploymentRequest, appConfig, naisResources)
+func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) (*v1beta1.Deployment, error) {
+	spec, err := createDeploymentSpec(deploymentRequest, manifest, naisResources)
 
 	if err != nil {
 		return nil, err
@@ -80,8 +80,8 @@ func createDeploymentDef(naisResources []NaisResource, appConfig NaisAppConfig, 
 	}
 }
 
-func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) (v1beta1.DeploymentSpec, error) {
-	spec, err := createPodSpec(deploymentRequest, appConfig, naisResources)
+func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource) (v1beta1.DeploymentSpec, error) {
+	spec, err := createPodSpec(deploymentRequest, manifest, naisResources)
 
 	if err != nil {
 		return v1beta1.DeploymentSpec{}, err
@@ -105,23 +105,23 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, appConfig Nai
 		ProgressDeadlineSeconds: int32p(300),
 		RevisionHistoryLimit:    int32p(10),
 		Template: v1.PodTemplateSpec{
-			ObjectMeta: createPodObjectMetaWithPrometheusAnnotations(deploymentRequest, appConfig),
+			ObjectMeta: createPodObjectMetaWithPrometheusAnnotations(deploymentRequest, manifest),
 			Spec:       spec,
 		},
 	}, nil
 }
 
-func createPodObjectMetaWithPrometheusAnnotations(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) v1.ObjectMeta {
+func createPodObjectMetaWithPrometheusAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest) v1.ObjectMeta {
 	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
 	objectMeta.Annotations = map[string]string{
-		"prometheus.io/scrape": strconv.FormatBool(appConfig.Prometheus.Enabled),
+		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
 		"prometheus.io/port":   DefaultPortName,
-		"prometheus.io/path":   appConfig.Prometheus.Path,
+		"prometheus.io/path":   manifest.Prometheus.Path,
 	}
 	return objectMeta
 }
 
-func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource) (v1.PodSpec, error) {
+func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource) (v1.PodSpec, error) {
 	envVars, err := createEnvironmentVariables(deploymentRequest, naisResources)
 
 	if err != nil {
@@ -132,36 +132,36 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, appConfig NaisAppCon
 		Containers: []v1.Container{
 			{
 				Name:  deploymentRequest.Application,
-				Image: fmt.Sprintf("%s:%s", appConfig.Image, deploymentRequest.Version),
+				Image: fmt.Sprintf("%s:%s", manifest.Image, deploymentRequest.Version),
 				Ports: []v1.ContainerPort{
-					{ContainerPort: int32(appConfig.Port), Protocol: v1.ProtocolTCP, Name: DefaultPortName},
+					{ContainerPort: int32(manifest.Port), Protocol: v1.ProtocolTCP, Name: DefaultPortName},
 				},
-				Resources: createResourceLimits(appConfig.Resources.Requests.Cpu, appConfig.Resources.Requests.Memory, appConfig.Resources.Limits.Cpu, appConfig.Resources.Limits.Memory),
+				Resources: createResourceLimits(manifest.Resources.Requests.Cpu, manifest.Resources.Requests.Memory, manifest.Resources.Limits.Cpu, manifest.Resources.Limits.Memory),
 				LivenessProbe: &v1.Probe{
 					Handler: v1.Handler{
 						HTTPGet: &v1.HTTPGetAction{
-							Path: appConfig.Healthcheck.Liveness.Path,
+							Path: manifest.Healthcheck.Liveness.Path,
 							Port: intstr.FromString(DefaultPortName),
 						},
 					},
-					InitialDelaySeconds: int32(appConfig.Healthcheck.Liveness.InitialDelay),
-					PeriodSeconds:       int32(appConfig.Healthcheck.Liveness.PeriodSeconds),
-					FailureThreshold:    int32(appConfig.Healthcheck.Liveness.FailureThreshold),
+					InitialDelaySeconds: int32(manifest.Healthcheck.Liveness.InitialDelay),
+					PeriodSeconds:       int32(manifest.Healthcheck.Liveness.PeriodSeconds),
+					FailureThreshold:    int32(manifest.Healthcheck.Liveness.FailureThreshold),
 				},
 				ReadinessProbe: &v1.Probe{
 					Handler: v1.Handler{
 						HTTPGet: &v1.HTTPGetAction{
-							Path: appConfig.Healthcheck.Readiness.Path,
+							Path: manifest.Healthcheck.Readiness.Path,
 							Port: intstr.FromString(DefaultPortName),
 						},
 					},
-					InitialDelaySeconds: int32(appConfig.Healthcheck.Readiness.InitialDelay),
-					PeriodSeconds:       int32(appConfig.Healthcheck.Readiness.PeriodSeconds),
-					FailureThreshold:    int32(appConfig.Healthcheck.Readiness.FailureThreshold),
+					InitialDelaySeconds: int32(manifest.Healthcheck.Readiness.InitialDelay),
+					PeriodSeconds:       int32(manifest.Healthcheck.Readiness.PeriodSeconds),
+					FailureThreshold:    int32(manifest.Healthcheck.Readiness.FailureThreshold),
 				},
 				Env:             envVars,
 				ImagePullPolicy: v1.PullIfNotPresent,
-				Lifecycle:       createLifeCycle(appConfig.PreStopHookPath),
+				Lifecycle:       createLifeCycle(manifest.PreStopHookPath),
 			},
 		},
 
@@ -463,7 +463,7 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string)
 	}
 }
 
-func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, resources []NaisResource, clusterSubdomain string, k8sClient kubernetes.Interface) (DeploymentResult, error) {
+func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
 	service, err := createService(deploymentRequest, k8sClient)
@@ -472,7 +472,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 	}
 	deploymentResult.Service = service
 
-	deployment, err := createOrUpdateDeployment(deploymentRequest, appConfig, resources, k8sClient)
+	deployment, err := createOrUpdateDeployment(deploymentRequest, manifest, resources, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("Failed while creating or updating deployment: %s", err)
 	}
@@ -484,7 +484,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 	}
 	deploymentResult.Secret = secret
 
-	if appConfig.Ingress.Enabled {
+	if manifest.Ingress.Enabled {
 		ingress, err := createOrUpdateIngress(deploymentRequest, clusterSubdomain, resources, k8sClient)
 		if err != nil {
 			return deploymentResult, fmt.Errorf("Failed while creating ingress: %s", err)
@@ -492,7 +492,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 		deploymentResult.Ingress = ingress
 	}
 
-	autoscaler, err := createOrUpdateAutoscaler(deploymentRequest, appConfig, k8sClient)
+	autoscaler, err := createOrUpdateAutoscaler(deploymentRequest, manifest, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("Failed while creating or updating autoscaler: %s", err)
 	}
@@ -502,14 +502,14 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, appConf
 	return deploymentResult, err
 }
 
-func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, k8sClient kubernetes.Interface) (*autoscalingv1.HorizontalPodAutoscaler, error) {
+func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, k8sClient kubernetes.Interface) (*autoscalingv1.HorizontalPodAutoscaler, error) {
 	autoscaler, err := getExistingAutoscaler(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get existing autoscaler: %s", err)
 	}
 
-	autoscalerDef := createOrUpdateAutoscalerDef(appConfig.Replicas.Min, appConfig.Replicas.Max, appConfig.Replicas.CpuThresholdPercentage, autoscaler, deploymentRequest.Application, deploymentRequest.Namespace)
+	autoscalerDef := createOrUpdateAutoscalerDef(manifest.Replicas.Min, manifest.Replicas.Max, manifest.Replicas.CpuThresholdPercentage, autoscaler, deploymentRequest.Application, deploymentRequest.Namespace)
 	return createOrUpdateAutoscalerResource(autoscalerDef, deploymentRequest.Namespace, k8sClient)
 }
 
@@ -564,14 +564,14 @@ func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes
 	return createServiceResource(serviceDef, deploymentRequest.Namespace, k8sClient)
 }
 
-func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig, naisResources []NaisResource, k8sClient kubernetes.Interface) (*v1beta1.Deployment, error) {
+func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, k8sClient kubernetes.Interface) (*v1beta1.Deployment, error) {
 	existingDeployment, err := getExistingDeployment(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get existing deployment: %s", err)
 	}
 
-	deploymentDef, err := createDeploymentDef(naisResources, appConfig, deploymentRequest, existingDeployment)
+	deploymentDef, err := createDeploymentDef(naisResources, manifest, deploymentRequest, existingDeployment)
 
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create deployment: %s", err)

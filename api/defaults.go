@@ -15,9 +15,9 @@ func DefaultResourceRequests() []ResourceRequest {
 	}
 }
 
-func GetDefaultAppConfig(application string) NaisAppConfig {
+func GetDefaultManifest(application string) NaisManifest {
 
-	defaultAppConfig := NaisAppConfig{
+	defaultManifest := NaisManifest{
 		Replicas: Replicas{
 			Min: 2,
 			Max: 4,
@@ -55,7 +55,7 @@ func GetDefaultAppConfig(application string) NaisAppConfig {
 			},
 		},
 	}
-	defaultAppConfig.Image = "docker.adeo.no:5000/" + application
+	defaultManifest.Image = "docker.adeo.no:5000/" + application
 
-	return defaultAppConfig
+	return defaultManifest
 }

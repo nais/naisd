@@ -105,12 +105,12 @@ func TestNoManifestGivesError(t *testing.T) {
 
 	manifestUrl := "http://repo.com/app"
 	depReq := NaisDeploymentRequest{
-		Application:  "appname",
-		Version:      "",
-		Environment:  "",
-		AppConfigUrl: manifestUrl,
-		Zone:         "zone",
-		Namespace:    "namespace",
+		Application: "appname",
+		Version:     "",
+		Environment: "",
+		ManifestUrl: manifestUrl,
+		Zone:        "zone",
+		Namespace:   "namespace",
 	}
 
 	defer gock.Off()
@@ -138,7 +138,7 @@ func TestNoManifestGivesError(t *testing.T) {
 	assert.Contains(t, string(rr.Body.Bytes()), manifestUrl)
 }
 
-func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
+func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
 	environment := "environmentName"
@@ -153,15 +153,15 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", nil}
 
 	depReq := NaisDeploymentRequest{
-		Application:  appName,
-		Version:      version,
-		Environment:  environment,
-		AppConfigUrl: "http://repo.com/app",
-		Zone:         "zone",
-		Namespace:    namespace,
+		Application: appName,
+		Version:     version,
+		Environment: environment,
+		ManifestUrl: "http://repo.com/app",
+		Zone:        "zone",
+		Namespace:   namespace,
 	}
 
-	config := NaisAppConfig{
+	manifest := NaisManifest{
 		Image: image,
 		Port:  321,
 		FasitResources: FasitResources{
@@ -169,7 +169,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		},
 	}
 	response := "anything"
-	data, _ := yaml.Marshal(config)
+	data, _ := yaml.Marshal(manifest)
 	appInstanceResponse, _ := yaml.Marshal(response)
 
 	defer gock.Off()
@@ -232,14 +232,14 @@ func TestMissingResources(t *testing.T) {
 	resourceAlias := "alias1"
 	resourceType := "db"
 
-	config := NaisAppConfig{
+	manifest := NaisManifest{
 		Image: "name/Container",
 		Port:  321,
 		FasitResources: FasitResources{
 			Used: []UsedResource{{resourceAlias, resourceType, nil}},
 		},
 	}
-	data, _ := yaml.Marshal(config)
+	data, _ := yaml.Marshal(manifest)
 
 	defer gock.Off()
 	gock.New("https://fasit.local").
@@ -278,12 +278,12 @@ func TestMissingResources(t *testing.T) {
 
 func CreateDefaultDeploymentRequest() string {
 	json, _ := json.Marshal(NaisDeploymentRequest{
-		Application:  "appname",
-		Version:      "123",
-		Environment:  "namespace",
-		AppConfigUrl: "http://repo.com/app",
-		Zone:         "zone",
-		Namespace:    "namespace",
+		Application: "appname",
+		Version:     "123",
+		Environment: "namespace",
+		ManifestUrl: "http://repo.com/app",
+		Zone:        "zone",
+		Namespace:   "namespace",
 	})
 
 	return string(json)

@@ -101,6 +101,19 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 	application := "appName"
 	version := "42"
 	urls := createAppConfigUrls(application, version)
+	t.Run("When no manifest found an error is returned", func(t *testing.T) {
+		defer gock.Off()
+		gock.New(urls[0]).
+			Reply(404)
+		gock.New(urls[1]).
+			Reply(404)
+		gock.New(urls[2]).
+			Reply(404)
+
+		_, err := GenerateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
+		assert.Error(t, err)
+		assert.True(t, gock.IsDone())
+	})
 	t.Run("When no manifest found at first or second default URL, the third is called", func(t *testing.T) {
 		defer gock.Off()
 		gock.New(urls[0]).

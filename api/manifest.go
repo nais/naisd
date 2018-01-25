@@ -140,8 +140,8 @@ func downloadAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig N
 		}
 	}
 
-	glog.Infof("No manifest found on URLs %s\n", urls)
-	return NaisAppConfig{}, err
+	//glog.Infof("No manifest found on URLs %s\n", urls)
+	return NaisAppConfig{}, fmt.Errorf("No manifest found on URLs %s. Or url %s\n", urls, deploymentRequest.AppConfigUrl)
 }
 
 func createAppConfigUrls(application, version string) []string {

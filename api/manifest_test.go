@@ -155,6 +155,18 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// Deprecated
+func TestBothAppConfigAndManifestWorks(t *testing.T) {
+	const repopath = "https://manifest.repo"
+	defer gock.Off()
+	gock.New(repopath).
+		Reply(200).
+		File("testdata/nais.yaml")
+
+	_, err := GenerateManifest(NaisDeploymentRequest{AppConfigUrl: repopath})
+	assert.NoError(t, err)
+}
+
 func TestMultipleInvalidManifestFields(t *testing.T) {
 	invalidConfig := NaisManifest{
 		Image: "myapp:1",

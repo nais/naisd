@@ -122,8 +122,9 @@ func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 
 func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
 	// manifest url is provided in deployment request
-	if len(deploymentRequest.ManifestUrl) > 0 {
-		manifest, err := fetchManifest(deploymentRequest.ManifestUrl)
+	manifestUrl := GetManifestUrl(deploymentRequest)
+	if len(manifestUrl) > 0 {
+		manifest, err := fetchManifest(manifestUrl)
 		if err != nil {
 			return NaisManifest{}, err
 		} else {
@@ -140,7 +141,18 @@ func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 		}
 	}
 
-	return NaisManifest{}, fmt.Errorf("No manifest found on the URLs %s, or the url %s\n", urls, deploymentRequest.ManifestUrl)
+	return NaisManifest{}, fmt.Errorf("No manifest found on the URLs %s, or the url %s\n", urls, manifestUrl)
+}
+
+// Deprecated
+func GetManifestUrl(req NaisDeploymentRequest) string {
+	if len(req.AppConfigUrl) > 0 {
+		return req.AppConfigUrl
+	} else if len(req.ManifestUrl) > 0 {
+		return req.ManifestUrl
+	}
+
+	return ""
 }
 
 func createManifestUrl(application, version string) []string {

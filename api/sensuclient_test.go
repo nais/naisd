@@ -14,6 +14,7 @@ func TestSensuClient(t *testing.T) {
 			"environment",
 			"zone",
 			"manifesturl",
+			"appconfigurl", // Deprecated
 			"username",
 			"password",
 			"onbehalfof",

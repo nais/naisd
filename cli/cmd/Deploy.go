@@ -73,7 +73,6 @@ var deployCmd = &cobra.Command{
 		}
 
 		var cluster string
-		var manifestUrl = api.GetManifestUrl(deployRequest)
 		strings := map[string]*string{
 			"app":          &deployRequest.Application,
 			"version":      &deployRequest.Version,
@@ -82,7 +81,7 @@ var deployCmd = &cobra.Command{
 			"namespace":    &deployRequest.Namespace,
 			"username":     &deployRequest.Username,
 			"password":     &deployRequest.Password,
-			"manifest-url": &manifestUrl,
+			"manifest-url": &deployRequest.ManifestUrl,
 			"cluster":      &cluster,
 		}
 

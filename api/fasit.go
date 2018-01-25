@@ -252,9 +252,9 @@ func getResourceIds(usedResources []NaisResource) (usedResourceIds []int) {
 	return usedResourceIds
 }
 
-func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, appConfig NaisAppConfig) (naisresources []NaisResource, err error) {
+func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, manifest NaisManifest) (naisresources []NaisResource, err error) {
 	resourceRequests := DefaultResourceRequests()
-	for _, resource := range appConfig.FasitResources.Used {
+	for _, resource := range manifest.FasitResources.Used {
 		resourceRequests = append(resourceRequests, ResourceRequest{
 			Alias:        resource.Alias,
 			ResourceType: resource.ResourceType,
@@ -283,17 +283,17 @@ func arrayToString(a []int) string {
 }
 
 // Updates Fasit with information
-func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, usedResources []NaisResource, appConfig NaisAppConfig, hostname, fasitEnvironmentClass, fasitEnvironment, domain string) error {
+func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, usedResources []NaisResource, manifest NaisManifest, hostname, fasitEnvironmentClass, fasitEnvironment, domain string) error {
 
 	usedResourceIds := getResourceIds(usedResources)
 	var exposedResourceIds []int
 	var err error
 
-	if len(appConfig.FasitResources.Exposed) > 0 {
+	if len(manifest.FasitResources.Exposed) > 0 {
 		if len(hostname) == 0 {
 			return fmt.Errorf("unable to create resources when no ingress nor loadbalancer is specified")
 		}
-		exposedResourceIds, err = CreateOrUpdateFasitResources(fasit, appConfig.FasitResources.Exposed, hostname, fasitEnvironmentClass, fasitEnvironment, deploymentRequest)
+		exposedResourceIds, err = CreateOrUpdateFasitResources(fasit, manifest.FasitResources.Exposed, hostname, fasitEnvironmentClass, fasitEnvironment, deploymentRequest)
 		if err != nil {
 			return err
 		}

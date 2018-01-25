@@ -6,101 +6,100 @@ import (
 	"testing"
 )
 
-func TestAppConfigUnmarshal(t *testing.T) {
-	const repopath = "https://appconfig.repo"
+func TestManifestUnmarshal(t *testing.T) {
+	const repopath = "https://manifest.repo"
 	defer gock.Off()
 
 	gock.New(repopath).
 		Reply(200).
 		File("testdata/nais.yaml")
 
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{ManifestUrl: repopath})
+	manifest, err := GenerateManifest(NaisDeploymentRequest{ManifestUrl: repopath})
 
 	assert.NoError(t, err)
 
-	assert.Equal(t, 799, appConfig.Port)
-	assert.Equal(t, "/api", appConfig.FasitResources.Exposed[0].Path)
-	assert.Equal(t, "datasource", appConfig.FasitResources.Used[0].ResourceType)
-	assert.Equal(t, "DB_USER", appConfig.FasitResources.Used[0].PropertyMap["username"])
-	assert.Equal(t, "restservice", appConfig.FasitResources.Used[1].ResourceType)
-	assert.Nil(t, appConfig.FasitResources.Used[1].PropertyMap)
-	assert.Equal(t, "isAlive2", appConfig.Healthcheck.Liveness.Path)
-	assert.Equal(t, "isReady2", appConfig.Healthcheck.Readiness.Path)
-	assert.Equal(t, 10, appConfig.Replicas.Min)
-	assert.Equal(t, 20, appConfig.Replicas.Max)
-	assert.Equal(t, 20, appConfig.Replicas.CpuThresholdPercentage)
-	assert.True(t, gock.IsDone(), "verifies that the appconfigUrl has been called")
-	assert.Equal(t, "100m", appConfig.Resources.Limits.Cpu)
-	assert.Equal(t, "100Mi", appConfig.Resources.Limits.Memory)
-	assert.Equal(t, "100m", appConfig.Resources.Requests.Cpu)
-	assert.Equal(t, "100Mi", appConfig.Resources.Requests.Memory)
-	assert.Equal(t, true, appConfig.Prometheus.Enabled)
-	assert.Equal(t, DefaultPortName, appConfig.Prometheus.Port)
-	assert.Equal(t, "/path", appConfig.Prometheus.Path)
-	assert.Equal(t, 79, appConfig.Healthcheck.Liveness.InitialDelay)
-	assert.Equal(t, 79, appConfig.Healthcheck.Readiness.InitialDelay)
-	assert.Equal(t, 15, appConfig.Healthcheck.Liveness.FailureThreshold)
-	assert.Equal(t, 3, appConfig.Healthcheck.Readiness.FailureThreshold)
-	assert.Equal(t, 5, appConfig.Healthcheck.Liveness.PeriodSeconds)
-	assert.Equal(t, 10, appConfig.Healthcheck.Readiness.PeriodSeconds)
-	assert.Equal(t, "/stop", appConfig.PreStopHookPath)
+	assert.Equal(t, 799, manifest.Port)
+	assert.Equal(t, "/api", manifest.FasitResources.Exposed[0].Path)
+	assert.Equal(t, "datasource", manifest.FasitResources.Used[0].ResourceType)
+	assert.Equal(t, "DB_USER", manifest.FasitResources.Used[0].PropertyMap["username"])
+	assert.Equal(t, "restservice", manifest.FasitResources.Used[1].ResourceType)
+	assert.Nil(t, manifest.FasitResources.Used[1].PropertyMap)
+	assert.Equal(t, "isAlive2", manifest.Healthcheck.Liveness.Path)
+	assert.Equal(t, "isReady2", manifest.Healthcheck.Readiness.Path)
+	assert.Equal(t, 10, manifest.Replicas.Min)
+	assert.Equal(t, 20, manifest.Replicas.Max)
+	assert.Equal(t, 20, manifest.Replicas.CpuThresholdPercentage)
+	assert.True(t, gock.IsDone(), "verifies that the manifestUrl has been called")
+	assert.Equal(t, "100m", manifest.Resources.Limits.Cpu)
+	assert.Equal(t, "100Mi", manifest.Resources.Limits.Memory)
+	assert.Equal(t, "100m", manifest.Resources.Requests.Cpu)
+	assert.Equal(t, "100Mi", manifest.Resources.Requests.Memory)
+	assert.Equal(t, true, manifest.Prometheus.Enabled)
+	assert.Equal(t, DefaultPortName, manifest.Prometheus.Port)
+	assert.Equal(t, "/path", manifest.Prometheus.Path)
+	assert.Equal(t, 79, manifest.Healthcheck.Liveness.InitialDelay)
+	assert.Equal(t, 79, manifest.Healthcheck.Readiness.InitialDelay)
+	assert.Equal(t, 15, manifest.Healthcheck.Liveness.FailureThreshold)
+	assert.Equal(t, 3, manifest.Healthcheck.Readiness.FailureThreshold)
+	assert.Equal(t, 5, manifest.Healthcheck.Liveness.PeriodSeconds)
+	assert.Equal(t, 10, manifest.Healthcheck.Readiness.PeriodSeconds)
+	assert.Equal(t, "/stop", manifest.PreStopHookPath)
 }
 
-func TestAppConfigUsesDefaultValues(t *testing.T) {
+func TestManifestUsesDefaultValues(t *testing.T) {
 
-	const repopath = "https://appconfig.repo"
+	const repopath = "https://manifest.repo"
 	defer gock.Off()
 
 	gock.New(repopath).
 		Reply(200).
 		File("testdata/nais_minimal.yaml")
 
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{ManifestUrl: repopath})
-	//appConfig, err := GenerateAppConfig(NaisDeploymentRequest{})
+	manifest, err := GenerateManifest(NaisDeploymentRequest{ManifestUrl: repopath})
 
 	assert.NoError(t, err)
-	assert.Equal(t, "docker.adeo.no:5000/", appConfig.Image)
-	assert.Equal(t, 8080, appConfig.Port)
-	assert.Equal(t, "isAlive", appConfig.Healthcheck.Liveness.Path)
-	assert.Equal(t, "isReady", appConfig.Healthcheck.Readiness.Path)
-	assert.Equal(t, 0, len(appConfig.FasitResources.Exposed))
-	assert.Equal(t, 0, len(appConfig.FasitResources.Exposed))
-	assert.Equal(t, 2, appConfig.Replicas.Min)
-	assert.Equal(t, 4, appConfig.Replicas.Max)
-	assert.Equal(t, 50, appConfig.Replicas.CpuThresholdPercentage)
-	assert.Equal(t, "500m", appConfig.Resources.Limits.Cpu)
-	assert.Equal(t, "512Mi", appConfig.Resources.Limits.Memory)
-	assert.Equal(t, "200m", appConfig.Resources.Requests.Cpu)
-	assert.Equal(t, "256Mi", appConfig.Resources.Requests.Memory)
-	assert.Equal(t, false, appConfig.Prometheus.Enabled)
-	assert.Equal(t, DefaultPortName, appConfig.Prometheus.Port)
-	assert.Equal(t, "/metrics", appConfig.Prometheus.Path)
-	assert.Equal(t, 20, appConfig.Healthcheck.Readiness.InitialDelay)
-	assert.Equal(t, 20, appConfig.Healthcheck.Liveness.InitialDelay)
-	assert.Equal(t, true, appConfig.Ingress.Enabled)
-	assert.Empty(t, appConfig.PreStopHookPath)
+	assert.Equal(t, "docker.adeo.no:5000/", manifest.Image)
+	assert.Equal(t, 8080, manifest.Port)
+	assert.Equal(t, "isAlive", manifest.Healthcheck.Liveness.Path)
+	assert.Equal(t, "isReady", manifest.Healthcheck.Readiness.Path)
+	assert.Equal(t, 0, len(manifest.FasitResources.Exposed))
+	assert.Equal(t, 0, len(manifest.FasitResources.Exposed))
+	assert.Equal(t, 2, manifest.Replicas.Min)
+	assert.Equal(t, 4, manifest.Replicas.Max)
+	assert.Equal(t, 50, manifest.Replicas.CpuThresholdPercentage)
+	assert.Equal(t, "500m", manifest.Resources.Limits.Cpu)
+	assert.Equal(t, "512Mi", manifest.Resources.Limits.Memory)
+	assert.Equal(t, "200m", manifest.Resources.Requests.Cpu)
+	assert.Equal(t, "256Mi", manifest.Resources.Requests.Memory)
+	assert.Equal(t, false, manifest.Prometheus.Enabled)
+	assert.Equal(t, DefaultPortName, manifest.Prometheus.Port)
+	assert.Equal(t, "/metrics", manifest.Prometheus.Path)
+	assert.Equal(t, 20, manifest.Healthcheck.Readiness.InitialDelay)
+	assert.Equal(t, 20, manifest.Healthcheck.Liveness.InitialDelay)
+	assert.Equal(t, true, manifest.Ingress.Enabled)
+	assert.Empty(t, manifest.PreStopHookPath)
 
 }
 
-func TestAppConfigUsesPartialDefaultValues(t *testing.T) {
-	const repopath = "https://appconfig.repo"
+func TestManifestUsesPartialDefaultValues(t *testing.T) {
+	const repopath = "https://manifest.repo"
 	defer gock.Off()
 	gock.New(repopath).
 		Reply(200).
 		File("testdata/nais_partial.yaml")
 
-	appConfig, err := GenerateAppConfig(NaisDeploymentRequest{ManifestUrl: repopath})
+	manifest, err := GenerateManifest(NaisDeploymentRequest{ManifestUrl: repopath})
 
 	assert.NoError(t, err)
-	assert.Equal(t, 2, appConfig.Replicas.Min)
-	assert.Equal(t, 10, appConfig.Replicas.Max)
-	assert.Equal(t, 15, appConfig.Replicas.CpuThresholdPercentage)
+	assert.Equal(t, 2, manifest.Replicas.Min)
+	assert.Equal(t, 10, manifest.Replicas.Max)
+	assert.Equal(t, 15, manifest.Replicas.CpuThresholdPercentage)
 }
 
-func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
+func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 	application := "appName"
 	version := "42"
-	urls := createAppConfigUrls(application, version)
+	urls := createManifestUrl(application, version)
 	t.Run("When no manifest found an error is returned", func(t *testing.T) {
 		defer gock.Off()
 		gock.New(urls[0]).
@@ -110,7 +109,7 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 		gock.New(urls[2]).
 			Reply(404)
 
-		_, err := GenerateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
+		_, err := GenerateManifest(NaisDeploymentRequest{Application: application, Version: version})
 		assert.Error(t, err)
 		assert.True(t, gock.IsDone())
 	})
@@ -124,9 +123,9 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"image": application})
 
-		appConfig, err := GenerateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
+		manifest, err := GenerateManifest(NaisDeploymentRequest{Application: application, Version: version})
 		assert.NoError(t, err)
-		assert.Equal(t, application, appConfig.Image)
+		assert.Equal(t, application, manifest.Image)
 		assert.True(t, gock.IsDone())
 	})
 	t.Run("When manifest found at first default URL, the second is not called", func(t *testing.T) {
@@ -138,26 +137,26 @@ func TestGenerateAppConfigWithoutPassingRepoUrl(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"image": "incorrect"})
 
-		appConfig, err := GenerateAppConfig(NaisDeploymentRequest{Application: application, Version: version})
+		manifest, err := GenerateManifest(NaisDeploymentRequest{Application: application, Version: version})
 		assert.NoError(t, err)
-		assert.Equal(t, application, appConfig.Image)
+		assert.Equal(t, application, manifest.Image)
 		assert.True(t, gock.IsPending())
 	})
 }
 
 func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
-	const repopath = "https://appconfig.repo"
+	const repopath = "https://manifest.repo"
 	defer gock.Off()
 	gock.New(repopath).
 		Reply(200).
 		File("testdata/nais_error.yaml")
 
-	_, err := GenerateAppConfig(NaisDeploymentRequest{ManifestUrl: repopath})
+	_, err := GenerateManifest(NaisDeploymentRequest{ManifestUrl: repopath})
 	assert.Error(t, err)
 }
 
-func TestMultipleInvalidAppConfigFields(t *testing.T) {
-	invalidConfig := NaisAppConfig{
+func TestMultipleInvalidManifestFields(t *testing.T) {
+	invalidConfig := NaisManifest{
 		Image: "myapp:1",
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
@@ -165,7 +164,7 @@ func TestMultipleInvalidAppConfigFields(t *testing.T) {
 			Min: 5,
 		},
 	}
-	errors := ValidateAppConfig(invalidConfig)
+	errors := ValidateManifest(invalidConfig)
 
 	assert.Equal(t, 3, len(errors.Errors))
 	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
@@ -174,25 +173,25 @@ func TestMultipleInvalidAppConfigFields(t *testing.T) {
 }
 
 func TestInvalidCpuThreshold(t *testing.T) {
-	invalidConfig := NaisAppConfig{
+	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
 			Max: 4,
 			Min: 5,
 		},
 	}
-	errors := validateCpuThreshold(invalidConfig)
+	errors := validateCpuThreshold(invalidManifest)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.ErrorMessage)
 }
 func TestMinCannotBeZero(t *testing.T) {
-	invalidConfig := NaisAppConfig{
+	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
 			Max: 4,
 			Min: 0,
 		},
 	}
-	errors := validateReplicasMin(invalidConfig)
+	errors := validateReplicasMin(invalidManifest)
 
 	assert.Equal(t, "Replicas.Min is not set", errors.ErrorMessage)
 }
@@ -212,11 +211,11 @@ func TestValidateImage(t *testing.T) {
 
 	for _, v := range images {
 		t.Run("test "+v.name, func(t *testing.T) {
-			appConfig := NaisAppConfig{
+			manifest := NaisManifest{
 				Image: v.name,
 			}
 
-			err := validateImage(appConfig)
+			err := validateImage(manifest)
 
 			if v.valid {
 				assert.Nil(t, err)
@@ -228,27 +227,27 @@ func TestValidateImage(t *testing.T) {
 	}
 }
 func TestValidateResource(t *testing.T) {
-	invalidConfig := NaisAppConfig{
+	invalidManifest := NaisManifest{
 		FasitResources: FasitResources{
 			Exposed: []ExposedResource{{Alias: "alias1"}},
 			Used:    []UsedResource{{ResourceType: "restService"}},
 		},
 	}
-	invalidConfig2 := NaisAppConfig{
+	invalidManifest2 := NaisManifest{
 		FasitResources: FasitResources{
 			Exposed: []ExposedResource{{ResourceType: "restService"}},
 			Used:    []UsedResource{{Alias: "alias1"}},
 		},
 	}
-	validConfig := NaisAppConfig{
+	validManifest := NaisManifest{
 		FasitResources: FasitResources{
 			Exposed: []ExposedResource{{ResourceType: "restService", Alias: "alias1"}},
 			Used:    []UsedResource{{ResourceType: "restService", Alias: "alias2"}},
 		},
 	}
-	err := validateResources(invalidConfig)
-	err2 := validateResources(invalidConfig2)
-	noErr := validateResources(validConfig)
+	err := validateResources(invalidManifest)
+	err2 := validateResources(invalidManifest2)
+	noErr := validateResources(validManifest)
 	assert.Equal(t, "Alias and ResourceType must be specified", err.ErrorMessage)
 	assert.Equal(t, "Alias and ResourceType must be specified", err2.ErrorMessage)
 	assert.Nil(t, noErr)

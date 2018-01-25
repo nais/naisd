@@ -411,7 +411,7 @@ func TestResourceError(t *testing.T) {
 
 	resourceAlias := "resourcealias"
 	resourceType := "baseurl"
-	resource, err := fetchFasitResources(fasitClient, NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}, NaisAppConfig{FasitResources: FasitResources{Used: []UsedResource{{Alias: resourceAlias, ResourceType: resourceType}}}})
+	resource, err := fetchFasitResources(fasitClient, NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}, NaisManifest{FasitResources: FasitResources{Used: []UsedResource{{Alias: resourceAlias, ResourceType: resourceType}}}})
 	assert.Error(t, err)
 	assert.Empty(t, resource)
 	assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("Unable to get resource %s (%s)", resourceAlias, resourceType)))
@@ -443,24 +443,24 @@ func TestUpdateFasit(t *testing.T) {
 	}
 
 	fakeFasitClient := FakeFasitClient{}
-	appConfig := NaisAppConfig{FasitResources: FasitResources{Exposed: exposedResources}}
+	manifest := NaisManifest{FasitResources: FasitResources{Exposed: exposedResources}}
 
 	t.Run("Calling updateFasit with resources returns no error", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, hostname, class, clustername, "")
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, manifest, hostname, class, clustername, "")
 		assert.NoError(t, err)
 		assert.True(t, createApplicationInstanceCalled)
 	})
 	t.Run("Calling updateFasit without hostname when you have exposed resources fails", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", class, clustername, "")
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, manifest, "", class, clustername, "")
 		assert.Error(t, err)
 		assert.False(t, createApplicationInstanceCalled)
 	})
 	t.Run("Calling updateFasit without hostname when you have no exposed resources works", func(t *testing.T) {
 		createApplicationInstanceCalled = false
-		appConfig.FasitResources.Exposed = nil
-		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, appConfig, "", class, clustername, "")
+		manifest.FasitResources.Exposed = nil
+		err := updateFasit(fakeFasitClient, deploymentRequest, usedResources, manifest, "", class, clustername, "")
 		assert.NoError(t, err)
 		assert.True(t, createApplicationInstanceCalled)
 	})

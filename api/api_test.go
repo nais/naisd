@@ -138,7 +138,7 @@ func TestNoManifestGivesError(t *testing.T) {
 	assert.Contains(t, string(rr.Body.Bytes()), manifestUrl)
 }
 
-func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
+func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
 	environment := "environmentName"
@@ -161,7 +161,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		Namespace:   namespace,
 	}
 
-	config := NaisAppConfig{
+	manifest := NaisManifest{
 		Image: image,
 		Port:  321,
 		FasitResources: FasitResources{
@@ -169,7 +169,7 @@ func TestValidDeploymentRequestAndAppConfigCreateResources(t *testing.T) {
 		},
 	}
 	response := "anything"
-	data, _ := yaml.Marshal(config)
+	data, _ := yaml.Marshal(manifest)
 	appInstanceResponse, _ := yaml.Marshal(response)
 
 	defer gock.Off()
@@ -232,14 +232,14 @@ func TestMissingResources(t *testing.T) {
 	resourceAlias := "alias1"
 	resourceType := "db"
 
-	config := NaisAppConfig{
+	manifest := NaisManifest{
 		Image: "name/Container",
 		Port:  321,
 		FasitResources: FasitResources{
 			Used: []UsedResource{{resourceAlias, resourceType, nil}},
 		},
 	}
-	data, _ := yaml.Marshal(config)
+	data, _ := yaml.Marshal(manifest)
 
 	defer gock.Off()
 	gock.New("https://fasit.local").

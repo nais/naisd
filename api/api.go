@@ -159,8 +159,8 @@ func validateFasitRequirements(fasit FasitClientAdapter, application, fasitEnvir
 	return nil
 }
 
-func hasResources(appConfig NaisAppConfig) bool {
-	if len(appConfig.FasitResources.Used) == 0 && len(appConfig.FasitResources.Exposed) == 0 {
+func hasResources(manifest NaisManifest) bool {
+	if len(manifest.FasitResources.Used) == 0 && len(manifest.FasitResources.Exposed) == 0 {
 		return false
 	}
 	return true
@@ -177,15 +177,15 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
-	appConfig, err := GenerateAppConfig(deploymentRequest)
+	manifest, err := GenerateManifest(deploymentRequest)
 	if err != nil {
-		return &appError{err, "unable to generate appconfig/nais.yaml", http.StatusInternalServerError}
+		return &appError{err, "unable to generate manifest/nais.yaml", http.StatusInternalServerError}
 	}
 
 	fasitEnvironment := fasit.environmentNameFromNamespaceBuilder(deploymentRequest.Namespace, api.ClusterName)
 	var fasitEnvironmentClass string
 
-	if hasResources(appConfig) {
+	if hasResources(manifest) {
 		if err := validateFasitRequirements(fasit, deploymentRequest.Application, fasitEnvironment); err != nil {
 			return &appError{err, "validating requirements for deployment failed", http.StatusInternalServerError}
 		}
@@ -194,12 +194,12 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
-	naisResources, err := fetchFasitResources(fasit, deploymentRequest, appConfig)
+	naisResources, err := fetchFasitResources(fasit, deploymentRequest, manifest)
 	if err != nil {
 		return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
 	}
 
-	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, appConfig, naisResources, api.ClusterSubdomain, api.Clientset)
+	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.Clientset)
 	if err != nil {
 		return &appError{err, "failed while creating or updating k8s-resources", http.StatusInternalServerError}
 	}
@@ -212,8 +212,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		ingressHostname = ingressHostnames[len(ingressHostnames)-1].Host
 	}
 
-	if hasResources(appConfig) {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, appConfig, ingressHostname, fasitEnvironmentClass, fasitEnvironment, api.ClusterSubdomain); err != nil {
+	if hasResources(manifest) {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, ingressHostname, fasitEnvironmentClass, fasitEnvironment, api.ClusterSubdomain); err != nil {
 			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}

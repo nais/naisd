@@ -13,7 +13,7 @@ func TestSensuClient(t *testing.T) {
 			"42.0.0",
 			"environment",
 			"zone",
-			"appconfigurl",
+			"manifesturl",
 			"username",
 			"password",
 			"onbehalfof",

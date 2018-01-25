@@ -39,7 +39,7 @@ type PrometheusConfig struct {
 	Path    string
 }
 
-type NaisAppConfig struct {
+type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
@@ -98,53 +98,52 @@ type Field struct {
 	Value string
 }
 
-func GenerateAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
+func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
 
-	appConfig, err := downloadAppConfig(deploymentRequest)
+	manifest, err := downloadManifest(deploymentRequest)
 	if err != nil {
-		glog.Errorf("could not download appconfig", err)
-		return NaisAppConfig{}, err
+		glog.Errorf("could not download manifest", err)
+		return NaisManifest{}, err
 	}
 
-	if err := AddDefaultAppconfigValues(&appConfig, deploymentRequest.Application); err != nil {
-		glog.Errorf("Could not merge appconfig %s", err)
-		return NaisAppConfig{}, err
+	if err := AddDefaultManifestValues(&manifest, deploymentRequest.Application); err != nil {
+		glog.Errorf("Could not merge manifest %s", err)
+		return NaisManifest{}, err
 	}
 
-	validationErrors := ValidateAppConfig(appConfig)
+	validationErrors := ValidateManifest(manifest)
 	if len(validationErrors.Errors) != 0 {
-		glog.Error("Invalid appconfig: ", validationErrors.Error())
-		return NaisAppConfig{}, validationErrors
+		glog.Error("Invalid manifest: ", validationErrors.Error())
+		return NaisManifest{}, validationErrors
 	}
 
-	return appConfig, nil
+	return manifest, nil
 }
 
-func downloadAppConfig(deploymentRequest NaisDeploymentRequest) (naisAppConfig NaisAppConfig, err error) {
+func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
 	// manifest url is provided in deployment request
 	if len(deploymentRequest.ManifestUrl) > 0 {
-		appConfig, err := fetchAppConfig(deploymentRequest.ManifestUrl)
+		manifest, err := fetchManifest(deploymentRequest.ManifestUrl)
 		if err != nil {
-			return NaisAppConfig{}, err
+			return NaisManifest{}, err
 		} else {
-			return appConfig, nil
+			return manifest, nil
 		}
 	}
 
 	// not provided, using defaults
-	urls := createAppConfigUrls(deploymentRequest.Application, deploymentRequest.Version)
+	urls := createManifestUrl(deploymentRequest.Application, deploymentRequest.Version)
 	for _, url := range urls {
-		appConfig, err := fetchAppConfig(url)
+		manifest, err := fetchManifest(url)
 		if err == nil {
-			return appConfig, nil
+			return manifest, nil
 		}
 	}
 
-	//glog.Infof("No manifest found on URLs %s\n", urls)
-	return NaisAppConfig{}, fmt.Errorf("No manifest found on URLs %s. Or url %s\n", urls, deploymentRequest.AppConfigUrl)
+	return NaisManifest{}, fmt.Errorf("No manifest found on the URLs %s, or the url %s\n", urls, deploymentRequest.ManifestUrl)
 }
 
-func createAppConfigUrls(application, version string) []string {
+func createManifestUrl(application, version string) []string {
 	return []string{
 		fmt.Sprintf("https://repo.adeo.no/repository/raw/nais/%s/%s/nais.yaml", application, version),
 		fmt.Sprintf("http://nexus.adeo.no/nexus/service/local/repositories/m2internal/content/nais/%s/%s/nais.yaml", application, version),
@@ -152,38 +151,38 @@ func createAppConfigUrls(application, version string) []string {
 	}
 }
 
-func AddDefaultAppconfigValues(config *NaisAppConfig, application string) error {
-	return mergo.Merge(config, GetDefaultAppConfig(application))
+func AddDefaultManifestValues(manifest *NaisManifest, application string) error {
+	return mergo.Merge(manifest, GetDefaultManifest(application))
 }
-func fetchAppConfig(url string) (NaisAppConfig, error) {
+func fetchManifest(url string) (NaisManifest, error) {
 	glog.Infof("Fetching manifest from URL %s\n", url)
 	response, err := http.Get(url)
 	if err != nil {
 		glog.Errorf("Could not fetch %s", err)
-		return NaisAppConfig{}, fmt.Errorf("HTTP GET failed for url: %s. %s", url, err.Error())
+		return NaisManifest{}, fmt.Errorf("HTTP GET failed for url: %s. %s", url, err.Error())
 	}
 
 	defer response.Body.Close()
 
 	if response.StatusCode > 299 {
-		return NaisAppConfig{}, fmt.Errorf("Got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
+		return NaisManifest{}, fmt.Errorf("Got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
 	}
 
 	if body, err := ioutil.ReadAll(response.Body); err != nil {
-		return NaisAppConfig{}, err
+		return NaisManifest{}, err
 	} else {
-		var appConfig NaisAppConfig
-		if err := yaml.Unmarshal(body, &appConfig); err != nil {
+		var manifest NaisManifest
+		if err := yaml.Unmarshal(body, &manifest); err != nil {
 			glog.Errorf("Could not unmarshal yaml %s", err)
-			return NaisAppConfig{}, fmt.Errorf("Unable to unmarshal yaml: %s", err.Error())
+			return NaisManifest{}, fmt.Errorf("Unable to unmarshal yaml: %s", err.Error())
 		}
-		glog.Infof("Got manifest %s", appConfig)
-		return appConfig, err
+		glog.Infof("Got manifest %s", manifest)
+		return manifest, err
 	}
 }
 
-func ValidateAppConfig(appConfig NaisAppConfig) ValidationErrors {
-	validations := []func(NaisAppConfig) *ValidationError{
+func ValidateManifest(manifest NaisManifest) ValidationErrors {
+	validations := []func(NaisManifest) *ValidationError{
 		validateImage,
 		validateReplicasMax,
 		validateReplicasMin,
@@ -194,7 +193,7 @@ func ValidateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 
 	var validationErrors ValidationErrors
 	for _, valfunc := range validations {
-		if valError := valfunc(appConfig); valError != nil {
+		if valError := valfunc(manifest); valError != nil {
 			validationErrors.Errors = append(validationErrors.Errors, *valError)
 		}
 	}
@@ -202,8 +201,8 @@ func ValidateAppConfig(appConfig NaisAppConfig) ValidationErrors {
 	return validationErrors
 }
 
-func validateResources(appConfig NaisAppConfig) *ValidationError {
-	for _, resource := range appConfig.FasitResources.Exposed {
+func validateResources(manifest NaisManifest) *ValidationError {
+	for _, resource := range manifest.FasitResources.Exposed {
 		if resource.ResourceType == "" || resource.Alias == "" {
 			return &ValidationError{
 				"Alias and ResourceType must be specified",
@@ -211,7 +210,7 @@ func validateResources(appConfig NaisAppConfig) *ValidationError {
 			}
 		}
 	}
-	for _, resource := range appConfig.FasitResources.Used {
+	for _, resource := range manifest.FasitResources.Used {
 		if resource.ResourceType == "" || resource.Alias == "" {
 			return &ValidationError{
 				"Alias and ResourceType must be specified",
@@ -221,58 +220,58 @@ func validateResources(appConfig NaisAppConfig) *ValidationError {
 	}
 	return nil
 }
-func validateImage(appConfig NaisAppConfig) *ValidationError {
-	if strings.LastIndex(appConfig.Image, ":") > strings.LastIndex(appConfig.Image, "/") {
+func validateImage(manifest NaisManifest) *ValidationError {
+	if strings.LastIndex(manifest.Image, ":") > strings.LastIndex(manifest.Image, "/") {
 		return &ValidationError{
 			"Image cannot contain tag",
-			map[string]string{"Image": appConfig.Image},
+			map[string]string{"Image": manifest.Image},
 		}
 	}
 	return nil
 }
 
-func validateCpuThreshold(appConfig NaisAppConfig) *ValidationError {
-	if appConfig.Replicas.CpuThresholdPercentage < 10 || appConfig.Replicas.CpuThresholdPercentage > 90 {
+func validateCpuThreshold(manifest NaisManifest) *ValidationError {
+	if manifest.Replicas.CpuThresholdPercentage < 10 || manifest.Replicas.CpuThresholdPercentage > 90 {
 		error := new(ValidationError)
 		error.ErrorMessage = "CpuThreshold must be between 10 and 90."
 		error.Fields = make(map[string]string)
-		error.Fields["Replicas.CpuThreshold"] = strconv.Itoa(appConfig.Replicas.CpuThresholdPercentage)
+		error.Fields["Replicas.CpuThreshold"] = strconv.Itoa(manifest.Replicas.CpuThresholdPercentage)
 		return error
 
 	}
 	return nil
 
 }
-func validateMinIsSmallerThanMax(appConfig NaisAppConfig) *ValidationError {
-	if appConfig.Replicas.Min > appConfig.Replicas.Max {
+func validateMinIsSmallerThanMax(manifest NaisManifest) *ValidationError {
+	if manifest.Replicas.Min > manifest.Replicas.Max {
 		validationError := new(ValidationError)
 		validationError.ErrorMessage = "Replicas.Min is larger than Replicas.Max."
 		validationError.Fields = make(map[string]string)
-		validationError.Fields["Replicas.Max"] = strconv.Itoa(appConfig.Replicas.Max)
-		validationError.Fields["Replicas.Min"] = strconv.Itoa(appConfig.Replicas.Min)
+		validationError.Fields["Replicas.Max"] = strconv.Itoa(manifest.Replicas.Max)
+		validationError.Fields["Replicas.Min"] = strconv.Itoa(manifest.Replicas.Min)
 		return validationError
 	}
 	return nil
 
 }
-func validateReplicasMin(appConfig NaisAppConfig) *ValidationError {
-	if appConfig.Replicas.Min == 0 {
+func validateReplicasMin(manifest NaisManifest) *ValidationError {
+	if manifest.Replicas.Min == 0 {
 		validationError := new(ValidationError)
 		validationError.ErrorMessage = "Replicas.Min is not set"
 		validationError.Fields = make(map[string]string)
-		validationError.Fields["Replicas.Min"] = strconv.Itoa(appConfig.Replicas.Min)
+		validationError.Fields["Replicas.Min"] = strconv.Itoa(manifest.Replicas.Min)
 		return validationError
 
 	}
 	return nil
 
 }
-func validateReplicasMax(appConfig NaisAppConfig) *ValidationError {
-	if appConfig.Replicas.Max == 0 {
+func validateReplicasMax(manifest NaisManifest) *ValidationError {
+	if manifest.Replicas.Max == 0 {
 		validationError := new(ValidationError)
 		validationError.ErrorMessage = "Replicas.Max is not set"
 		validationError.Fields = make(map[string]string)
-		validationError.Fields["Replicas.Max"] = strconv.Itoa(appConfig.Replicas.Max)
+		validationError.Fields["Replicas.Max"] = strconv.Itoa(manifest.Replicas.Max)
 		return validationError
 	}
 	return nil

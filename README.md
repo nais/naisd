@@ -9,7 +9,7 @@ k8s in-cluster daemon with API for performing NAIS-operations
 ##Basic outline
 
 1. HTTP POST to API with name of application, version and environment
-2. Fetches app-config from internal artifact repository
+2. Fetches manifest from internal artifact repository
 3. Extract info from yaml
 4. Get and inject environment specific variables from Fasit
 5. Creates appropriate k8s resources
@@ -25,8 +25,8 @@ The `nais` cli will help you in validating your `nais.yaml`, uploading it to Nex
 nais validate [flags]
 
 Flags:
-  -f, --file string   path to appconfig (default "nais.yaml")
-  -o, --output        prints full appconfig including defaults
+  -f, --file string   path to manifest (default "nais.yaml")
+  -o, --output        prints full manifest including defaults
 ```
 
 Will validate `nais.yaml` by default. Specify another file using the `-f` or `--file` argument.

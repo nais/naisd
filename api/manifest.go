@@ -122,7 +122,7 @@ func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 
 func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
 	// manifest url is provided in deployment request
-	manifestUrl := GetManifestUrl(deploymentRequest)
+	manifestUrl := getManifestUrl(deploymentRequest)
 	if len(manifestUrl) > 0 {
 		manifest, err := fetchManifest(manifestUrl)
 		if err != nil {
@@ -145,8 +145,9 @@ func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 }
 
 // Deprecated
-func GetManifestUrl(req NaisDeploymentRequest) string {
+func getManifestUrl(req NaisDeploymentRequest) string {
 	if len(req.AppConfigUrl) > 0 {
+		glog.Info("%s is deploying %s using deprecated appconfigurl", req.Username, req.Application)
 		return req.AppConfigUrl
 	}
 	return req.ManifestUrl

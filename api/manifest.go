@@ -147,7 +147,7 @@ func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 // Deprecated
 func getManifestUrl(req NaisDeploymentRequest) string {
 	if len(req.AppConfigUrl) > 0 {
-		glog.Info("%s is deploying %s using deprecated appconfigurl", req.Username, req.Application)
+		glog.Infof("%s is deploying %s using deprecated appconfigurl", req.Username, req.Application)
 		return req.AppConfigUrl
 	}
 	return req.ManifestUrl

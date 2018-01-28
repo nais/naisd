@@ -4,16 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/golang/glog"
 	ver "github.com/nais/naisd/api/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
 	"goji.io/pat"
-	"io"
-	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
-	"net/http"
 )
 
 type Api struct {
@@ -195,7 +196,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
 
-	naisResources, err := fetchFasitResources(fasit, deploymentRequest, manifest)
+	naisResources, err := FetchFasitResources(fasit, deploymentRequest.Application, deploymentRequest.Environment, deploymentRequest.Zone, manifest.FasitResources.Used)
 	if err != nil {
 		return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
 	}

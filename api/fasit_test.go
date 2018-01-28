@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/h2non/gock.v1"
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/h2non/gock.v1"
 )
 
 func TestResourceEnvironmentVariableName(t *testing.T) {
@@ -411,7 +412,7 @@ func TestResourceError(t *testing.T) {
 
 	resourceAlias := "resourcealias"
 	resourceType := "baseurl"
-	resource, err := fetchFasitResources(fasitClient, NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}, NaisManifest{FasitResources: FasitResources{Used: []UsedResource{{Alias: resourceAlias, ResourceType: resourceType}}}})
+	resource, err := FetchFasitResources(fasitClient, "app", "env", "123", []UsedResource{{Alias: resourceAlias, ResourceType: resourceType}})
 	assert.Error(t, err)
 	assert.Empty(t, resource)
 	assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("Unable to get resource %s (%s)", resourceAlias, resourceType)))

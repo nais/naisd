@@ -50,11 +50,13 @@ var environmentCommand = &cobra.Command{
 		environment, err := cmd.Flags().GetString("environment")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error while getting flag: environment. %v\n", err)
+			os.Exit(1)
 		}
 
 		fasitUrl, err := cmd.Flags().GetString("fasit-url")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error while getting flag: fasit-url. %v\n", err)
+			os.Exit(1)
 		}
 
 		switch outputFormat {
@@ -96,6 +98,7 @@ var environmentCommand = &cobra.Command{
 		vars, err := api.FetchFasitResources(fasit, application, environment, zone, manifest.FasitResources.Used)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to contact Fasit. %v\n", err)
+			os.Exit(1)
 		}
 
 		formattedVars := make([]string, 0)

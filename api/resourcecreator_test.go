@@ -898,6 +898,15 @@ func TestCheckForDuplicates(t *testing.T) {
 	})
 }
 
+func TestCreateSBSPublicHostname(t *testing.T) {
+
+	t.Run("p", func(t *testing.T) {
+		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "p"}))
+		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "t6"}))
+		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "q6"}))
+	})
+}
+
 func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSource {
 	return &v1.EnvVarSource{
 		SecretKeyRef: &v1.SecretKeySelector{
@@ -909,12 +918,5 @@ func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSo
 	}
 }
 
-func TestCreateSBSPublicHostname(t *testing.T) {
-
-	t.Run("p", func(t *testing.T) {
-		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "p"}))
-		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "t6"}))
-		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "q6"}))
-	})
 
 }

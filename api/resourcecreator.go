@@ -175,7 +175,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 		mainContainer := podSpec.Containers[0]
 		mainContainer.Env = append(mainContainer.Env, v1.EnvVar{
 			Name: "ELECTOR_PATH",
-			Value: "localhost:4040/isLeader",
+			Value: "localhost:4040",
 		})
 	}
 

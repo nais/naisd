@@ -169,6 +169,16 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
 
+	if (manifest.LeaderElection) {
+		podSpec.Containers = append(podSpec.Containers, createLeaderElectionContainer(deploymentRequest.Application))
+
+		mainContainer := podSpec.Containers[0]
+		mainContainer.Env = append(mainContainer.Env, v1.EnvVar{
+			Name: "ELECTOR_PATH",
+			Value: "localhost:4040/isLeader",
+		})
+	}
+
 	if hasCertificate(naisResources) {
 		podSpec.Volumes = append(podSpec.Volumes, createCertificateVolume(deploymentRequest, naisResources))
 		container := &podSpec.Containers[0]
@@ -176,6 +186,22 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 	}
 
 	return podSpec, nil
+}
+func createLeaderElectionContainer(appName string) v1.Container {
+	return v1.Container{
+		Name: "elector",
+		Image: "gcr.io/google_containers/leader-elector:0.5",
+		ImagePullPolicy: v1.PullIfNotPresent,
+		Resources: v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceCPU: k8sresource.MustParse("100m"),
+			},
+		},
+		Ports: []v1.ContainerPort{
+			{ContainerPort: 4040, Protocol: v1.ProtocolTCP},
+		},
+		Args: []string{"--election=" + appName, "--http=localhost:4040", "--namespace=election"},
+	}
 }
 
 func createLifeCycle(path string) *v1.Lifecycle {

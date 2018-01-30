@@ -49,6 +49,7 @@ type NaisManifest struct {
 	Ingress         Ingress
 	Resources       ResourceRequirements
 	FasitResources  FasitResources `yaml:"fasitResources"`
+	LeaderElection  bool `yaml:"leaderElection"`
 }
 
 type Ingress struct {

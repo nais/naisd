@@ -8,6 +8,7 @@ healthcheck: #Optional
   liveness:
     path: isalive
     initialDelay: 20
+    timeout: 1
     periodSeconds: 5     # How often (in seconds) to perform the probe. Default to 10 seconds
     failureThreshold: 10 # when a Pod starts and the probe fails,
                          # nais will try failureThreshold times before giving up and restarting the Pod
@@ -15,6 +16,7 @@ healthcheck: #Optional
   readiness:
     path: isready
     initialDelay: 20
+    timeout: 1
 #Optional. Defaults to NONE.
 #See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
 preStopHookPath: "" # A HTTP GET will be issued to this endpoint at least once before the pod is terminated.

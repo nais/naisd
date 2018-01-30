@@ -37,12 +37,14 @@ func newDefaultManifest() NaisManifest {
 				InitialDelay:     20,
 				PeriodSeconds:    10,
 				FailureThreshold: 3,
+				Timeout:          2,
 			},
 			Liveness: Probe{
 				Path:             livenessPath,
 				InitialDelay:     20,
 				PeriodSeconds:    10,
 				FailureThreshold: 3,
+				Timeout:          3,
 			},
 		},
 		Resources: ResourceRequirements{
@@ -274,6 +276,8 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, intstr.FromString(DefaultPortName), container.LivenessProbe.HTTPGet.Port)
 		assert.Equal(t, int32(20), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.InitialDelaySeconds)
 		assert.Equal(t, int32(20), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.InitialDelaySeconds)
+		assert.Equal(t, int32(3), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.TimeoutSeconds)
+		assert.Equal(t, int32(2), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.TimeoutSeconds)
 		assert.Equal(t, v1.Lifecycle{}, *deployment.Spec.Template.Spec.Containers[0].Lifecycle)
 
 		ptr := func(p resource.Quantity) *resource.Quantity {
@@ -462,7 +466,7 @@ func TestDeployment(t *testing.T) {
 		}
 
 		deploymentRequest := NaisDeploymentRequest{
-			Namespace: "default",
+			Namespace:   "default",
 			Application: "myapp",
 			Version:     "1",
 		}
@@ -885,15 +889,15 @@ func TestCheckForDuplicates(t *testing.T) {
 			},
 		}
 		resource2 := NaisResource{
-			name: "other",
+			name:         "other",
 			resourceType: "credential",
-			properties: map[string]string{},
+			properties:   map[string]string{},
 		}
 
 		err := checkForDuplicates([]v1.EnvVar{envVar1}, envVar2, "password", resource2)
 
 		assert.NotNil(t, err)
-		assert.Equal(t, "found duplicate secret key ref my_password between MY_PASSWORD and OTHER_PASSWORD when adding password for other (credential)" +
+		assert.Equal(t, "found duplicate secret key ref my_password between MY_PASSWORD and OTHER_PASSWORD when adding password for other (credential)"+
 			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
 	})
 }

@@ -258,17 +258,14 @@ func getResourceIds(usedResources []NaisResource) (usedResourceIds []int) {
 }
 
 func FetchFasitResources(fasit FasitClientAdapter, application string, environment string, zone string, usedResources []UsedResource) (naisresources []NaisResource, err error) {
-	defaultResources := DefaultResourceRequests()
+	resourceRequests := DefaultResourceRequests()
 
-	defaultResourcesCount := len(defaultResources)
-	resourceRequests := append(DefaultResourceRequests(), make([]ResourceRequest, len(usedResources))...)
-
-	for index, resource := range usedResources {
-		resourceRequests[index+defaultResourcesCount] = ResourceRequest{
+	for _, resource := range usedResources {
+		resourceRequests = append(resourceRequests, ResourceRequest{
 			Alias:        resource.Alias,
 			ResourceType: resource.ResourceType,
 			PropertyMap:  resource.PropertyMap,
-		}
+		})
 	}
 
 	naisresources, err = fasit.GetScopedResources(resourceRequests, environment, application, zone)

@@ -200,7 +200,7 @@ func createLeaderElectionContainer(appName string) v1.Container {
 		Ports: []v1.ContainerPort{
 			{ContainerPort: 4040, Protocol: v1.ProtocolTCP},
 		},
-		Args: []string{"--election=" + appName, "--http=localhost:4040", "--namespace=election"},
+		Args: []string{"--election=" + appName, "--http=localhost:4040", "--election-namespace=election"},
 	}
 }
 

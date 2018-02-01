@@ -40,7 +40,6 @@ fasitResources:
     resourceType: restservice
     path: /api
     description: "Dette er en resttjeneste"
-
   - alias: myWsdlservice
     resourceType: webserviceendpoint
     path: /webservieendpoint
@@ -50,4 +49,4 @@ fasitResources:
     securityToken: NONE
     description: "Dette er en webservicetjeneste"
     allZones: false
-
+leaderElection: true

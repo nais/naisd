@@ -25,6 +25,7 @@ const (
 	memoryRequest   = "200Mi"
 	memoryLimit     = "400Mi"
 	clusterIP       = "1.2.3.4"
+	leaderElection  = false
 )
 
 func newDefaultManifest() NaisManifest {
@@ -61,6 +62,7 @@ func newDefaultManifest() NaisManifest {
 			Path:    "/path",
 			Enabled: true,
 		},
+		LeaderElection: leaderElection,
 	}
 
 	return manifest
@@ -265,6 +267,9 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, otherAppName, deployment.Spec.Template.Name)
 
 		containers := deployment.Spec.Template.Spec.Containers
+
+		assert.Len(t, containers, 1, "Simple check for no sidecar containers")
+
 		container := containers[0]
 		assert.Equal(t, otherAppName, container.Name)
 		assert.Equal(t, image+":"+version, container.Image)
@@ -329,6 +334,19 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, image+":"+newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Image)
 		assert.Equal(t, int32(port), updatedDeployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 		assert.Equal(t, newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Env[0].Value)
+	})
+
+	t.Run("when leaderElection is true, extra container exists", func(t *testing.T) {
+		appConfig := newDefaultManifest()
+		appConfig.LeaderElection = true
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, appConfig, naisResources, clientset)
+		assert.NoError(t, err)
+
+		containers := deployment.Spec.Template.Spec.Containers
+		assert.Len(t, containers, 2, "Simple check to see if leader-elector has been added")
+
+		container := getLeaderElectionContainer(containers)
+		assert.NotNil(t, container)
 	})
 
 	t.Run("Prometheus annotations are updated on an existing deployment", func(t *testing.T) {
@@ -902,6 +920,15 @@ func TestCheckForDuplicates(t *testing.T) {
 	})
 }
 
+func TestCreateSBSPublicHostname(t *testing.T) {
+
+	t.Run("p", func(t *testing.T) {
+		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "p"}))
+		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "t6"}))
+		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "q6"}))
+	})
+}
+
 func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSource {
 	return &v1.EnvVarSource{
 		SecretKeyRef: &v1.SecretKeySelector{
@@ -913,12 +940,12 @@ func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSo
 	}
 }
 
-func TestCreateSBSPublicHostname(t *testing.T) {
+func getLeaderElectionContainer(containers []v1.Container) *v1.Container {
+	for _, v := range containers {
+		if v.Name == "elector" {
+			return &v
+		}
+	}
 
-	t.Run("p", func(t *testing.T) {
-		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "p"}))
-		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "t6"}))
-		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "q6"}))
-	})
-
+	return nil
 }

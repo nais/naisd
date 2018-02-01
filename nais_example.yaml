@@ -19,6 +19,8 @@ healthcheck: #Optional
     timeout: 1
 #Optional. Defaults to NONE.
 #See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
+leaderElection: false # if true, a http endpoint will be available at $ELECTOR_PATH that return the current leader
+                      # Compare this value with the $HOSTNAME to see if the current instance is the leader
 preStopHookPath: "" # A HTTP GET will be issued to this endpoint at least once before the pod is terminated.
 prometheus: #Optional
   enabled: false # if true the pod will be scraped for metrics by prometheus

@@ -41,8 +41,10 @@ func TestManifestUnmarshal(t *testing.T) {
 	assert.Equal(t, 79, manifest.Healthcheck.Readiness.InitialDelay)
 	assert.Equal(t, 15, manifest.Healthcheck.Liveness.FailureThreshold)
 	assert.Equal(t, 3, manifest.Healthcheck.Readiness.FailureThreshold)
+	assert.Equal(t, 69, manifest.Healthcheck.Readiness.Timeout)
 	assert.Equal(t, 5, manifest.Healthcheck.Liveness.PeriodSeconds)
 	assert.Equal(t, 10, manifest.Healthcheck.Readiness.PeriodSeconds)
+	assert.Equal(t, 69, manifest.Healthcheck.Liveness.Timeout)
 	assert.Equal(t, "/stop", manifest.PreStopHookPath)
 }
 
@@ -76,6 +78,8 @@ func TestManifestUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, "/metrics", manifest.Prometheus.Path)
 	assert.Equal(t, 20, manifest.Healthcheck.Readiness.InitialDelay)
 	assert.Equal(t, 20, manifest.Healthcheck.Liveness.InitialDelay)
+	assert.Equal(t, 1, manifest.Healthcheck.Liveness.Timeout)
+	assert.Equal(t, 1, manifest.Healthcheck.Readiness.Timeout)
 	assert.Equal(t, true, manifest.Ingress.Enabled)
 	assert.Empty(t, manifest.PreStopHookPath)
 

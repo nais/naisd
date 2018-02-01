@@ -147,6 +147,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 					InitialDelaySeconds: int32(manifest.Healthcheck.Liveness.InitialDelay),
 					PeriodSeconds:       int32(manifest.Healthcheck.Liveness.PeriodSeconds),
 					FailureThreshold:    int32(manifest.Healthcheck.Liveness.FailureThreshold),
+					TimeoutSeconds: 	 int32(manifest.Healthcheck.Liveness.Timeout),
 				},
 				ReadinessProbe: &v1.Probe{
 					Handler: v1.Handler{
@@ -158,6 +159,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 					InitialDelaySeconds: int32(manifest.Healthcheck.Readiness.InitialDelay),
 					PeriodSeconds:       int32(manifest.Healthcheck.Readiness.PeriodSeconds),
 					FailureThreshold:    int32(manifest.Healthcheck.Readiness.FailureThreshold),
+					TimeoutSeconds: 	 int32(manifest.Healthcheck.Readiness.Timeout),
 				},
 				Env:             envVars,
 				ImagePullPolicy: v1.PullIfNotPresent,

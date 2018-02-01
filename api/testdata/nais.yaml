@@ -11,9 +11,11 @@ healthcheck:
     initialDelay: 79
     periodSeconds: 5
     failureThreshold: 15
+    timeout: 69
   readiness:
     path: isReady2
     initialDelay: 79
+    timeout: 69
 preStopHookPath: "/stop"
 resources:
   limits:

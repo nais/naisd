@@ -16,6 +16,7 @@ type Probe struct {
 	InitialDelay     int `yaml:"initialDelay"`
 	PeriodSeconds    int `yaml:"periodSeconds"`
 	FailureThreshold int `yaml:"failureThreshold"`
+	Timeout 		 int `yaml:"timeout"`
 }
 
 type Healthcheck struct {

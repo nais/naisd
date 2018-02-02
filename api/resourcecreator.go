@@ -174,11 +174,12 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 	if (manifest.LeaderElection) {
 		podSpec.Containers = append(podSpec.Containers, createLeaderElectionContainer(deploymentRequest.Application))
 
-		mainContainer := podSpec.Containers[0]
-		mainContainer.Env = append(mainContainer.Env, v1.EnvVar{
-			Name: "ELECTOR_PATH",
-			Value: "localhost:4040",
-		})
+		mainContainer := &podSpec.Containers[0]
+		electorPathEnv := v1.EnvVar{
+			Name:      "ELECTOR_PATH",
+			Value:     "localhost:4040",
+		}
+		mainContainer.Env = append(mainContainer.Env, electorPathEnv)
 	}
 
 	if hasCertificate(naisResources) {

@@ -13,6 +13,7 @@ import (
 const (
 	appName         = "appname"
 	otherAppName    = "otherappname"
+	environment		= "testenv"
 	namespace       = "namespace"
 	image           = "docker.hub/app"
 	port            = 6900
@@ -259,7 +260,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, newDefaultManifest(), naisResources, clientset)
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, Environment: environment}, newDefaultManifest(), naisResources, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, deployment.Name)
@@ -299,28 +300,33 @@ func TestDeployment(t *testing.T) {
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
-		assert.Equal(t, 11, len(env))
-		assert.Equal(t, "APP_VERSION", env[0].Name)
-		assert.Equal(t, version, env[0].Value)
+		assert.Equal(t, 13, len(env))
+		assert.Equal(t, "APP_NAME", env[0].Name)
+		assert.Equal(t, otherAppName, env[0].Value)
+		assert.Equal(t, "APP_VERSION", env[1].Name)
+		assert.Equal(t, version, env[1].Value)
+		assert.Equal(t, "FASIT_ENVIRONMENT_NAME", env[2].Name)
+		assert.Equal(t, environment, env[2].Value)
 
-		assert.Equal(t, strings.ToUpper(resource1Name+"_"+resource1Key), env[1].Name)
-		assert.Equal(t, "value1", env[1].Value)
 
-		assert.Equal(t, strings.ToUpper(resource1Name+"_"+secret1Key), env[2].Name)
-		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[2].ValueFrom)
+		assert.Equal(t, strings.ToUpper(resource1Name+"_"+resource1Key), env[3].Name)
+		assert.Equal(t, "value1", env[3].Value)
 
-		assert.Equal(t, resource2KeyMapping, env[3].Name)
-		assert.Equal(t, "value2", env[3].Value)
+		assert.Equal(t, strings.ToUpper(resource1Name+"_"+secret1Key), env[4].Name)
+		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[4].ValueFrom)
 
-		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[4].Name)
-		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[4].ValueFrom)
+		assert.Equal(t, resource2KeyMapping, env[5].Name)
+		assert.Equal(t, "value2", env[5].Value)
 
-		assert.Equal(t, "KEY1", env[5].Name)
-		assert.Equal(t, "KEY2_PROPERTY", env[6].Name)
-		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[7].Name)
-		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[8].Name)
-		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[9].Name)
-		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[10].Name)
+		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[6].Name)
+		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[6].ValueFrom)
+
+		assert.Equal(t, "KEY1", env[7].Name)
+		assert.Equal(t, "KEY2_PROPERTY", env[8].Name)
+		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[9].Name)
+		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[10].Name)
+		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[11].Name)
+		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[12].Name)
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
@@ -333,7 +339,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, appName, updatedDeployment.Spec.Template.Spec.Containers[0].Name)
 		assert.Equal(t, image+":"+newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Image)
 		assert.Equal(t, int32(port), updatedDeployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
-		assert.Equal(t, newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Env[0].Value)
+		assert.Equal(t, newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Env[1].Value)
 	})
 
 	t.Run("when leaderElection is true, extra container exists", func(t *testing.T) {
@@ -432,11 +438,11 @@ func TestDeployment(t *testing.T) {
 
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
 
-		assert.Equal(t, 7, len(envVars))
-		assert.Equal(t, "R1_CERT1KEY_PATH", envVars[3].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/cert1key", envVars[3].Value)
-		assert.Equal(t, "R2_CERT2KEY_PATH", envVars[6].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/cert2key", envVars[6].Value)
+		assert.Equal(t, 9, len(envVars))
+		assert.Equal(t, "R1_CERT1KEY_PATH", envVars[5].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/cert1key", envVars[5].Value)
+		assert.Equal(t, "R2_CERT2KEY_PATH", envVars[8].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/cert2key", envVars[8].Value)
 
 	})
 

@@ -297,7 +297,7 @@ func checkForDuplicates(envVars []v1.EnvVar, envVar v1.EnvVar, property string, 
 }
 
 func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) ([]v1.EnvVar, error) {
-	envVars := createDefaultEnvironmentVariables(deploymentRequest.Version)
+	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
 	for _, res := range naisResources {
 		for variableName, v := range res.properties {
@@ -350,11 +350,19 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 	return envVars, nil
 }
 
-func createDefaultEnvironmentVariables(version string) []v1.EnvVar {
+func createDefaultEnvironmentVariables(request *NaisDeploymentRequest) []v1.EnvVar {
 	return []v1.EnvVar{{
-		Name:  "APP_VERSION",
-		Value: version,
-	}}
+			Name:  "APP_NAME",
+			Value: request.Application,
+		},
+		{
+			Name:  "APP_VERSION",
+			Value: request.Version,
+		},
+		{
+			Name:  "FASIT_ENVIRONMENT_NAME",
+			Value: request.Environment,
+		}}
 }
 
 func createResourceLimits(requestsCpu string, requestsMemory string, limitsCpu string, limitsMemory string) v1.ResourceRequirements {

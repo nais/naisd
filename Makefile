@@ -1,10 +1,11 @@
-SHELL   := bash
-NAME    := navikt/naisd
-LATEST  := ${NAME}:latest
-GLIDE   := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd navikt/glide glide
-GO_IMG  := golang:1.8
-GO      := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go
-LDFLAGS := -X github.com/nais/naisd/api/version.Revision=$(shell git rev-parse --short HEAD) -X github.com/nais/naisd/api/version.Version=$(shell /bin/cat ./version)
+SHELL     := bash
+NAME      := navikt/naisd
+LATEST    := ${NAME}:latest
+GLIDE_IMG := navikt/glide:2.0.0
+GLIDE     := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GLIDE_IMG} glide
+GO_IMG    := golang:1.9
+GO        := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go
+LDFLAGS   := -X github.com/nais/naisd/api/version.Revision=$(shell git rev-parse --short HEAD) -X github.com/nais/naisd/api/version.Version=$(shell /bin/cat ./version)
 
 .PHONY: dockerhub-release install test linux bump tag cli cli-dist build docker-build push-dockerhub docker-minikube-build helm-upgrade
 

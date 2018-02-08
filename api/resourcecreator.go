@@ -35,6 +35,7 @@ func createServiceDef(application, namespace string) *v1.Service {
 			Selector: map[string]string{"app": application},
 			Ports: []v1.ServicePort{
 				{
+					Name: "http",
 					Protocol: v1.ProtocolTCP,
 					Port:     80,
 					TargetPort: intstr.IntOrString{

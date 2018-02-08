@@ -93,6 +93,7 @@ func TestService(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
 		assert.Equal(t, DefaultPortName, service.Spec.Ports[0].TargetPort.StrVal)
+		assert.Equal(t, "http", service.Spec.Ports[0].Name)
 		assert.Equal(t, map[string]string{"app": otherAppName}, service.Spec.Selector)
 	})
 	t.Run("when service exists, nothing happens", func(t *testing.T) {

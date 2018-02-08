@@ -12,9 +12,15 @@ import (
 )
 
 var environmentCommand = &cobra.Command{
-	Short: "Update environment variables",
-	Long:  `Command to update environment variables with values fetched from the defined fasit resource`,
-	Use:   `env [flags] <application_name>`,
+	Short: "Fetch environment variables from fasit",
+	Long:  `Command fetch the same environment variables from fasit that naisd would give a pod`,
+	Use: `env [flags] <application_name>
+The commad is mainly made to fetch environment variables in a format you can use with eval:
+  docker run eval $(nais env -o docker application_name)
+You can also use it to add the environment variables to a shell script:
+  eval $(nais env application_name)
+Or just save it to a file
+  nais env application_name > .env`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) < 1 {
 			cmd.Help()
@@ -126,7 +132,7 @@ var environmentCommand = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(environmentCommand)
-	environmentCommand.Flags().StringP("output", "o", "export", `How to format the output, valid options`)
+	environmentCommand.Flags().StringP("output", "o", "export", `How to format the output, valid options are export, java, docker, multiline and inline`)
 	environmentCommand.Flags().StringP("file", "f", "nais.yaml", `Define the file to parse`)
 	environmentCommand.Flags().StringP("zone", "z", "fss", `Which zone the application is deployed in`)
 	environmentCommand.Flags().StringP("environment", "e", "t0", `Which fasit environment to fetch variables from`)

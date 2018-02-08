@@ -421,7 +421,7 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 }
 
 // Creates a Kubernetes Ingress object
-func createIngressDef(subdomain, application, namespace string) *v1beta1.Ingress {
+func createIngressDef(application, namespace string) *v1beta1.Ingress {
 	return &v1beta1.Ingress{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Ingress",
@@ -556,13 +556,14 @@ func createOrUpdateIngress(deploymentRequest NaisDeploymentRequest, clusterSubdo
 	ingress, err := getExistingIngress(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing ingress id: %s", err)
+		return nil, fmt.Errorf("unable to get existing ingress id: %s", err)
 	}
 
 	if ingress == nil {
-		ingress = createIngressDef(clusterSubdomain, deploymentRequest.Application, deploymentRequest.Namespace)
+		ingress = createIngressDef(deploymentRequest.Application, deploymentRequest.Namespace)
 	}
 
+	ingress.Spec.TLS = []v1beta1.IngressTLS{{SecretName: "istio-ingress-certs"}}
 	ingress.Spec.Rules = createIngressRules(deploymentRequest, clusterSubdomain, naisResources)
 	return createOrUpdateIngressResource(ingress, deploymentRequest.Namespace, k8sClient)
 }

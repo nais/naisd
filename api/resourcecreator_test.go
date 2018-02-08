@@ -508,7 +508,8 @@ func TestIngress(t *testing.T) {
 	appName := "appname"
 	namespace := "default"
 	subDomain := "example.no"
-	ingress := createIngressDef(subDomain, appName, namespace)
+	istioCertSecretName := "istio-ingress-certs"
+	ingress := createIngressDef(appName, namespace)
 	ingress.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(ingress)
 
@@ -533,6 +534,7 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
 		assert.Equal(t, otherAppName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
+		assert.Equal(t, istioCertSecretName , ingress.Spec.TLS[0].SecretName)
 	})
 
 	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {

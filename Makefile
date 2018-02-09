@@ -22,7 +22,7 @@ install:
 	${GLIDE} install --strip-vendor
 
 test:
-	${GO} test ./api/ ./cli
+	${GO} test ./api/ ./cli/cmd/
 
 cli:
 	${GO} build -ldflags='$(LDFLAGS)' -o nais ./cli

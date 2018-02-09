@@ -163,3 +163,24 @@ func TestJavaFormat(t *testing.T) {
 		assert.Equal(t, expected_vars[matches[1]], matches[2])
 	}
 }
+
+func TestInlineFormat(t *testing.T) {
+	commandResult, commandResultLength := runCommand(t, []string{"env", "-u", "https://fasit.local", "-o", "inline", "-f", "../../api/testdata/nais_used_resources.yaml", "test-application"})
+
+	assert.NotEqual(t, 0, commandResultLength)
+
+	// This should be fine as long as we don't have spaces in the variables
+	resultStrings := strings.Split(string(commandResult[:]), " ")
+
+	assert.Equal(t, len(expected_vars), len(resultStrings))
+
+	exportRegex, _ := regexp.Compile("([A-Z_]+)='(.+)'")
+	for _, value := range resultStrings {
+		matches := exportRegex.FindStringSubmatch(value)
+
+		assert.NotNil(t, matches)
+
+		assert.Contains(t, expected_vars, matches[1])
+		assert.Equal(t, expected_vars[matches[1]], matches[2])
+	}
+}

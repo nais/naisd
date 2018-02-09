@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Jeffail/gabs"
-	"github.com/golang/glog"
-	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -14,6 +11,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/Jeffail/gabs"
+	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func init() {
@@ -109,6 +110,10 @@ type NaisResource struct {
 	secret       map[string]string
 	certificates map[string][]byte
 	ingresses    map[string]string
+}
+
+func (nr NaisResource) GetProperties() map[string]string {
+	return nr.properties
 }
 
 func (nr NaisResource) ToEnvironmentVariable(property string) string {
@@ -252,9 +257,10 @@ func getResourceIds(usedResources []NaisResource) (usedResourceIds []int) {
 	return usedResourceIds
 }
 
-func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, manifest NaisManifest) (naisresources []NaisResource, err error) {
+func FetchFasitResources(fasit FasitClientAdapter, application string, environment string, zone string, usedResources []UsedResource) (naisresources []NaisResource, err error) {
 	resourceRequests := DefaultResourceRequests()
-	for _, resource := range manifest.FasitResources.Used {
+
+	for _, resource := range usedResources {
 		resourceRequests = append(resourceRequests, ResourceRequest{
 			Alias:        resource.Alias,
 			ResourceType: resource.ResourceType,
@@ -262,17 +268,17 @@ func fetchFasitResources(fasit FasitClientAdapter, deploymentRequest NaisDeploym
 		})
 	}
 
-	naisresources, err = fasit.GetScopedResources(resourceRequests, deploymentRequest.Environment, deploymentRequest.Application, deploymentRequest.Zone)
+	naisresources, err = fasit.GetScopedResources(resourceRequests, environment, application, zone)
 	if err != nil {
 		return naisresources, err
 	}
 
-	if lbResource, e := fasit.getLoadBalancerConfig(deploymentRequest.Application, deploymentRequest.Environment); e == nil {
+	if lbResource, e := fasit.getLoadBalancerConfig(application, environment); e == nil {
 		if lbResource != nil {
 			naisresources = append(naisresources, *lbResource)
 		}
 	} else {
-		glog.Warning("failed getting loadbalancer config for application %s in environment %s: %s ", deploymentRequest.Application, deploymentRequest.Environment, e)
+		glog.Warning("failed getting loadbalancer config for application %s in environment %s: %s ", application, environment, e)
 	}
 
 	return naisresources, nil

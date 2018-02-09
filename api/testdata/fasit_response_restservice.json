@@ -1,0 +1,27 @@
+{
+    "type": "restservice",
+    "alias": "test-application",
+    "scope": {
+      "environmentclass": "t",
+      "application": "appName"
+    },
+    "properties": {
+      "url": "https://external-application.nais.preprod.local/rest/v1/very_useful_call"
+    },
+  
+    "files": {},
+    "dodgy": false,
+    "id": 929292,
+    "revision": 8765432,
+    "created": "2017-04-14T01:00:00.000",
+    "updated": "2017-04-14T01:00:00.000",
+    "lifecycle": {},
+    "accesscontrol": {
+      "environmentclass": "p",
+      "adgroups": []
+    },
+    "links": {
+      "self": "https://fasit.adeo.no/api/v2/resources/929292",
+      "revisions": "https://fasit.adeo.no/api/v2/resources/929292/revisions"
+    }
+  }

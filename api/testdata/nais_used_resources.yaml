@@ -1,0 +1,15 @@
+replicas:
+  min: 1
+  max: 4
+  cpuThresholdPercentage: 50
+port: 8080
+ingress:
+  enabled: false
+fasitResources:
+  used:
+    - alias: app_db
+      resourceType: datasource
+    - alias: some_api
+      resourceType: restservice
+      propertyMap:
+        url: SOME_API_REST_URL

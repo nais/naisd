@@ -31,7 +31,6 @@ type NaisDeploymentRequest struct {
 	Environment  string `json:"environment"`
 	Zone         string `json:"zone"`
 	ManifestUrl  string `json:"manifesturl,omitempty"`
-	AppConfigUrl string `json:"appconfigurl,omitempty"` // Deprecated
 	Username     string `json:"username"`
 	Password     string `json:"password"`
 	OnBehalfOf   string `json:"onbehalfof,omitempty"`

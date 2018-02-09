@@ -344,9 +344,9 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when leaderElection is true, extra container exists", func(t *testing.T) {
-		appConfig := newDefaultManifest()
-		appConfig.LeaderElection = true
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, appConfig, naisResources, clientset)
+		manifest := newDefaultManifest()
+		manifest.LeaderElection = true
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
 		assert.NoError(t, err)
 
 		containers := deployment.Spec.Template.Spec.Containers

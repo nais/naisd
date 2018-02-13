@@ -290,6 +290,7 @@ func TestDeployment(t *testing.T) {
 		ptr := func(p resource.Quantity) *resource.Quantity {
 			return &p
 		}
+
 		assert.Equal(t, memoryRequest, ptr(container.Resources.Requests["memory"]).String())
 		assert.Equal(t, memoryLimit, ptr(container.Resources.Limits["memory"]).String())
 		assert.Equal(t, cpuRequest, ptr(container.Resources.Requests["cpu"]).String())
@@ -298,6 +299,7 @@ func TestDeployment(t *testing.T) {
 			"prometheus.io/scrape": "true",
 			"prometheus.io/path":   "/path",
 			"prometheus.io/port":   "http",
+			"sidecar.istio.io/inject": "true",
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
@@ -308,14 +310,6 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, version, env[1].Value)
 		assert.Equal(t, "FASIT_ENVIRONMENT_NAME", env[2].Name)
 		assert.Equal(t, environment, env[2].Value)
-
-
-		assert.Equal(t, strings.ToUpper(resource1Name+"_"+resource1Key), env[3].Name)
-		assert.Equal(t, "value1", env[3].Value)
-
-		assert.Equal(t, strings.ToUpper(resource1Name+"_"+secret1Key), env[4].Name)
-		assert.Equal(t, createSecretRef(otherAppName, secret1Key, resource1Name), env[4].ValueFrom)
-
 		assert.Equal(t, resource2KeyMapping, env[5].Name)
 		assert.Equal(t, "value2", env[5].Value)
 
@@ -369,6 +363,7 @@ func TestDeployment(t *testing.T) {
 			"prometheus.io/scrape": "false",
 			"prometheus.io/path":   "/newPath",
 			"prometheus.io/port":   "http",
+			"sidecar.istio.io/inject":   "true",
 		}, updatedDeployment.Spec.Template.Annotations)
 	})
 

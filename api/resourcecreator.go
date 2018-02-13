@@ -106,18 +106,19 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest Nais
 		ProgressDeadlineSeconds: int32p(300),
 		RevisionHistoryLimit:    int32p(10),
 		Template: v1.PodTemplateSpec{
-			ObjectMeta: createPodObjectMetaWithPrometheusAnnotations(deploymentRequest, manifest),
+			ObjectMeta: createPodObjectMetaWithAnnotations(deploymentRequest, manifest),
 			Spec:       spec,
 		},
 	}, nil
 }
 
-func createPodObjectMetaWithPrometheusAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest) v1.ObjectMeta {
+func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest) v1.ObjectMeta {
 	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
 		"prometheus.io/port":   DefaultPortName,
 		"prometheus.io/path":   manifest.Prometheus.Path,
+		"sidecar.istio.io/inject": "true",
 	}
 	return objectMeta
 }

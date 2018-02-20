@@ -55,14 +55,13 @@ the Nexus repo can be specified using `NEXUS_URL`.
 **Example:** Uploading to Nexus 2:
 
 ```
-./nais upload --app myapp -v 10
+NEXUS_URL=http://maven.adeo.no/nexus/content/repositories/m2internal ./nais upload --app myapp -v 10
 ```
 
 **Example:** Uploading to Nexus 3:
 
 ```
-NEXUS_URL=https://repo.adeo.no/repository/raw ./nais upload --app myapp -v 10
-
+./nais upload --app myapp -v 10
 ```
 
 #### Deploy

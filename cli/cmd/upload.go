@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const DEFAULT_NEXUS_URL = "http://maven.adeo.no/nexus/content/repositories/m2internal"
+const DEFAULT_NEXUS_URL = "https://repo.adeo.no/repository/raw"
 
 type NexusUploadRequest struct {
 	Username string
@@ -54,11 +54,10 @@ var uploadCmd = &cobra.Command{
 
 		nexusUrl := DEFAULT_NEXUS_URL
 		if url, ok := os.LookupEnv("NEXUS_URL"); ok {
-			nexusUrl = url
+			nexusUrl = strings.TrimRight(url, "/")
 		}
 
-		nexusUrl = fmt.Sprintf("%s/nais/%s/%s/nais.yaml", strings.TrimRight(nexusUrl, "/"),
-			nexusUploadRequest.App, nexusUploadRequest.Version)
+		nexusUrl = fmt.Sprintf("%s/nais/%s/%s/nais.yaml", nexusUrl, nexusUploadRequest.App, nexusUploadRequest.Version)
 
 		req, err := http.NewRequest("PUT", nexusUrl, file)
 		if err != nil {

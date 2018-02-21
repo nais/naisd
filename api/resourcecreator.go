@@ -118,7 +118,7 @@ func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest,
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
 		"prometheus.io/port":   DefaultPortName,
 		"prometheus.io/path":   manifest.Prometheus.Path,
-		"sidecar.istio.io/inject": "true",
+		//"sidecar.istio.io/inject": "true",  # temporarily disabled during rollout
 	}
 	return objectMeta
 }

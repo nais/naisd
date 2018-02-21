@@ -299,7 +299,7 @@ func TestDeployment(t *testing.T) {
 			"prometheus.io/scrape": "true",
 			"prometheus.io/path":   "/path",
 			"prometheus.io/port":   "http",
-			"sidecar.istio.io/inject": "true",
+			//"sidecar.istio.io/inject": "true", # temporarily disabled during roll-out
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
@@ -363,7 +363,7 @@ func TestDeployment(t *testing.T) {
 			"prometheus.io/scrape": "false",
 			"prometheus.io/path":   "/newPath",
 			"prometheus.io/port":   "http",
-			"sidecar.istio.io/inject":   "true",
+			//"sidecar.istio.io/inject":   "true", # temporarily disabled
 		}, updatedDeployment.Spec.Template.Annotations)
 	})
 

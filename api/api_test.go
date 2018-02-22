@@ -51,7 +51,7 @@ func TestDeployStatusHandler(t *testing.T) {
 		mux := goji.NewMux()
 
 		api := Api{DeploymentStatusViewer: FakeDeployStatusViewer{
-			errToReturn: fmt.Errorf("Not Found"),
+			errToReturn: fmt.Errorf("not Found"),
 		}}
 
 		mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
@@ -120,9 +120,9 @@ func TestNoManifestGivesError(t *testing.T) {
 		Reply(400).
 		JSON(map[string]string{"foo": "bar"})
 
-	json, _ := json.Marshal(depReq)
+	jsn, _ := json.Marshal(depReq)
 
-	body := strings.NewReader(string(json))
+	body := strings.NewReader(string(jsn))
 
 	req, err := http.NewRequest("POST", "/deploy", body)
 
@@ -212,9 +212,9 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 		Reply(200).
 		BodyString(string(appInstanceResponse))
 
-	json, _ := json.Marshal(depReq)
+	jsn, _ := json.Marshal(depReq)
 
-	body := strings.NewReader(string(json))
+	body := strings.NewReader(string(jsn))
 
 	req, _ := http.NewRequest("POST", "/deploy", body)
 
@@ -273,11 +273,11 @@ func TestMissingResources(t *testing.T) {
 	assert.Equal(t, 400, rr.Code)
 	assert.True(t, gock.IsDone())
 
-	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("Unable to get resource %s (%s)", resourceAlias, resourceType))
+	assert.Contains(t, string(rr.Body.Bytes()), fmt.Sprintf("unable to get resource %s (%s)", resourceAlias, resourceType))
 }
 
 func CreateDefaultDeploymentRequest() string {
-	json, _ := json.Marshal(NaisDeploymentRequest{
+	jsn, _ := json.Marshal(NaisDeploymentRequest{
 		Application: "appname",
 		Version:     "123",
 		Environment: "namespace",
@@ -286,7 +286,7 @@ func CreateDefaultDeploymentRequest() string {
 		Namespace:   "namespace",
 	})
 
-	return string(json)
+	return string(jsn)
 }
 
 func TestValidateDeploymentRequest(t *testing.T) {
@@ -304,13 +304,13 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		err := invalid.Validate()
 
 		assert.NotNil(t, err)
-		assert.Contains(t, err, errors.New("Application is required and is empty"))
-		assert.Contains(t, err, errors.New("Version is required and is empty"))
-		assert.Contains(t, err, errors.New("Environment is required and is empty"))
-		assert.Contains(t, err, errors.New("Zone is required and is empty"))
+		assert.Contains(t, err, errors.New("application is required and is empty"))
+		assert.Contains(t, err, errors.New("version is required and is empty"))
+		assert.Contains(t, err, errors.New("environment is required and is empty"))
+		assert.Contains(t, err, errors.New("zone is required and is empty"))
 		assert.Contains(t, err, errors.New("zone can only be fss, sbs or iapp"))
-		assert.Contains(t, err, errors.New("Namespace is required and is empty"))
-		assert.Contains(t, err, errors.New("Username is required and is empty"))
-		assert.Contains(t, err, errors.New("Password is required and is empty"))
+		assert.Contains(t, err, errors.New("namespace is required and is empty"))
+		assert.Contains(t, err, errors.New("username is required and is empty"))
+		assert.Contains(t, err, errors.New("password is required and is empty"))
 	})
 }

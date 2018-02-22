@@ -38,7 +38,7 @@ type WebserviceResourcePayload struct {
 type WebserviceProperties struct {
 	EndpointUrl   string `json:"endpointUrl"`
 	WsdlUrl       string `json:"wsdlUrl"`
-	SecurityToken string `json:"securityToken""`
+	SecurityToken string `json:"securityToken"`
 	Description   string `json:"description,omitempty"`
 }
 type RestProperties struct {
@@ -150,7 +150,7 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 	for _, request := range resourcesRequests {
 		resource, appErr := fasit.getScopedResource(request, environment, application, zone)
 		if appErr != nil {
-			return []NaisResource{}, fmt.Errorf("Unable to get resource %s (%s). %s", request.Alias, request.ResourceType, appErr)
+			return []NaisResource{}, fmt.Errorf("unable to get resource %s (%s). %s", request.Alias, request.ResourceType, appErr)
 		}
 		resources = append(resources, resource)
 	}
@@ -163,7 +163,7 @@ func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploym
 	payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, exposedResourceIds, usedResourceIds))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
-		return fmt.Errorf("Unable to create payload (%s)", err)
+		return fmt.Errorf("unable to create payload (%s)", err)
 	}
 
 	glog.Infof("ApplicationInstancePayload: %s", payload)
@@ -227,7 +227,7 @@ func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedR
 				// Create new resource if none was found
 				createdResourceId, err := fasit.createResource(resource, fasitEnvironmentClass, fasitEnvironment, hostname, deploymentRequest)
 				if err != nil {
-					return nil, fmt.Errorf("Failed creating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
+					return nil, fmt.Errorf("failed creating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
 				}
 				exposedResourceIds = append(exposedResourceIds, createdResourceId)
 			} else {
@@ -239,7 +239,7 @@ func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedR
 			// Updating Fasit resource
 			updatedResourceId, err := fasit.updateResource(existingResource, resource, fasitEnvironmentClass, fasitEnvironment, hostname, deploymentRequest)
 			if err != nil {
-				return nil, fmt.Errorf("Failed updating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
+				return nil, fmt.Errorf("failed updating resource: %s of type %s with path %s. (%s)", resource.Alias, resource.ResourceType, resource.Path, err)
 			}
 			exposedResourceIds = append(exposedResourceIds, updatedResourceId)
 
@@ -578,14 +578,14 @@ func resolveCertificates(files map[string]interface{}, resourceName string) (map
 }
 
 func parseLoadBalancerConfig(config []byte) (map[string]string, error) {
-	json, err := gabs.ParseJSON(config)
+	jsn, err := gabs.ParseJSON(config)
 	if err != nil {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return nil, fmt.Errorf("error parsing load balancer config: %s ", config)
 	}
 
 	ingresses := make(map[string]string)
-	lbConfigs, _ := json.Children()
+	lbConfigs, _ := jsn.Children()
 	if len(lbConfigs) == 0 {
 		return nil, nil
 	}
@@ -608,19 +608,19 @@ func parseLoadBalancerConfig(config []byte) (map[string]string, error) {
 }
 
 func parseFilesObject(files map[string]interface{}) (fileName string, fileUrl string, e error) {
-	json, err := gabs.Consume(files)
+	jsn, err := gabs.Consume(files)
 	if err != nil {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return "", "", fmt.Errorf("error parsing fasit json: %s ", files)
 	}
 
-	fileName, fileNameFound := json.Path("keystore.filename").Data().(string)
+	fileName, fileNameFound := jsn.Path("keystore.filename").Data().(string)
 	if !fileNameFound {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return "", "", fmt.Errorf("error parsing fasit json. Filename not found: %s ", files)
 	}
 
-	fileUrl, fileUrlfound := json.Path("keystore.ref").Data().(string)
+	fileUrl, fileUrlfound := jsn.Path("keystore.ref").Data().(string)
 	if !fileUrlfound {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return "", "", fmt.Errorf("error parsing fasit json. Fileurl not found: %s ", files)

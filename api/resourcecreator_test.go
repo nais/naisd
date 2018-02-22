@@ -26,7 +26,6 @@ const (
 	memoryRequest   = "200Mi"
 	memoryLimit     = "400Mi"
 	clusterIP       = "1.2.3.4"
-	leaderElection  = false
 )
 
 func newDefaultManifest() NaisManifest {
@@ -63,7 +62,7 @@ func newDefaultManifest() NaisManifest {
 			Path:    "/path",
 			Enabled: true,
 		},
-		LeaderElection: leaderElection,
+		LeaderElection: false,
 	}
 
 	return manifest
@@ -494,7 +493,7 @@ func TestDeployment(t *testing.T) {
 		_, err := createOrUpdateDeployment(deploymentRequest, newDefaultManifest(), []NaisResource{resource1, resource2}, clientset)
 
 		assert.NotNil(t, err)
-		assert.Equal(t, "Unable to create deployment: found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
+		assert.Equal(t, "unable to create deployment: found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
 			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
 	})
 }
@@ -816,8 +815,8 @@ func TestCreateK8sResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset(autoscaler, service)
 
 	t.Run("creates all resources", func(t *testing.T) {
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, "nais.example.yo", clientset)
-		assert.NoError(t, error)
+		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, "nais.example.yo", clientset)
+		assert.NoError(t, err)
 
 		assert.NotEmpty(t, deploymentResult.Secret)
 		assert.Nil(t, deploymentResult.Service, "nothing happens to service if it already exists")
@@ -844,8 +843,8 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	t.Run("omits secret creation when no secret resources ex", func(t *testing.T) {
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())
-		assert.NoError(t, error)
+		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())
+		assert.NoError(t, err)
 
 		assert.Empty(t, deploymentResult.Secret)
 		assert.NotEmpty(t, deploymentResult.Service)
@@ -854,8 +853,8 @@ func TestCreateK8sResources(t *testing.T) {
 	t.Run("omits ingress creation when disabled", func(t *testing.T) {
 		manifest.Ingress.Enabled = false
 
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())
-		assert.NoError(t, error)
+		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())
+		assert.NoError(t, err)
 
 		assert.Empty(t, deploymentResult.Ingress)
 	})

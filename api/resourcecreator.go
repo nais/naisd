@@ -173,7 +173,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
 
-	if (manifest.LeaderElection) {
+	if manifest.LeaderElection {
 		podSpec.Containers = append(podSpec.Containers, createLeaderElectionContainer(deploymentRequest.Application))
 
 		mainContainer := &podSpec.Containers[0]
@@ -507,33 +507,33 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifes
 
 	service, err := createService(deploymentRequest, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating service: %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating service: %s", err)
 	}
 	deploymentResult.Service = service
 
 	deployment, err := createOrUpdateDeployment(deploymentRequest, manifest, resources, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating or updating deployment: %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating or updating deployment: %s", err)
 	}
 	deploymentResult.Deployment = deployment
 
 	secret, err := createOrUpdateSecret(deploymentRequest, resources, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating or updating secret: %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating or updating secret: %s", err)
 	}
 	deploymentResult.Secret = secret
 
 	if manifest.Ingress.Enabled {
 		ingress, err := createOrUpdateIngress(deploymentRequest, clusterSubdomain, resources, k8sClient)
 		if err != nil {
-			return deploymentResult, fmt.Errorf("Failed while creating ingress: %s", err)
+			return deploymentResult, fmt.Errorf("failed while creating ingress: %s", err)
 		}
 		deploymentResult.Ingress = ingress
 	}
 
 	autoscaler, err := createOrUpdateAutoscaler(deploymentRequest, manifest, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating or updating autoscaler: %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating or updating autoscaler: %s", err)
 	}
 
 	deploymentResult.Autoscaler = autoscaler
@@ -545,7 +545,7 @@ func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, manifest 
 	autoscaler, err := getExistingAutoscaler(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing autoscaler: %s", err)
+		return nil, fmt.Errorf("unable to get existing autoscaler: %s", err)
 	}
 
 	autoscalerDef := createOrUpdateAutoscalerDef(manifest.Replicas.Min, manifest.Replicas.Max, manifest.Replicas.CpuThresholdPercentage, autoscaler, deploymentRequest.Application, deploymentRequest.Namespace)
@@ -593,7 +593,7 @@ func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes
 	existingService, err := getExistingService(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing service: %s", err)
+		return nil, fmt.Errorf("unable to get existing service: %s", err)
 	}
 
 	if existingService != nil {
@@ -608,13 +608,13 @@ func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest 
 	existingDeployment, err := getExistingDeployment(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing deployment: %s", err)
+		return nil, fmt.Errorf("unable to get existing deployment: %s", err)
 	}
 
 	deploymentDef, err := createDeploymentDef(naisResources, manifest, deploymentRequest, existingDeployment)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create deployment: %s", err)
+		return nil, fmt.Errorf("unable to create deployment: %s", err)
 	}
 
 	return createOrUpdateDeploymentResource(deploymentDef, deploymentRequest.Namespace, k8sClient)
@@ -624,7 +624,7 @@ func createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, naisResources
 	existingSecret, err := getExistingSecret(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing secret: %s", err)
+		return nil, fmt.Errorf("unable to get existing secret: %s", err)
 	}
 
 	if secretDef := createSecretDef(naisResources, existingSecret, deploymentRequest.Application, deploymentRequest.Namespace); secretDef != nil {

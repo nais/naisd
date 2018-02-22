@@ -15,6 +15,7 @@ import (
 	"goji.io"
 	"goji.io/pat"
 	"k8s.io/client-go/kubernetes"
+	"strings"
 )
 
 type Api struct {
@@ -263,7 +264,7 @@ func (r NaisDeploymentRequest) Validate() []error {
 	var errs []error
 	for key, pointer := range required {
 		if len(*pointer) == 0 {
-			errs = append(errs, fmt.Errorf("%s is required and is empty", key))
+			errs = append(errs, fmt.Errorf("%s is required and is empty", strings.ToLower(key)))
 		}
 	}
 

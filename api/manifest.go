@@ -168,7 +168,7 @@ func fetchManifest(url string) (NaisManifest, error) {
 	defer response.Body.Close()
 
 	if response.StatusCode > 299 {
-		return NaisManifest{}, fmt.Errorf("Got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
+		return NaisManifest{}, fmt.Errorf("got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
 	}
 
 	if body, err := ioutil.ReadAll(response.Body); err != nil {
@@ -177,7 +177,7 @@ func fetchManifest(url string) (NaisManifest, error) {
 		var manifest NaisManifest
 		if err := yaml.Unmarshal(body, &manifest); err != nil {
 			glog.Errorf("Could not unmarshal yaml %s", err)
-			return NaisManifest{}, fmt.Errorf("Unable to unmarshal yaml: %s", err.Error())
+			return NaisManifest{}, fmt.Errorf("unable to unmarshal yaml: %s", err.Error())
 		}
 		glog.Infof("Got manifest %s", manifest)
 		return manifest, err
@@ -235,11 +235,11 @@ func validateImage(manifest NaisManifest) *ValidationError {
 
 func validateCpuThreshold(manifest NaisManifest) *ValidationError {
 	if manifest.Replicas.CpuThresholdPercentage < 10 || manifest.Replicas.CpuThresholdPercentage > 90 {
-		error := new(ValidationError)
-		error.ErrorMessage = "CpuThreshold must be between 10 and 90."
-		error.Fields = make(map[string]string)
-		error.Fields["Replicas.CpuThreshold"] = strconv.Itoa(manifest.Replicas.CpuThresholdPercentage)
-		return error
+		err := new(ValidationError)
+		err.ErrorMessage = "CpuThreshold must be between 10 and 90."
+		err.Fields = make(map[string]string)
+		err.Fields["Replicas.CpuThreshold"] = strconv.Itoa(manifest.Replicas.CpuThresholdPercentage)
+		return err
 
 	}
 	return nil

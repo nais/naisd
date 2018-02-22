@@ -2,8 +2,9 @@ package api
 
 import (
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/api/core/v1"
+	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"testing"
 )
 
@@ -13,7 +14,7 @@ func TestIsDeploymentStatus(t *testing.T) {
 	var deploymentGeneration int64 = 2
 
 	deployment := &v1beta1.Deployment{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: k8smeta.ObjectMeta{
 			Name:       "appname",
 			Namespace:  "default",
 			Generation: deploymentGeneration,
@@ -90,7 +91,7 @@ func TestIsDeploymentStatus(t *testing.T) {
 
 func TestDeploymentStatusViewFrom(t *testing.T) {
 	deployment := v1beta1.Deployment{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: k8smeta.ObjectMeta{
 			Name:      "appname",
 			Namespace: "default",
 		},

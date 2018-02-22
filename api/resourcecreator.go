@@ -3,13 +3,13 @@ package api
 import (
 	"fmt"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/errors"
-	k8sresource "k8s.io/client-go/pkg/api/resource"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
-	autoscalingv1 "k8s.io/client-go/pkg/apis/autoscaling/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/api/errors"
+	k8sresource "k8s.io/apimachinery/pkg/api/resource"
+	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/api/core/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"strconv"
 	"strings"
 )
@@ -25,7 +25,7 @@ type DeploymentResult struct {
 // Creates a Kubernetes Service object
 func createServiceDef(application, namespace string) *v1.Service {
 	return &v1.Service{
-		TypeMeta: unversioned.TypeMeta{
+		TypeMeta: k8smeta.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
@@ -68,7 +68,7 @@ func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, de
 		return existingDeployment, nil
 	} else {
 		deployment := &v1beta1.Deployment{
-			TypeMeta: unversioned.TypeMeta{
+			TypeMeta: k8smeta.TypeMeta{
 				Kind:       "Deployment",
 				APIVersion: "apps/v1beta1",
 			},
@@ -110,7 +110,7 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest Nais
 	}, nil
 }
 
-func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest) v1.ObjectMeta {
+func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest) k8smeta.ObjectMeta {
 	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
@@ -301,7 +301,7 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 
 	for _, res := range naisResources {
 		for variableName, v := range res.properties {
-			envVar := v1.EnvVar{res.ToEnvironmentVariable(variableName), v, nil}
+			envVar := v1.EnvVar{Name: res.ToEnvironmentVariable(variableName), Value: v, ValueFrom: nil}
 
 			if err := checkForDuplicates(envVars, envVar, variableName, res); err != nil {
 				return nil, err
@@ -386,7 +386,7 @@ func createSecretDef(naisResources []NaisResource, existingSecret *v1.Secret, ap
 		return existingSecret
 	} else {
 		secret := &v1.Secret{
-			TypeMeta: unversioned.TypeMeta{
+			TypeMeta: k8smeta.TypeMeta{
 				Kind:       "Secret",
 				APIVersion: "v1",
 			},
@@ -422,7 +422,7 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 // Creates a Kubernetes Ingress object
 func createIngressDef(application, namespace string) *v1beta1.Ingress {
 	return &v1beta1.Ingress{
-		TypeMeta: unversioned.TypeMeta{
+		TypeMeta: k8smeta.TypeMeta{
 			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
@@ -477,7 +477,7 @@ func createOrUpdateAutoscalerDef(min, max, cpuTargetPercentage int, existingAuto
 	} else {
 
 		return &autoscalingv1.HorizontalPodAutoscaler{
-			TypeMeta: unversioned.TypeMeta{
+			TypeMeta: k8smeta.TypeMeta{
 				Kind:       "HorizontalPodAutoscaler",
 				APIVersion: "autoscaling/v1",
 			},
@@ -634,7 +634,7 @@ func createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, naisResources
 
 func getExistingService(application string, namespace string, k8sClient kubernetes.Interface) (*v1.Service, error) {
 	serviceClient := k8sClient.CoreV1().Services(namespace)
-	service, err := serviceClient.Get(application)
+	service, err := serviceClient.Get(application, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -648,7 +648,7 @@ func getExistingService(application string, namespace string, k8sClient kubernet
 
 func getExistingSecret(application string, namespace string, k8sClient kubernetes.Interface) (*v1.Secret, error) {
 	secretClient := k8sClient.CoreV1().Secrets(namespace)
-	secret, err := secretClient.Get(application)
+	secret, err := secretClient.Get(application, k8smeta.GetOptions{})
 	switch {
 	case err == nil:
 		return secret, err
@@ -661,7 +661,7 @@ func getExistingSecret(application string, namespace string, k8sClient kubernete
 
 func getExistingDeployment(application string, namespace string, k8sClient kubernetes.Interface) (*v1beta1.Deployment, error) {
 	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(namespace)
-	deployment, err := deploymentClient.Get(application)
+	deployment, err := deploymentClient.Get(application, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -675,7 +675,7 @@ func getExistingDeployment(application string, namespace string, k8sClient kuber
 
 func getExistingIngress(application string, namespace string, k8sClient kubernetes.Interface) (*v1beta1.Ingress, error) {
 	ingressClient := k8sClient.ExtensionsV1beta1().Ingresses(namespace)
-	ingress, err := ingressClient.Get(application)
+	ingress, err := ingressClient.Get(application, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -689,7 +689,7 @@ func getExistingIngress(application string, namespace string, k8sClient kubernet
 
 func getExistingAutoscaler(application string, namespace string, k8sClient kubernetes.Interface) (*autoscalingv1.HorizontalPodAutoscaler, error) {
 	autoscalerClient := k8sClient.AutoscalingV1().HorizontalPodAutoscalers(namespace)
-	autoscaler, err := autoscalerClient.Get(application)
+	autoscaler, err := autoscalerClient.Get(application, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -741,8 +741,8 @@ func int32p(i int32) *int32 {
 	return &i
 }
 
-func createObjectMeta(applicationName string, namespace string) (v1.ObjectMeta) {
-	return v1.ObjectMeta{
+func createObjectMeta(applicationName string, namespace string) (k8smeta.ObjectMeta) {
+	return k8smeta.ObjectMeta{
 		Name:      applicationName,
 		Namespace: namespace,
 		Labels:    map[string]string{"app": applicationName},

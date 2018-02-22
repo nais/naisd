@@ -3,9 +3,9 @@ package api
 import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/resource"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 	"testing"
 )

@@ -9,7 +9,6 @@
     "url": "jdbc:oracle:thin:@//a01dbfl030.adeo.no:1521/basta",
     "username": "basta"
   },
-
   "files": {},
   "dodgy": false,
   "id": 848186,

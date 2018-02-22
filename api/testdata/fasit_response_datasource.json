@@ -1,27 +1,27 @@
 {
-    "type": "datasource",
-    "alias": "app_db",
-    "scope": {
-      "environmentclass": "t",
-      "application": "test-application"
-    },
-    "properties": {
-      "url": "jdbc:oracle:thin:@//testdatabase.local:1521/app_db",
-      "username": "generic_database_username"
-    },
-    "files": {},
-    "dodgy": false,
-    "id": 909090,
-    "revision": 9876543,
-    "created": "2017-04-14T00:00:00.000",
-    "updated": "2017-04-14T00:00:00.000",
-    "lifecycle": {},
-    "accesscontrol": {
-      "environmentclass": "t",
-      "adgroups": []
-    },
-    "links": {
-      "self": "https://fasit.adeo.no/api/v2/resources/919191",
-      "revisions": "https://fasit.adeo.no/api/v2/resources/919191/revisions"
-    }
+  "type": "datasource",
+  "alias": "app_db",
+  "scope": {
+    "environmentclass": "t",
+    "application": "test-application"
+  },
+  "properties": {
+    "url": "jdbc:oracle:thin:@//testdatabase.local:1521/app_db",
+    "username": "generic_database_username"
+  },
+  "files": {},
+  "dodgy": false,
+  "id": 909090,
+  "revision": 9876543,
+  "created": "2017-04-14T00:00:00.000",
+  "updated": "2017-04-14T00:00:00.000",
+  "lifecycle": {},
+  "accesscontrol": {
+    "environmentclass": "t",
+    "adgroups": []
+  },
+  "links": {
+    "self": "https://fasit.adeo.no/api/v2/resources/919191",
+    "revisions": "https://fasit.adeo.no/api/v2/resources/919191/revisions"
   }
+}

@@ -18,14 +18,17 @@ func main() {
 	fasitUrl := flag.String("fasit-url", "https://fasit.example.no", "URL to fasit instance")
 	clusterSubdomain := flag.String("cluster-subdomain", "nais-example.nais.example.no", "Cluster sub-domain")
 	clusterName := flag.String("clustername", "kubernetes", "Name of the kubernetes cluster")
+	istioEnabled := flag.Bool("istio-enabled", false, "If istio is enabled or not")
 
 	flag.Parse()
 
 	glog.Infof("using fasit instance %s", *fasitUrl)
-
 	glog.Infof("running on port %s", Port)
+	glog.Infof("istio enabled = %b", *istioEnabled)
+
+
 	clientSet := newClientSet(*kubeconfig)
-	err := http.ListenAndServe(Port, api.NewApi(clientSet, *fasitUrl, *clusterSubdomain, *clusterName, api.NewDeploymentStatusViewer(clientSet)).Handler())
+	err := http.ListenAndServe(Port, api.NewApi(clientSet, *fasitUrl, *clusterSubdomain, *clusterName, *istioEnabled, api.NewDeploymentStatusViewer(clientSet)).Handler())
 	if err != nil {
 		panic(err)
 	}

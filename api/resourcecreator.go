@@ -29,13 +29,13 @@ func createServiceDef(application, namespace string) *v1.Service {
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
-		ObjectMeta: createObjectMeta(application,namespace),
+		ObjectMeta: createObjectMeta(application, namespace),
 		Spec: v1.ServiceSpec{
 			Type:     v1.ServiceTypeClusterIP,
 			Selector: map[string]string{"app": application},
 			Ports: []v1.ServicePort{
 				{
-					Name: "http",
+					Name:     "http",
 					Protocol: v1.ProtocolTCP,
 					Port:     80,
 					TargetPort: intstr.IntOrString{
@@ -48,8 +48,6 @@ func createServiceDef(application, namespace string) *v1.Service {
 	}
 
 }
-
-
 
 func validLabelName(str string) string {
 	tmpStr := strings.Replace(str, "_", "-", -1)
@@ -149,7 +147,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 					InitialDelaySeconds: int32(manifest.Healthcheck.Liveness.InitialDelay),
 					PeriodSeconds:       int32(manifest.Healthcheck.Liveness.PeriodSeconds),
 					FailureThreshold:    int32(manifest.Healthcheck.Liveness.FailureThreshold),
-					TimeoutSeconds: 	 int32(manifest.Healthcheck.Liveness.Timeout),
+					TimeoutSeconds:      int32(manifest.Healthcheck.Liveness.Timeout),
 				},
 				ReadinessProbe: &v1.Probe{
 					Handler: v1.Handler{
@@ -161,7 +159,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 					InitialDelaySeconds: int32(manifest.Healthcheck.Readiness.InitialDelay),
 					PeriodSeconds:       int32(manifest.Healthcheck.Readiness.PeriodSeconds),
 					FailureThreshold:    int32(manifest.Healthcheck.Readiness.FailureThreshold),
-					TimeoutSeconds: 	 int32(manifest.Healthcheck.Readiness.Timeout),
+					TimeoutSeconds:      int32(manifest.Healthcheck.Readiness.Timeout),
 				},
 				Env:             envVars,
 				ImagePullPolicy: v1.PullIfNotPresent,
@@ -178,8 +176,8 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 
 		mainContainer := &podSpec.Containers[0]
 		electorPathEnv := v1.EnvVar{
-			Name:      "ELECTOR_PATH",
-			Value:     "localhost:4040",
+			Name:  "ELECTOR_PATH",
+			Value: "localhost:4040",
 		}
 		mainContainer.Env = append(mainContainer.Env, electorPathEnv)
 	}
@@ -194,8 +192,8 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 }
 func createLeaderElectionContainer(appName string) v1.Container {
 	return v1.Container{
-		Name: "elector",
-		Image: "gcr.io/google_containers/leader-elector:0.5",
+		Name:            "elector",
+		Image:           "gcr.io/google_containers/leader-elector:0.5",
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Resources: v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -277,7 +275,7 @@ func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resou
 func checkForDuplicates(envVars []v1.EnvVar, envVar v1.EnvVar, property string, resource NaisResource) error {
 	for _, existingEnvVar := range envVars {
 		if envVar.Name == existingEnvVar.Name {
-			return fmt.Errorf("found duplicate environment variable %s when adding %s for %s (%s)" +
+			return fmt.Errorf("found duplicate environment variable %s when adding %s for %s (%s)"+
 				" Change the Fasit alias or use propertyMap to create unique variable names",
 				existingEnvVar.Name, property, resource.name, resource.resourceType)
 		}
@@ -288,7 +286,7 @@ func checkForDuplicates(envVars []v1.EnvVar, envVar v1.EnvVar, property string, 
 		}
 
 		if envVar.ValueFrom.SecretKeyRef.Key == existingEnvVar.ValueFrom.SecretKeyRef.Key {
-			return fmt.Errorf("found duplicate secret key ref %s between %s and %s when adding %s for %s (%s)" +
+			return fmt.Errorf("found duplicate secret key ref %s between %s and %s when adding %s for %s (%s)"+
 				" Change the Fasit alias or use propertyMap to create unique variable names",
 				existingEnvVar.ValueFrom.SecretKeyRef.Key, existingEnvVar.Name, envVar.Name,
 				property, resource.name, resource.resourceType)
@@ -354,9 +352,9 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 
 func createDefaultEnvironmentVariables(request *NaisDeploymentRequest) []v1.EnvVar {
 	return []v1.EnvVar{{
-			Name:  "APP_NAME",
-			Value: request.Application,
-		},
+		Name:  "APP_NAME",
+		Value: request.Application,
+	},
 		{
 			Name:  "APP_VERSION",
 			Value: request.Version,
@@ -392,7 +390,7 @@ func createSecretDef(naisResources []NaisResource, existingSecret *v1.Secret, ap
 				Kind:       "Secret",
 				APIVersion: "v1",
 			},
-			ObjectMeta: createObjectMeta(application,namespace),
+			ObjectMeta: createObjectMeta(application, namespace),
 			Data:       createSecretData(naisResources),
 			Type:       "Opaque",
 		}
@@ -483,7 +481,7 @@ func createOrUpdateAutoscalerDef(min, max, cpuTargetPercentage int, existingAuto
 				Kind:       "HorizontalPodAutoscaler",
 				APIVersion: "autoscaling/v1",
 			},
-			ObjectMeta: createObjectMeta(application,namespace),
+			ObjectMeta: createObjectMeta(application, namespace),
 			Spec:       createAutoscalerSpec(min, max, cpuTargetPercentage, application),
 		}
 	}
@@ -747,6 +745,6 @@ func createObjectMeta(applicationName string, namespace string) (v1.ObjectMeta) 
 	return v1.ObjectMeta{
 		Name:      applicationName,
 		Namespace: namespace,
-		Labels: map[string]string{"app": applicationName},
+		Labels:    map[string]string{"app": applicationName},
 	}
 }

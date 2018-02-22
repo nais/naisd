@@ -24,7 +24,7 @@ func (d DeployStatus) String() string {
 }
 
 const (
-	Success DeployStatus = iota
+	Success    DeployStatus = iota
 	InProgress
 	Failed
 )

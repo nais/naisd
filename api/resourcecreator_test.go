@@ -13,7 +13,7 @@ import (
 const (
 	appName         = "appname"
 	otherAppName    = "otherappname"
-	environment		= "testenv"
+	environment     = "testenv"
 	namespace       = "namespace"
 	image           = "docker.hub/app"
 	port            = 6900
@@ -528,7 +528,7 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
 		assert.Equal(t, otherAppName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
-		assert.Equal(t, istioCertSecretName , ingress.Spec.TLS[0].SecretName)
+		assert.Equal(t, istioCertSecretName, ingress.Spec.TLS[0].SecretName)
 	})
 
 	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {

@@ -16,7 +16,7 @@ type Probe struct {
 	InitialDelay     int `yaml:"initialDelay"`
 	PeriodSeconds    int `yaml:"periodSeconds"`
 	FailureThreshold int `yaml:"failureThreshold"`
-	Timeout 		 int `yaml:"timeout"`
+	Timeout          int `yaml:"timeout"`
 }
 
 type Healthcheck struct {
@@ -44,13 +44,13 @@ type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
-	PreStopHookPath string `yaml:"preStopHookPath"`
+	PreStopHookPath string         `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
 	Replicas        Replicas
 	Ingress         Ingress
 	Resources       ResourceRequirements
 	FasitResources  FasitResources `yaml:"fasitResources"`
-	LeaderElection  bool `yaml:"leaderElection"`
+	LeaderElection  bool           `yaml:"leaderElection"`
 }
 
 type Ingress struct {

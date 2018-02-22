@@ -87,8 +87,8 @@ type FasitClientAdapter interface {
 type FasitResource struct {
 	Id           int
 	Alias        string
-	ResourceType string `json:"type"`
-	Scope        Scope  `json:"scope"`
+	ResourceType string                 `json:"type"`
+	Scope        Scope                  `json:"scope"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
 	Certificates map[string]interface{} `json:"files"`

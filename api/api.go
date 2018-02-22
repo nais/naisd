@@ -27,15 +27,15 @@ type Api struct {
 }
 
 type NaisDeploymentRequest struct {
-	Application  string `json:"application"`
-	Version      string `json:"version"`
-	Environment  string `json:"environment"`
-	Zone         string `json:"zone"`
-	ManifestUrl  string `json:"manifesturl,omitempty"`
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	OnBehalfOf   string `json:"onbehalfof,omitempty"`
-	Namespace    string `json:"namespace"`
+	Application string `json:"application"`
+	Version     string `json:"version"`
+	Environment string `json:"environment"`
+	Zone        string `json:"zone"`
+	ManifestUrl string `json:"manifesturl,omitempty"`
+	Username    string `json:"username"`
+	Password    string `json:"password"`
+	OnBehalfOf  string `json:"onbehalfof,omitempty"`
+	Namespace   string `json:"namespace"`
 }
 
 type AppError interface {

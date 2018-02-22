@@ -215,7 +215,7 @@ func TestUpdateResource(t *testing.T) {
 		assert.Error(t, err)
 	})
 	gock.New("https://fasit.local").
-		Put("/api/v2/resources/"+fmt.Sprint(naisResource.id)).
+		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
 		Reply(200)
@@ -227,7 +227,7 @@ func TestUpdateResource(t *testing.T) {
 		assert.Equal(t, naisResource.id, createdResourceId)
 	})
 	gock.New("https://fasit.local").
-		Put("/api/v2/resources/"+fmt.Sprint(naisResource.id)).
+		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
 		HeaderPresent("x-onbehalfof").
 		MatchHeader("Content-Type", "application/json").
@@ -245,7 +245,7 @@ func TestUpdateResource(t *testing.T) {
 		assert.Equal(t, naisResource.id, createdResourceId)
 	})
 	gock.New("https://fasit.local").
-		Put("/api/v2/resources/"+fmt.Sprint(naisResource.id)).
+		Put("/api/v2/resources/" + fmt.Sprint(naisResource.id)).
 		HeaderPresent("Authorization").
 		MatchHeader("Content-Type", "application/json").
 		Reply(501).

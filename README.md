@@ -42,16 +42,27 @@ nais upload [flags]
 Flags:
   -a, --app string        name of your app
   -f, --file string       path to nais.yaml (default "nais.yaml")
-  -g, --group string      nexus group (default "nais")
   -p, --password string   the password
-  -r, --repo string       nexus repo (default "m2internal")
   -u, --username string   the username
   -v, --version string    version you want to upload
 ```
 
-Will upload `nais.yaml` to Nexus. If using default values, only `app`, `version`, `username` and `password` argument is required.
+Will upload `nais.yaml` to Nexus.
 
-The username and password may be specified using environment variable `NEXUS_USERNAME` and `NEXUS_PASSWORD` instead.
+The username and password may be specified using environment variable `NEXUS_USERNAME` and `NEXUS_PASSWORD`, and
+the Nexus repo can be specified using `NEXUS_URL`.
+
+**Example:** Uploading to Nexus 2:
+
+```
+NEXUS_URL=http://maven.adeo.no/nexus/content/repositories/m2internal ./nais upload --app myapp -v 10
+```
+
+**Example:** Uploading to Nexus 3:
+
+```
+./nais upload --app myapp -v 10
+```
 
 #### Deploy
 

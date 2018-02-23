@@ -377,7 +377,7 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, class, environment, deploymentRequest)
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
-		assert.True(t, strings.Contains(err.Error(), "Failed creating resource: alias1 of type RestService with path . (random error)"))
+		assert.True(t, strings.Contains(err.Error(), "failed creating resource: alias1 of type RestService with path . (random error)"))
 	})
 	t.Run("Updates Fasit if resources were found", func(t *testing.T) {
 		updateCalled = false
@@ -394,7 +394,7 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 		resourceIds, err := CreateOrUpdateFasitResources(fakeFasitClient, exposedResources, hostname, class, environment, deploymentRequest)
 		assert.Error(t, err)
 		assert.Nil(t, resourceIds)
-		assert.True(t, strings.Contains(err.Error(), "Failed updating resource: alias1 of type RestService with path . (random error)"))
+		assert.True(t, strings.Contains(err.Error(), "failed updating resource: alias1 of type RestService with path . (random error)"))
 	})
 }
 
@@ -415,7 +415,7 @@ func TestResourceError(t *testing.T) {
 	resource, err := FetchFasitResources(fasitClient, "app", "env", "123", []UsedResource{{Alias: resourceAlias, ResourceType: resourceType}})
 	assert.Error(t, err)
 	assert.Empty(t, resource)
-	assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("Unable to get resource %s (%s)", resourceAlias, resourceType)))
+	assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("unable to get resource %s (%s)", resourceAlias, resourceType)))
 }
 
 func TestUpdateFasit(t *testing.T) {
@@ -606,10 +606,10 @@ func TestGenerateScope(t *testing.T) {
 		existingResource.id = 2
 		resource.AllZones = false
 		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
-		json, _ := json.Marshal(scope)
-		n := len(json)
+		jsn, _ := json.Marshal(scope)
+		n := len(jsn)
 		assert.Equal(t, existingResource.scope, scope)
-		assert.Equal(t, "{\"environmentclass\":\"u\",\"zone\":\"fss\"}", string(json[:n]))
+		assert.Equal(t, "{\"environmentclass\":\"u\",\"zone\":\"fss\"}", string(jsn[:n]))
 	})
 
 }

@@ -21,6 +21,9 @@ tag:
 install:
 	${GLIDE} install --strip-vendor
 
+update:
+	${GLIDE} update --strip-vendor
+
 test:
 	${GO} test ./api/ ./cli/cmd/
 

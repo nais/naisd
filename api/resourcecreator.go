@@ -301,7 +301,7 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 
 	for _, res := range naisResources {
 		for variableName, v := range res.properties {
-			envVar := v1.EnvVar{res.ToEnvironmentVariable(variableName), v, nil}
+			envVar := v1.EnvVar{Name: res.ToEnvironmentVariable(variableName), Value: v}
 
 			if err := checkForDuplicates(envVars, envVar, variableName, res); err != nil {
 				return nil, err

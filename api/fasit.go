@@ -646,18 +646,18 @@ func resolveSecret(secrets map[string]map[string]string, username string, passwo
 		return map[string]string{}, fmt.Errorf("error contacting fasit when resolving secret: %s", err)
 	}
 
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
 	httpReqsCounter.WithLabelValues(strconv.Itoa(resp.StatusCode), "GET").Inc()
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		if requestDump, e := httputil.DumpRequest(req, false); e == nil {
 			glog.Errorf("Fasit request: ", requestDump)
 		}
-		return map[string]string{}, fmt.Errorf("fasit gave error message when resolving secret: %s" + strconv.Itoa(resp.StatusCode))
+		return map[string]string{}, fmt.Errorf("fasit gave error message when resolving secret: %s (HTTP %v)", body, strconv.Itoa(resp.StatusCode))
 	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
 
 	return map[string]string{"password": string(body)}, nil
 }

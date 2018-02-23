@@ -748,25 +748,47 @@ func TestResourceWithArbitraryPropertyKeys(t *testing.T) {
 }
 
 func TestResolvingSecret(t *testing.T) {
-	fasit := FasitClient{"https://fasit.local", "", ""}
+	t.Run("happy path", func(t *testing.T) {
+		fasit := FasitClient{"https://fasit.local", "", ""}
 
-	defer gock.Off()
-	gock.New("https://fasit.local").
-		Get("/api/v2/scopedresource").
-		MatchParam("alias", "aliaset").
-		Reply(200).File("testdata/response-with-secret.json")
+		defer gock.Off()
+		gock.New("https://fasit.local").
+			Get("/api/v2/scopedresource").
+			MatchParam("alias", "aliaset").
+			Reply(200).File("testdata/response-with-secret.json")
 
-	gock.New("https://fasit.adeo.no").
-		Get("/api/v2/secrets/696969").
-		HeaderPresent("Authorization").
-		Reply(200).BodyString("hemmelig")
+		gock.New("https://fasit.adeo.no").
+			Get("/api/v2/secrets/696969").
+			HeaderPresent("Authorization").
+			Reply(200).BodyString("hemmelig")
 
-	resource, appError := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource", nil}, "dev", "app", "zone")
+		resource, appError := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource", nil}, "dev", "app", "zone")
 
-	assert.Nil(t, appError)
+		assert.Nil(t, appError)
 
-	assert.Equal(t, "1", resource.properties["a"])
-	assert.Equal(t, "hemmelig", resource.secret["password"])
+		assert.Equal(t, "1", resource.properties["a"])
+		assert.Equal(t, "hemmelig", resource.secret["password"])
+	})
+
+	t.Run("Unauthorized to get secret", func(t *testing.T) {
+		fasit := FasitClient{"https://fasit.local", "", ""}
+
+		defer gock.Off()
+		gock.New("https://fasit.local").
+			Get("/api/v2/scopedresource").
+			MatchParam("alias", "aliaset").
+			Reply(200).File("testdata/response-with-secret.json")
+
+		gock.New("https://fasit.adeo.no").
+			Get("/api/v2/secrets/696969").
+			HeaderPresent("Authorization").
+			Reply(401).BodyString("no access")
+
+		_, appError := fasit.getScopedResource(ResourceRequest{"aliaset", "DataSource", nil}, "dev", "app", "zone")
+
+		assert.NotNil(t, appError)
+		assert.Contains(t, appError.Error(), "no access", "propagates fasit response to enduser")
+	})
 }
 
 func TestResolveCertificates(t *testing.T) {

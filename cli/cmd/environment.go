@@ -129,7 +129,11 @@ Or just save it to a file
 		formattedVars := make([]string, 0)
 
 		for _, resource := range vars {
-			for key, val := range resource.GetProperties() {
+			for key, val := range resource.Secret() {
+				environmentVariable := resource.ToEnvironmentVariable(key)
+				formattedVars = append(formattedVars, fmt.Sprintf(stringFormat, environmentVariable, val))
+			}
+			for key, val := range resource.Properties() {
 				environmentVariable := resource.ToEnvironmentVariable(key)
 				formattedVars = append(formattedVars, fmt.Sprintf(stringFormat, environmentVariable, val))
 			}

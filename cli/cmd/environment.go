@@ -5,6 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"syscall"
+
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/nais/naisd/api"
 	"github.com/spf13/cobra"
@@ -30,6 +33,22 @@ Or just save it to a file
 		application := args[0]
 		username := os.Getenv("FASIT_USERNAME")
 		password := os.Getenv("FASIT_PASSWORD")
+
+		// Fall back to the ident of the logged in user
+		if username == "" {
+			username = os.Getenv("USER")
+		}
+
+		if password == "" {
+			fmt.Fprintf(os.Stderr, "Enter ident password: ")
+			passwordBytes, err := terminal.ReadPassword(int(syscall.Stdin))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error occurred while trying to read password from stdin\n")
+				os.Exit(1)
+			}
+			password = string(passwordBytes)
+			fmt.Fprintln(os.Stderr)
+		}
 
 		inline := true
 

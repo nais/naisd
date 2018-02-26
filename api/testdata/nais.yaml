@@ -27,6 +27,8 @@ resources:
 prometheus: #Optional
   enabled: true
   path: /path
+istio:
+  disabled: true
 fasitResources:
   used:
   - alias: mydb
@@ -50,3 +52,5 @@ fasitResources:
     description: "Dette er en webservicetjeneste"
     allZones: false
 leaderElection: true
+ingress:
+  disabled: true

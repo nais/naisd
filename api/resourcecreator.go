@@ -58,8 +58,8 @@ func validLabelName(str string) string {
 
 // Creates a Kubernetes Deployment object
 // If existingDeployment is provided, this is updated with modifiable fields
-func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment) (*v1beta1.Deployment, error) {
-	spec, err := createDeploymentSpec(deploymentRequest, manifest, naisResources)
+func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, deploymentRequest NaisDeploymentRequest, existingDeployment *v1beta1.Deployment, istioEnabled bool) (*v1beta1.Deployment, error) {
+	spec, err := createDeploymentSpec(deploymentRequest, manifest, naisResources, istioEnabled)
 
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, de
 	}
 }
 
-func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource) (v1beta1.DeploymentSpec, error) {
+func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool) (v1beta1.DeploymentSpec, error) {
 	spec, err := createPodSpec(deploymentRequest, manifest, naisResources)
 
 	if err != nil {
@@ -106,20 +106,24 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest Nais
 		ProgressDeadlineSeconds: int32p(300),
 		RevisionHistoryLimit:    int32p(10),
 		Template: v1.PodTemplateSpec{
-			ObjectMeta: createPodObjectMetaWithAnnotations(deploymentRequest, manifest),
+			ObjectMeta: createPodObjectMetaWithAnnotations(deploymentRequest, manifest, istioEnabled),
 			Spec:       spec,
 		},
 	}, nil
 }
 
-func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest) v1.ObjectMeta {
+func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, istioEnabled bool) v1.ObjectMeta {
 	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
 		"prometheus.io/port":   DefaultPortName,
 		"prometheus.io/path":   manifest.Prometheus.Path,
-		//"sidecar.istio.io/inject": "true",  # temporarily disabled during rollout
 	}
+
+	if istioEnabled && !manifest.Istio.Disabled {
+		objectMeta.Annotations["sidecar.istio.io/inject"] = "true"
+	}
+
 	return objectMeta
 }
 
@@ -173,7 +177,7 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 		DNSPolicy:     v1.DNSClusterFirst,
 	}
 
-	if (manifest.LeaderElection) {
+	if manifest.LeaderElection {
 		podSpec.Containers = append(podSpec.Containers, createLeaderElectionContainer(deploymentRequest.Application))
 
 		mainContainer := &podSpec.Containers[0]
@@ -502,38 +506,38 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string)
 	}
 }
 
-func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, k8sClient kubernetes.Interface) (DeploymentResult, error) {
+func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
 	service, err := createService(deploymentRequest, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating service: %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating service: %s", err)
 	}
 	deploymentResult.Service = service
 
-	deployment, err := createOrUpdateDeployment(deploymentRequest, manifest, resources, k8sClient)
+	deployment, err := createOrUpdateDeployment(deploymentRequest, manifest, resources, istioEnabled, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating or updating deployment: %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating or updating deployment: %s", err)
 	}
 	deploymentResult.Deployment = deployment
 
 	secret, err := createOrUpdateSecret(deploymentRequest, resources, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating or updating secret: %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating or updating secret: %s", err)
 	}
 	deploymentResult.Secret = secret
 
-	if manifest.Ingress.Enabled {
+	if !manifest.Ingress.Disabled {
 		ingress, err := createOrUpdateIngress(deploymentRequest, clusterSubdomain, resources, k8sClient)
 		if err != nil {
-			return deploymentResult, fmt.Errorf("Failed while creating ingress: %s", err)
+			return deploymentResult, fmt.Errorf("failed while creating ingress: %s", err)
 		}
 		deploymentResult.Ingress = ingress
 	}
 
 	autoscaler, err := createOrUpdateAutoscaler(deploymentRequest, manifest, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("Failed while creating or updating autoscaler: %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating or updating autoscaler: %s", err)
 	}
 
 	deploymentResult.Autoscaler = autoscaler
@@ -545,7 +549,7 @@ func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, manifest 
 	autoscaler, err := getExistingAutoscaler(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing autoscaler: %s", err)
+		return nil, fmt.Errorf("unable to get existing autoscaler: %s", err)
 	}
 
 	autoscalerDef := createOrUpdateAutoscalerDef(manifest.Replicas.Min, manifest.Replicas.Max, manifest.Replicas.CpuThresholdPercentage, autoscaler, deploymentRequest.Application, deploymentRequest.Namespace)
@@ -593,7 +597,7 @@ func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes
 	existingService, err := getExistingService(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing service: %s", err)
+		return nil, fmt.Errorf("unable to get existing service: %s", err)
 	}
 
 	if existingService != nil {
@@ -604,17 +608,17 @@ func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes
 	return createServiceResource(serviceDef, deploymentRequest.Namespace, k8sClient)
 }
 
-func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, k8sClient kubernetes.Interface) (*v1beta1.Deployment, error) {
+func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*v1beta1.Deployment, error) {
 	existingDeployment, err := getExistingDeployment(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing deployment: %s", err)
+		return nil, fmt.Errorf("unable to get existing deployment: %s", err)
 	}
 
-	deploymentDef, err := createDeploymentDef(naisResources, manifest, deploymentRequest, existingDeployment)
+	deploymentDef, err := createDeploymentDef(naisResources, manifest, deploymentRequest, existingDeployment, istioEnabled)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create deployment: %s", err)
+		return nil, fmt.Errorf("unable to create deployment: %s", err)
 	}
 
 	return createOrUpdateDeploymentResource(deploymentDef, deploymentRequest.Namespace, k8sClient)
@@ -624,7 +628,7 @@ func createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, naisResources
 	existingSecret, err := getExistingSecret(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get existing secret: %s", err)
+		return nil, fmt.Errorf("unable to get existing secret: %s", err)
 	}
 
 	if secretDef := createSecretDef(naisResources, existingSecret, deploymentRequest.Application, deploymentRequest.Namespace); secretDef != nil {

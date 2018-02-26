@@ -205,11 +205,11 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
 	}
 
-	if api.IstioEnabled {
+	if api.IstioEnabled && !manifest.Istio.Disabled {
 		naisResources = ensureHttpUrls(naisResources)
 	}
 
-	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.Clientset)
+	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.IstioEnabled, api.Clientset)
 	if err != nil {
 		return &appError{err, "failed while creating or updating k8s-resources", http.StatusInternalServerError}
 	}

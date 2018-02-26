@@ -40,12 +40,17 @@ type PrometheusConfig struct {
 	Path    string
 }
 
+type IstioConfig struct {
+	Disabled bool
+}
+
 type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
 	PreStopHookPath string `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
+	Istio      		IstioConfig
 	Replicas        Replicas
 	Ingress         Ingress
 	Resources       ResourceRequirements
@@ -54,7 +59,7 @@ type NaisManifest struct {
 }
 
 type Ingress struct {
-	Enabled bool
+	Disabled bool
 }
 
 type Replicas struct {
@@ -103,6 +108,7 @@ type Field struct {
 func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
 
 	manifest, err := downloadManifest(deploymentRequest)
+
 	if err != nil {
 		glog.Errorf("could not download manifest", err)
 		return NaisManifest{}, err
@@ -168,7 +174,7 @@ func fetchManifest(url string) (NaisManifest, error) {
 	defer response.Body.Close()
 
 	if response.StatusCode > 299 {
-		return NaisManifest{}, fmt.Errorf("Got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
+		return NaisManifest{}, fmt.Errorf("got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
 	}
 
 	if body, err := ioutil.ReadAll(response.Body); err != nil {
@@ -177,7 +183,7 @@ func fetchManifest(url string) (NaisManifest, error) {
 		var manifest NaisManifest
 		if err := yaml.Unmarshal(body, &manifest); err != nil {
 			glog.Errorf("Could not unmarshal yaml %s", err)
-			return NaisManifest{}, fmt.Errorf("Unable to unmarshal yaml: %s", err.Error())
+			return NaisManifest{}, fmt.Errorf("unable to unmarshal yaml: %s", err.Error())
 		}
 		glog.Infof("Got manifest %s", manifest)
 		return manifest, err

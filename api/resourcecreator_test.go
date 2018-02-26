@@ -13,7 +13,7 @@ import (
 const (
 	appName         = "appname"
 	otherAppName    = "otherappname"
-	environment		= "testenv"
+	environment     = "testenv"
 	namespace       = "namespace"
 	image           = "docker.hub/app"
 	port            = 6900
@@ -240,7 +240,7 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	deployment, err := createDeploymentDef(naisResources, newDefaultManifest(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil)
+	deployment, err := createDeploymentDef(naisResources, newDefaultManifest(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil, false)
 
 	assert.Nil(t, err)
 
@@ -261,7 +261,9 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, Environment: environment}, newDefaultManifest(), naisResources, clientset)
+		manifest := newDefaultManifest()
+		manifest.Istio.Disabled = false
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, Environment: environment}, manifest, naisResources, true, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, deployment.Name)
@@ -299,7 +301,7 @@ func TestDeployment(t *testing.T) {
 			"prometheus.io/scrape": "true",
 			"prometheus.io/path":   "/path",
 			"prometheus.io/port":   "http",
-			//"sidecar.istio.io/inject": "true", # temporarily disabled during roll-out
+			"sidecar.istio.io/inject": "true",
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
@@ -325,7 +327,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
@@ -340,7 +342,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when leaderElection is true, extra container exists", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.LeaderElection = true
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		containers := deployment.Spec.Template.Spec.Containers
@@ -356,14 +358,13 @@ func TestDeployment(t *testing.T) {
 		manifest.Prometheus.Path = "/newPath"
 		manifest.Prometheus.Enabled = false
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, map[string]string{
 			"prometheus.io/scrape": "false",
 			"prometheus.io/path":   "/newPath",
 			"prometheus.io/port":   "http",
-			//"sidecar.istio.io/inject":   "true", # temporarily disabled
 		}, updatedDeployment.Spec.Template.Annotations)
 	})
 
@@ -373,7 +374,7 @@ func TestDeployment(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.PreStopHookPath = path
 
-		d, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
+		d, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, path, d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Path)
 		assert.Equal(t, intstr.FromString(DefaultPortName), d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Port)
@@ -399,7 +400,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
@@ -413,7 +414,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, clientset)
+		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
@@ -430,7 +431,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("Env variable is created for file secrets ", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, clientset)
+		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
 
@@ -457,7 +458,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, clientset)
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, false, clientset)
 
 		assert.NoError(t, err)
 
@@ -491,13 +492,29 @@ func TestDeployment(t *testing.T) {
 			Version:     "1",
 		}
 
-		_, err := createOrUpdateDeployment(deploymentRequest, newDefaultManifest(), []NaisResource{resource1, resource2}, clientset)
+		_, err := createOrUpdateDeployment(deploymentRequest, newDefaultManifest(), []NaisResource{resource1, resource2}, false, clientset)
 
 		assert.NotNil(t, err)
-		assert.Equal(t, "Unable to create deployment: found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
+		assert.Equal(t, "unable to create deployment: found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
 			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
 	})
+	t.Run("Injects envoy sidecar based on settings", func(t *testing.T) {
+		deploymentRequest := NaisDeploymentRequest{
+			Namespace:   "default",
+			Application: "myapp",
+			Version:     "1",
+		}
+
+		istioDisabledManifest := NaisManifest{Istio: IstioConfig{Disabled: true}}
+		istioEnabledManifest := NaisManifest{Istio: IstioConfig{Disabled: false}}
+
+		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
+		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
+		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, true).Annotations["sidecar.istio.io/inject"], "")
+		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, true).Annotations["sidecar.istio.io/inject"], "true")
+	})
 }
+
 
 func TestIngress(t *testing.T) {
 	appName := "appname"
@@ -529,7 +546,7 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
 		assert.Equal(t, otherAppName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
-		assert.Equal(t, istioCertSecretName , ingress.Spec.TLS[0].SecretName)
+		assert.Equal(t, istioCertSecretName, ingress.Spec.TLS[0].SecretName)
 	})
 
 	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {
@@ -782,7 +799,7 @@ func TestCreateK8sResources(t *testing.T) {
 	manifest := NaisManifest{
 		Image:   image,
 		Port:    port,
-		Ingress: Ingress{Enabled: true},
+		Ingress: Ingress{Disabled: false},
 		Resources: ResourceRequirements{
 			Requests: ResourceList{
 				Cpu:    cpuRequest,
@@ -816,7 +833,7 @@ func TestCreateK8sResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset(autoscaler, service)
 
 	t.Run("creates all resources", func(t *testing.T) {
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, "nais.example.yo", clientset)
+		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, "nais.example.yo", false, clientset)
 		assert.NoError(t, error)
 
 		assert.NotEmpty(t, deploymentResult.Secret)
@@ -844,7 +861,7 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	t.Run("omits secret creation when no secret resources ex", func(t *testing.T) {
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())
+		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
 		assert.NoError(t, error)
 
 		assert.Empty(t, deploymentResult.Secret)
@@ -852,9 +869,9 @@ func TestCreateK8sResources(t *testing.T) {
 	})
 
 	t.Run("omits ingress creation when disabled", func(t *testing.T) {
-		manifest.Ingress.Enabled = false
+		manifest.Ingress.Disabled = true
 
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", fake.NewSimpleClientset())
+		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
 		assert.NoError(t, error)
 
 		assert.Empty(t, deploymentResult.Ingress)

@@ -36,6 +36,7 @@ func TestAnIncorrectPayloadGivesError(t *testing.T) {
 	if err != nil {
 		panic("could not create req")
 	}
+
 	rr := httptest.NewRecorder()
 	handler := http.Handler(appHandler(api.deploy))
 

@@ -29,6 +29,9 @@ func GetDefaultManifest(application string) NaisManifest {
 			Port:    DefaultPortName,
 			Path:    "/metrics",
 		},
+		Istio: IstioConfig{
+			Disabled: false,
+		},
 		Healthcheck: Healthcheck{
 			Liveness: Probe{
 				Path:             "isAlive",
@@ -45,7 +48,7 @@ func GetDefaultManifest(application string) NaisManifest {
 				Timeout:          1,
 			},
 		},
-		Ingress: Ingress{Enabled: true},
+		Ingress: Ingress{Disabled: false},
 		Resources: ResourceRequirements{
 			Limits: ResourceList{
 				Cpu:    "500m",

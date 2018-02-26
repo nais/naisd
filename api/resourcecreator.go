@@ -605,11 +605,7 @@ func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes
 	return createServiceResource(serviceDef, deploymentRequest.Namespace, k8sClient)
 }
 
-<<<<<<< HEAD
-func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*v1beta1.Deployment, error) {
-=======
-func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
->>>>>>> 430cd74f200ef76ad86a9c4e2673dcd344730870
+func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
 	existingDeployment, err := getExistingDeployment(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {

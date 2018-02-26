@@ -16,7 +16,7 @@ type Probe struct {
 	InitialDelay     int `yaml:"initialDelay"`
 	PeriodSeconds    int `yaml:"periodSeconds"`
 	FailureThreshold int `yaml:"failureThreshold"`
-	Timeout 		 int `yaml:"timeout"`
+	Timeout          int `yaml:"timeout"`
 }
 
 type Healthcheck struct {
@@ -48,14 +48,14 @@ type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
-	PreStopHookPath string `yaml:"preStopHookPath"`
+	PreStopHookPath string         `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
 	Istio      		IstioConfig
 	Replicas        Replicas
 	Ingress         Ingress
 	Resources       ResourceRequirements
 	FasitResources  FasitResources `yaml:"fasitResources"`
-	LeaderElection  bool `yaml:"leaderElection"`
+	LeaderElection  bool           `yaml:"leaderElection"`
 }
 
 type Ingress struct {
@@ -241,11 +241,11 @@ func validateImage(manifest NaisManifest) *ValidationError {
 
 func validateCpuThreshold(manifest NaisManifest) *ValidationError {
 	if manifest.Replicas.CpuThresholdPercentage < 10 || manifest.Replicas.CpuThresholdPercentage > 90 {
-		error := new(ValidationError)
-		error.ErrorMessage = "CpuThreshold must be between 10 and 90."
-		error.Fields = make(map[string]string)
-		error.Fields["Replicas.CpuThreshold"] = strconv.Itoa(manifest.Replicas.CpuThresholdPercentage)
-		return error
+		err := new(ValidationError)
+		err.ErrorMessage = "CpuThreshold must be between 10 and 90."
+		err.Fields = make(map[string]string)
+		err.Fields["Replicas.CpuThreshold"] = strconv.Itoa(manifest.Replicas.CpuThresholdPercentage)
+		return err
 
 	}
 	return nil

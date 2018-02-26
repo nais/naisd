@@ -3,9 +3,9 @@ package api
 import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/resource"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/api/resource"
+	k8score "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 	"testing"
 )
@@ -26,7 +26,6 @@ const (
 	memoryRequest   = "200Mi"
 	memoryLimit     = "400Mi"
 	clusterIP       = "1.2.3.4"
-	leaderElection  = false
 )
 
 func newDefaultManifest() NaisManifest {
@@ -63,7 +62,7 @@ func newDefaultManifest() NaisManifest {
 			Path:    "/path",
 			Enabled: true,
 		},
-		LeaderElection: leaderElection,
+		LeaderElection: false,
 	}
 
 	return manifest
@@ -287,7 +286,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, int32(20), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.InitialDelaySeconds)
 		assert.Equal(t, int32(3), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.TimeoutSeconds)
 		assert.Equal(t, int32(2), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.TimeoutSeconds)
-		assert.Equal(t, v1.Lifecycle{}, *deployment.Spec.Template.Spec.Containers[0].Lifecycle)
+		assert.Equal(t, k8score.Lifecycle{}, *deployment.Spec.Template.Spec.Containers[0].Lifecycle)
 
 		ptr := func(p resource.Quantity) *resource.Quantity {
 			return &p
@@ -833,8 +832,8 @@ func TestCreateK8sResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset(autoscaler, service)
 
 	t.Run("creates all resources", func(t *testing.T) {
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, "nais.example.yo", false, clientset)
-		assert.NoError(t, error)
+		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, "nais.example.yo", false, clientset)
+		assert.NoError(t, err)
 
 		assert.NotEmpty(t, deploymentResult.Secret)
 		assert.Nil(t, deploymentResult.Service, "nothing happens to service if it already exists")
@@ -861,8 +860,8 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	t.Run("omits secret creation when no secret resources ex", func(t *testing.T) {
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
-		assert.NoError(t, error)
+		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
+		assert.NoError(t, err)
 
 		assert.Empty(t, deploymentResult.Secret)
 		assert.NotEmpty(t, deploymentResult.Service)
@@ -871,8 +870,8 @@ func TestCreateK8sResources(t *testing.T) {
 	t.Run("omits ingress creation when disabled", func(t *testing.T) {
 		manifest.Ingress.Disabled = true
 
-		deploymentResult, error := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
-		assert.NoError(t, error)
+		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
+		assert.NoError(t, err)
 
 		assert.Empty(t, deploymentResult.Ingress)
 	})
@@ -911,18 +910,18 @@ func TestCheckForDuplicates(t *testing.T) {
 	})
 
 	t.Run("duplicate secret key ref should error", func(t *testing.T) {
-		envVar1 := v1.EnvVar{
+		envVar1 := k8score.EnvVar{
 			Name: "MY_PASSWORD",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: &v1.SecretKeySelector{
+			ValueFrom: &k8score.EnvVarSource{
+				SecretKeyRef: &k8score.SecretKeySelector{
 					Key: "my_password",
 				},
 			},
 		}
-		envVar2 := v1.EnvVar{
+		envVar2 := k8score.EnvVar{
 			Name: "OTHER_PASSWORD",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: &v1.SecretKeySelector{
+			ValueFrom: &k8score.EnvVarSource{
+				SecretKeyRef: &k8score.SecretKeySelector{
 					Key: "my_password",
 				},
 			},
@@ -933,7 +932,7 @@ func TestCheckForDuplicates(t *testing.T) {
 			properties:   map[string]string{},
 		}
 
-		err := checkForDuplicates([]v1.EnvVar{envVar1}, envVar2, "password", resource2)
+		err := checkForDuplicates([]k8score.EnvVar{envVar1}, envVar2, "password", resource2)
 
 		assert.NotNil(t, err)
 		assert.Equal(t, "found duplicate secret key ref my_password between MY_PASSWORD and OTHER_PASSWORD when adding password for other (credential)"+
@@ -950,10 +949,10 @@ func TestCreateSBSPublicHostname(t *testing.T) {
 	})
 }
 
-func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSource {
-	return &v1.EnvVarSource{
-		SecretKeyRef: &v1.SecretKeySelector{
-			LocalObjectReference: v1.LocalObjectReference{
+func createSecretRef(appName string, resKey string, resName string) *k8score.EnvVarSource {
+	return &k8score.EnvVarSource{
+		SecretKeyRef: &k8score.SecretKeySelector{
+			LocalObjectReference: k8score.LocalObjectReference{
 				Name: appName,
 			},
 			Key: resName + "_" + resKey,
@@ -961,7 +960,7 @@ func createSecretRef(appName string, resKey string, resName string) *v1.EnvVarSo
 	}
 }
 
-func getLeaderElectionContainer(containers []v1.Container) *v1.Container {
+func getLeaderElectionContainer(containers []k8score.Container) *k8score.Container {
 	for _, v := range containers {
 		if v.Name == "elector" {
 			return &v

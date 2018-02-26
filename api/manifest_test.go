@@ -168,8 +168,8 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 		Image: "myapp:1",
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max: 4,
-			Min: 5,
+			Max:                    4,
+			Min:                    5,
 		},
 	}
 	errors := ValidateManifest(invalidConfig)
@@ -184,8 +184,8 @@ func TestInvalidCpuThreshold(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max: 4,
-			Min: 5,
+			Max:                    4,
+			Min:                    5,
 		},
 	}
 	errors := validateCpuThreshold(invalidManifest)
@@ -195,8 +195,8 @@ func TestMinCannotBeZero(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
-			Max: 4,
-			Min: 0,
+			Max:                    4,
+			Min:                    0,
 		},
 	}
 	errors := validateReplicasMin(invalidManifest)

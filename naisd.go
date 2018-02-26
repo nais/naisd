@@ -11,7 +11,7 @@ import (
 	"github.com/nais/naisd/api"
 )
 
-const Port string = ":8081"
+const Port = ":8081"
 
 func main() {
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")

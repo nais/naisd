@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	k8score "k8s.io/api/core/v1"
+	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sextensions "k8s.io/api/extensions/v1beta1"
 )
 
 type DeployStatus int
@@ -24,7 +25,7 @@ func (d DeployStatus) String() string {
 }
 
 const (
-	Success DeployStatus = iota
+	Success    DeployStatus = iota
 	InProgress
 	Failed
 )
@@ -44,7 +45,7 @@ func NewDeploymentStatusViewer(clientset kubernetes.Interface) DeploymentStatusV
 }
 
 func (d deploymentStatusViewerImpl) DeploymentStatusView(namespace string, deployName string) (DeployStatus, DeploymentStatusView, error) {
-	dep, err := d.client.ExtensionsV1beta1().Deployments(namespace).Get(deployName)
+	dep, err := d.client.ExtensionsV1beta1().Deployments(namespace).Get(deployName, k8smeta.GetOptions{})
 	if err != nil {
 		errMess := fmt.Sprintf("did not find deployment: %s in namespace: %s", deployName, namespace)
 		glog.Error(errMess)
@@ -68,7 +69,7 @@ type DeploymentStatusView struct {
 	Reason     string
 }
 
-func deploymentStatusViewFrom(status DeployStatus, reason string, deployment v1beta1.Deployment) DeploymentStatusView {
+func deploymentStatusViewFrom(status DeployStatus, reason string, deployment k8sextensions.Deployment) DeploymentStatusView {
 	containers, images := findContainerImages(deployment.Spec.Template.Spec.Containers)
 
 	return DeploymentStatusView{
@@ -85,7 +86,7 @@ func deploymentStatusViewFrom(status DeployStatus, reason string, deployment v1b
 
 }
 
-func findContainerImages(containers []v1.Container) ([]string, []string) {
+func findContainerImages(containers []k8score.Container) ([]string, []string) {
 	names, images := []string{}, []string{}
 
 	for _, container := range containers {
@@ -95,7 +96,7 @@ func findContainerImages(containers []v1.Container) ([]string, []string) {
 	return names, images
 }
 
-func deploymentStatusAndView(deployment v1beta1.Deployment) (DeployStatus, DeploymentStatusView) {
+func deploymentStatusAndView(deployment k8sextensions.Deployment) (DeployStatus, DeploymentStatusView) {
 	if deployment.Generation <= deployment.Status.ObservedGeneration {
 		switch {
 
@@ -125,10 +126,10 @@ func deploymentStatusAndView(deployment v1beta1.Deployment) (DeployStatus, Deplo
 	return InProgress, deploymentStatusViewFrom(InProgress, "Waiting for deployment spec update to be observed", deployment)
 }
 
-func deploymentExceededProgressDeadline(status v1beta1.DeploymentStatus) bool {
+func deploymentExceededProgressDeadline(status k8sextensions.DeploymentStatus) bool {
 	for i := range status.Conditions {
 		c := status.Conditions[i]
-		if c.Type == v1beta1.DeploymentProgressing && c.Reason == "ProgressDeadlineExceeded" {
+		if c.Type == k8sextensions.DeploymentProgressing && c.Reason == "ProgressDeadlineExceeded" {
 			return true
 		}
 	}

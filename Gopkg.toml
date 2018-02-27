@@ -59,7 +59,7 @@
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"
-  version = "2.0.0"
+  version = "2.1.1"
 
 [[constraint]]
   name = "k8s.io/api"

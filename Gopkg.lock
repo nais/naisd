@@ -303,8 +303,8 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
-  version = "v2.0.0"
+  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
+  version = "v2.1.1"
 
 [[projects]]
   name = "k8s.io/api"
@@ -475,6 +475,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6f6a6f14345ac3cc603cd48a085468b20047928c5d1da2117eb5327af7b03882"
+  inputs-digest = "d1d8256db24ddb2ee1c22bd4514aee1c8c8a132cd022d4e8fe1f128adacd403c"
   solver-name = "gps-cdcl"
   solver-version = 1

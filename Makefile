@@ -9,7 +9,10 @@ LDFLAGS := -X github.com/nais/naisd/api/version.Revision=$(shell git rev-parse -
 
 .PHONY: dockerhub-release install test linux bump tag cli cli-dist build docker-build push-dockerhub docker-minikube-build helm-upgrade
 
+all: install test linux
+
 dockerhub-release: install test linux bump tag docker-build push-dockerhub
+
 minikube: linux docker-minikube-build helm-upgrade
 
 bump:

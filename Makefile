@@ -1,15 +1,18 @@
-SHELL     := bash
-NAME      := navikt/naisd
-LATEST    := ${NAME}:latest
-GLIDE_IMG := navikt/glide:2.0.0
-GLIDE     := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GLIDE_IMG} glide
-GO_IMG    := golang:1.9
-GO        := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go
-LDFLAGS   := -X github.com/nais/naisd/api/version.Revision=$(shell git rev-parse --short HEAD) -X github.com/nais/naisd/api/version.Version=$(shell /bin/cat ./version)
+SHELL   := bash
+NAME    := navikt/naisd
+LATEST  := ${NAME}:latest
+DEP_IMG := navikt/dep:1.0.0
+DEP     := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${DEP_IMAGE} dep
+GO_IMG  := golang:1.9
+GO      := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go
+LDFLAGS := -X github.com/nais/naisd/api/version.Revision=$(shell git rev-parse --short HEAD) -X github.com/nais/naisd/api/version.Version=$(shell /bin/cat ./version)
 
 .PHONY: dockerhub-release install test linux bump tag cli cli-dist build docker-build push-dockerhub docker-minikube-build helm-upgrade
 
+all: install test linux
+
 dockerhub-release: install test linux bump tag docker-build push-dockerhub
+
 minikube: linux docker-minikube-build helm-upgrade
 
 bump:
@@ -19,10 +22,7 @@ tag:
 	git tag -a $(shell /bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags
 
 install:
-	${GLIDE} install --strip-vendor
-
-update:
-	${GLIDE} update --strip-vendor
+	${DEP} ensure
 
 test:
 	${GO} test ./api/ ./cli/cmd/

@@ -34,13 +34,13 @@ Or just save it to a file
 		username := os.Getenv("FASIT_USERNAME")
 		password := os.Getenv("FASIT_PASSWORD")
 
-		// Fall back to the ident of the logged in user
+		// Fall back to the username of the logged in user
 		if username == "" {
 			username = os.Getenv("USER")
 		}
 
 		if password == "" {
-			fmt.Fprintf(os.Stderr, "Enter ident password: ")
+			fmt.Fprintf(os.Stderr, "Enter password for %s: ", username)
 			passwordBytes, err := terminal.ReadPassword(int(syscall.Stdin))
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error occurred while trying to read password from stdin\n")

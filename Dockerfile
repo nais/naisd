@@ -9,4 +9,4 @@ WORKDIR /app
 
 COPY naisd .
 
-CMD /app/naisd --fasit-url=$fasit_url --cluster-subdomain=$cluster_subdomain --clustername=$clustername --logtostderr=true
+CMD /app/naisd --fasit-url=$fasit_url --cluster-subdomain=$cluster_subdomain --clustername=$clustername --istio-enabled=$istio_enabled --logtostderr=true

@@ -36,6 +36,8 @@ spec:
             value: "{{ .Values.clusterSubdomain }}"
           - name: clustername
             value: "{{ .Values.clusterName }}"
+          - name: istio_enabled
+            value: "{{ .Values.istioEnabled }}"
           - name: https_proxy
             value: "{{ .Values.httpsProxy }}"
           - name: http_proxy

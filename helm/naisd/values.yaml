@@ -1,6 +1,7 @@
 fasitUrl: https://fasit.example.no
 clusterSubdomain: nais-example.nais.example.no
 clusterName: kubernetes
+istioEnabled: false
 repository: navikt/naisd
 minReplicas: 2
 maxReplicas: 4

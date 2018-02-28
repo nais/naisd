@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"strings"
 	"syscall"
 
@@ -34,9 +35,13 @@ Or just save it to a file
 		username := os.Getenv("FASIT_USERNAME")
 		password := os.Getenv("FASIT_PASSWORD")
 
-		// Fall back to the username of the logged in user
 		if username == "" {
-			username = os.Getenv("USER")
+			currentUser, err := user.Current()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Unable resolve a username, please specify FASIT_USERNAME")
+				os.Exit(1)
+			}
+			username = currentUser.Username
 		}
 
 		if password == "" {

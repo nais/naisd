@@ -625,12 +625,12 @@ func TestGetFasitEnvironment(t *testing.T) {
 
 	fasit := FasitClient{"https://fasit.local", "", ""}
 	t.Run("Returns an error if environment isn't found", func(t *testing.T) {
-		_, err := fasit.GetFasitEnvironment("notExisting")
+		_, err := fasit.GetFasitEnvironmentClass("notExisting")
 		assert.Error(t, err)
 		assert.False(t, gock.IsDone())
 	})
 	t.Run("Returns no error if environment is found", func(t *testing.T) {
-		_, err := fasit.GetFasitEnvironment(namespace)
+		_, err := fasit.GetFasitEnvironmentClass(namespace)
 		assert.NoError(t, err)
 		assert.True(t, gock.IsDone())
 	})
@@ -852,48 +852,6 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 		result, err := parseLoadBalancerConfig([]byte(`[]`))
 		assert.NoError(t, err)
 		assert.Empty(t, result)
-	})
-}
-
-func TestBuildEnvironmentNameFromNamespace(t *testing.T) {
-
-	fasitClient := FasitClient{}
-	clusterName := "testcluster"
-
-	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
-		namespace := "t1"
-		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t, namespace, environmentName)
-	})
-	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
-		namespace := "t1000"
-		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t, namespace, environmentName)
-	})
-	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
-		namespace := "q1"
-		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t, namespace, environmentName)
-	})
-	t.Run("'Standard' Fasit environments will return unchanged", func(t *testing.T) {
-		namespace := "p"
-		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t, namespace, environmentName)
-	})
-	t.Run("'default' namespace returns clustername", func(t *testing.T) {
-		namespace := "default"
-		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t, clusterName, environmentName)
-	})
-	t.Run("empty namespace returns clustername", func(t *testing.T) {
-		namespace := ""
-		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t, clusterName, environmentName)
-	})
-	t.Run("'project' specific namespaces returns clustername + namespace", func(t *testing.T) {
-		namespace := "projectX"
-		environmentName := fasitClient.environmentNameFromNamespaceBuilder(namespace, clusterName)
-		assert.Equal(t, namespace+"-"+clusterName, environmentName)
 	})
 }
 

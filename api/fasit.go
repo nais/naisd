@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -77,7 +76,7 @@ type FasitClientAdapter interface {
 	getScopedResource(resourcesRequest ResourceRequest, environment, application, zone string) (NaisResource, AppError)
 	createResource(resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error)
 	updateResource(existingResource NaisResource, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error)
-	GetFasitEnvironment(environmentName string) (string, error)
+	GetFasitEnvironmentClass(environmentName string) (string, error)
 	GetFasitApplication(application string) error
 	GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error)
 	getLoadBalancerConfig(application string, environment string) (*NaisResource, error)
@@ -462,7 +461,7 @@ func (fasit FasitClient) updateResource(existingResource NaisResource, resource 
 	return existingResource.id, nil
 }
 
-func (fasit FasitClient) GetFasitEnvironment(environmentName string) (string, error) {
+func (fasit FasitClient) GetFasitEnvironmentClass(environmentName string) (string, error) {
 	requestCounter.With(nil).Inc()
 	req, err := http.NewRequest("GET", fasit.FasitUrl+"/api/v2/environments/"+environmentName, nil)
 	if err != nil {
@@ -686,17 +685,6 @@ func (fasit FasitClient) buildRequest(method, path string, queryParams map[strin
 	}
 	req.URL.RawQuery = q.Encode()
 	return req, nil
-}
-
-func (fasit FasitClient) environmentNameFromNamespaceBuilder(namespace, clustername string) string {
-	re := regexp.MustCompile(`^[utqp][0-9]*$`)
-
-	if namespace == "default" || len(namespace) == 0 {
-		return clustername
-	} else if !re.MatchString(namespace) {
-		return namespace + "-" + clustername
-	}
-	return namespace
 }
 
 func generateScope(resource ExposedResource, existingResource NaisResource, fasitEnvironmentClass, environment, zone string) Scope {

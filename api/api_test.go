@@ -139,6 +139,67 @@ func TestNoManifestGivesError(t *testing.T) {
 	assert.Contains(t, string(rr.Body.Bytes()), manifestUrl)
 }
 
+//TODO remove once grace period ends
+func TestWarningsWhenUsingOldPropertyNames(t *testing.T) {
+	appName := "appname"
+	namespace := "namespace"
+	environment := "environmentName"
+	image := "name/Container"
+	version := "123"
+
+	clientset := fake.NewSimpleClientset()
+
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
+
+	depReq := NaisDeploymentRequest{
+		Application: appName,
+		Version:     version,
+		Environment: environment,
+		Username:    "user",
+		Password:    "password",
+		ManifestUrl: "http://repo.com/app",
+		Zone:        "zone",
+		Namespace:   namespace,
+	}
+
+	manifest := NaisManifest{
+		Image: image,
+		Port:  321,
+	}
+	data, _ := yaml.Marshal(manifest)
+
+	defer gock.Off()
+
+	gock.New("https://fasit.local").
+		Get("/api/v2/scopedresource").
+		MatchParam("alias", NavTruststoreFasitAlias).
+		Reply(200).File("testdata/fasitTruststoreResponse.json")
+
+	gock.New("https://fasit.local").
+		Get("/api/v2/resources/3024713/file/keystore").
+		Reply(200).
+		BodyString("")
+
+	gock.New("http://repo.com").
+		Get("/app").
+		Reply(200).
+		BodyString(string(data))
+
+	jsn, _ := json.Marshal(depReq)
+
+	body := strings.NewReader(string(jsn))
+
+	req, _ := http.NewRequest("POST", "/deploy", body)
+
+	rr := httptest.NewRecorder()
+	handler := http.Handler(appHandler(api.deploy))
+
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, 200, rr.Code)
+	assert.True(t, gock.IsDone())
+	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n\nWarnings:\n- Deployment request property 'environment' is deprecated. Use 'fasitEnvironment' instead\n- Deployment request property 'username' is deprecated. Use 'fasitUsername' instead\n- Deployment request property 'password' is deprecated. Use 'fasitPassword' instead\n", string(rr.Body.Bytes()))
+}
 func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
@@ -154,12 +215,12 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
 	depReq := NaisDeploymentRequest{
-		Application: appName,
-		Version:     version,
-		Environment: environment,
-		ManifestUrl: "http://repo.com/app",
-		Zone:        "zone",
-		Namespace:   namespace,
+		Application:      appName,
+		Version:          version,
+		FasitEnvironment: environment,
+		ManifestUrl:      "http://repo.com/app",
+		Zone:             "zone",
+		Namespace:        namespace,
 	}
 
 	manifest := NaisManifest{
@@ -199,7 +260,7 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 		Reply(200).File("testdata/fasitResponse.json")
 
 	gock.New("https://fasit.local").
-		Get(fmt.Sprintf("/api/v2/environments/%s-test-cluster", namespace)).
+		Get(fmt.Sprintf("/api/v2/environments/%s", environment)).
 		Reply(200).
 		JSON(map[string]string{"environmentclass": "u"})
 
@@ -252,7 +313,7 @@ func TestMissingResources(t *testing.T) {
 		Reply(200).
 		BodyString(string(data))
 	gock.New("https://fasit.local").
-		Get("/api/v2/environments/namespace-clustername").
+		Get("/api/v2/environments/namespace").
 		Reply(200).
 		JSON(map[string]string{"environmentclass": "u"})
 	gock.New("https://fasit.local").

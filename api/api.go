@@ -30,15 +30,18 @@ type Api struct {
 }
 
 type NaisDeploymentRequest struct {
-	Application string `json:"application"`
-	Version     string `json:"version"`
-	Environment string `json:"environment"`
-	Zone        string `json:"zone"`
-	ManifestUrl string `json:"manifesturl,omitempty"`
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	OnBehalfOf  string `json:"onbehalfof,omitempty"`
-	Namespace   string `json:"namespace"`
+	Application      string `json:"application"`
+	Version          string `json:"version"`
+	Zone             string `json:"zone"`
+	ManifestUrl      string `json:"manifesturl,omitempty"`
+	Environment      string `json:"environment"` // Deprecated: Use FasitEnvironment instead
+	Username         string `json:"username"`    // Deprecated: Use FasitUsername instead
+	Password         string `json:"password"`    // Deprecated: Use FasitPassword instead
+	FasitEnvironment string `json:"fasitEnvironment"`
+	FasitUsername    string `json:"fasitUsername"`
+	FasitPassword    string `json:"fasitPassword"`
+	OnBehalfOf       string `json:"onbehalfof,omitempty"`
+	Namespace        string `json:"namespace"`
 }
 
 type AppError interface {
@@ -108,6 +111,69 @@ func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName
 	}
 }
 
+func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
+	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
+
+	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
+
+	if err != nil {
+		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
+	}
+
+	//TODO remove this once grace period ends
+	deploymentRequest, warnings := ensurePropertyCompatability(deploymentRequest)
+
+	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+
+	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
+
+	manifest, err := GenerateManifest(deploymentRequest)
+	if err != nil {
+		return &appError{err, "unable to generate manifest/nais.yaml", http.StatusInternalServerError}
+	}
+
+	var fasitEnvironmentClass string
+
+	if hasResources(manifest) {
+		if deploymentRequest.FasitEnvironment == "" {
+			return &appError{err, "no fasit environment provided, but contains resources to be consumed or exposed", http.StatusInternalServerError}
+		}
+		if err := validateFasitRequirements(fasit, deploymentRequest.Application, deploymentRequest.FasitEnvironment); err != nil {
+			return &appError{err, "validating requirements for deployment failed", http.StatusInternalServerError}
+		}
+		fasitEnvironmentClass, err = fasit.GetFasitEnvironmentClass(deploymentRequest.FasitEnvironment)
+	}
+
+	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
+
+	naisResources, err := FetchFasitResources(fasit, deploymentRequest.Application, deploymentRequest.FasitEnvironment, deploymentRequest.Zone, manifest.FasitResources.Used)
+	if err != nil {
+		return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
+	}
+
+	if api.IstioEnabled && !manifest.Istio.Disabled {
+		naisResources = ensureHttpUrls(naisResources)
+	}
+
+	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.IstioEnabled, api.Clientset)
+	if err != nil {
+		return &appError{err, "failed while creating or updating k8s-resources", http.StatusInternalServerError}
+	}
+
+	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
+
+	if hasResources(manifest) {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Namespace, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
+			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
+		}
+	}
+
+	NotifySensuAboutDeploy(&deploymentRequest, &api.ClusterName)
+
+	w.WriteHeader(200)
+	w.Write(createResponse(deploymentResult, warnings))
+	return nil
+}
 func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
 	namespace := pat.Param(r, "namespace")
 	deployName := pat.Param(r, "deployName")
@@ -153,7 +219,7 @@ func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
 }
 
 func validateFasitRequirements(fasit FasitClientAdapter, application, fasitEnvironment string) error {
-	if _, err := fasit.GetFasitEnvironment(fasitEnvironment); err != nil {
+	if _, err := fasit.GetFasitEnvironmentClass(fasitEnvironment); err != nil {
 		glog.Errorf("Environment '%s' does not exist in Fasit", fasitEnvironment)
 		return fmt.Errorf("unable to get fasit environment: %s. %s", fasitEnvironment, err)
 	}
@@ -171,68 +237,25 @@ func hasResources(manifest NaisManifest) bool {
 	}
 	return true
 }
-func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
-	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 
-	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
-	if err != nil {
-		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
+func ensurePropertyCompatability(deploymentRequest NaisDeploymentRequest) (NaisDeploymentRequest, []string) {
+	var warnings []string
+	if deploymentRequest.Environment != "" {
+		deploymentRequest.FasitEnvironment = deploymentRequest.Environment
+		warnings = append(warnings, "Deployment request property 'environment' is deprecated. Use 'fasitEnvironment' instead")
 	}
 
-	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
-
-	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
-
-	manifest, err := GenerateManifest(deploymentRequest)
-	if err != nil {
-		return &appError{err, "unable to generate manifest/nais.yaml", http.StatusInternalServerError}
+	if deploymentRequest.Username != "" {
+		deploymentRequest.FasitUsername = deploymentRequest.Username
+		warnings = append(warnings, "Deployment request property 'username' is deprecated. Use 'fasitUsername' instead")
 	}
 
-	fasitEnvironment := fasit.environmentNameFromNamespaceBuilder(deploymentRequest.Namespace, api.ClusterName)
-	var fasitEnvironmentClass string
-
-	if hasResources(manifest) {
-		if err := validateFasitRequirements(fasit, deploymentRequest.Application, fasitEnvironment); err != nil {
-			return &appError{err, "validating requirements for deployment failed", http.StatusInternalServerError}
-		}
-		fasitEnvironmentClass, err = fasit.GetFasitEnvironment(fasitEnvironment)
+	if deploymentRequest.Password != "" {
+		deploymentRequest.FasitPassword = deploymentRequest.Password
+		warnings = append(warnings, "Deployment request property 'password' is deprecated. Use 'fasitPassword' instead")
 	}
 
-	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
-
-	naisResources, err := FetchFasitResources(fasit, deploymentRequest.Application, deploymentRequest.Environment, deploymentRequest.Zone, manifest.FasitResources.Used)
-	if err != nil {
-		return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
-	}
-
-	if api.IstioEnabled && !manifest.Istio.Disabled {
-		naisResources = ensureHttpUrls(naisResources)
-	}
-
-	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.IstioEnabled, api.Clientset)
-	if err != nil {
-		return &appError{err, "failed while creating or updating k8s-resources", http.StatusInternalServerError}
-	}
-
-	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
-
-	ingressHostnames := deploymentResult.Ingress.Spec.Rules
-	var ingressHostname string
-	if len(ingressHostnames) > 0 {
-		ingressHostname = ingressHostnames[len(ingressHostnames)-1].Host
-	}
-
-	if hasResources(manifest) {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, ingressHostname, fasitEnvironmentClass, fasitEnvironment, api.ClusterSubdomain); err != nil {
-			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
-		}
-	}
-
-	NotifySensuAboutDeploy(&deploymentRequest, &api.ClusterName)
-
-	w.WriteHeader(200)
-	w.Write(createResponse(deploymentResult))
-	return nil
+	return deploymentRequest, warnings
 }
 
 func ensureHttpUrls(resources []NaisResource) []NaisResource {
@@ -268,7 +291,7 @@ func ensureHttpUrls(resources []NaisResource) []NaisResource {
 	return resources
 }
 
-func createResponse(deploymentResult DeploymentResult) []byte {
+func createResponse(deploymentResult DeploymentResult, warnings []string) []byte {
 
 	response := "result: \n"
 
@@ -286,6 +309,13 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 	}
 	if deploymentResult.Autoscaler != nil {
 		response += "- created autoscaler\n"
+	}
+
+	if len(warnings) > 0 {
+		response += "\nWarnings:\n"
+		for _,warning := range warnings {
+			response += fmt.Sprintf("- %s\n", warning)
+		}
 	}
 
 	return []byte(response)

@@ -6,18 +6,21 @@ import (
 	"testing"
 )
 
+
+
+
 func TestSensuClient(t *testing.T) {
 	t.Run("Check generated deploy message", func(t *testing.T) {
 		deploymentRequest := NaisDeploymentRequest{
-			"TestApp",
-			"42.0.0",
-			"environment",
-			"zone",
-			"manifesturl",
-			"username",
-			"password",
-			"onbehalfof",
-			"nais",
+			Application: "TestApp",
+			Version: "42.0.0",
+			FasitEnvironment: "environment",
+			Zone: "zone",
+			ManifestUrl: "manifesturl",
+			FasitUsername: "username",
+			FasitPassword: "password",
+			OnBehalfOf: "onbehalfof",
+			Namespace: "nais",
 		}
 		clusterName := "nais-dev"
 

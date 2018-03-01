@@ -1,9 +1,4 @@
 ---
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: election
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

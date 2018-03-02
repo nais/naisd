@@ -112,8 +112,12 @@ type NaisResource struct {
 	ingresses    map[string]string
 }
 
-func (nr NaisResource) GetProperties() map[string]string {
+func (nr NaisResource) Properties() map[string]string {
 	return nr.properties
+}
+
+func (nr NaisResource) Secret() map[string]string {
+	return nr.secret
 }
 
 func (nr NaisResource) ToEnvironmentVariable(property string) string {

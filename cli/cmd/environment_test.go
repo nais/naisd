@@ -21,6 +21,7 @@ var expected_vars = map[string]string{
 }
 
 func runCommand(t *testing.T, args []string) ([]byte, int) {
+	os.Setenv("FASIT_PASSWORD", "mockPassword")
 	defer gock.Off()
 
 	gock.New("https://fasit.local").

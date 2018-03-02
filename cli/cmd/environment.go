@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"strings"
+	"syscall"
+
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/nais/naisd/api"
 	"github.com/spf13/cobra"
@@ -30,6 +34,26 @@ Or just save it to a file
 		application := args[0]
 		username := os.Getenv("FASIT_USERNAME")
 		password := os.Getenv("FASIT_PASSWORD")
+
+		if username == "" {
+			currentUser, err := user.Current()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Unable resolve a username, please specify FASIT_USERNAME")
+				os.Exit(1)
+			}
+			username = currentUser.Username
+		}
+
+		if password == "" {
+			fmt.Fprintf(os.Stderr, "Enter password for %s: ", username)
+			passwordBytes, err := terminal.ReadPassword(int(syscall.Stdin))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error occurred while trying to read password from stdin\n")
+				os.Exit(1)
+			}
+			password = string(passwordBytes)
+			fmt.Fprintln(os.Stderr)
+		}
 
 		inline := true
 
@@ -110,7 +134,11 @@ Or just save it to a file
 		formattedVars := make([]string, 0)
 
 		for _, resource := range vars {
-			for key, val := range resource.GetProperties() {
+			for key, val := range resource.Secret() {
+				environmentVariable := resource.ToEnvironmentVariable(key)
+				formattedVars = append(formattedVars, fmt.Sprintf(stringFormat, environmentVariable, val))
+			}
+			for key, val := range resource.Properties() {
 				environmentVariable := resource.ToEnvironmentVariable(key)
 				formattedVars = append(formattedVars, fmt.Sprintf(stringFormat, environmentVariable, val))
 			}

@@ -64,7 +64,7 @@ var waitCmd = &cobra.Command{
 		}
 
 		start := time.Now()
-		if err := waitForDeploy(clusterUrl + STATUS_ENDPOINT + "/" + namespace + "/" + app); err != nil {
+		if err := waitForDeploy(clusterUrl + StatusEndpoint + "/" + namespace + "/" + app); err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}

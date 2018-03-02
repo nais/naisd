@@ -123,9 +123,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	//TODO remove this once grace period ends
 	deploymentRequest, warnings := ensurePropertyCompatability(deploymentRequest)
 
-	fasit := FasitClient{api.FasitUrl, deploymentRequest.Username, deploymentRequest.Password}
+	fasit := FasitClient{api.FasitUrl, deploymentRequest.FasitUsername, deploymentRequest.FasitPassword}
 
-	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.Environment)
+	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.FasitEnvironment)
 
 	manifest, err := GenerateManifest(deploymentRequest)
 	if err != nil {

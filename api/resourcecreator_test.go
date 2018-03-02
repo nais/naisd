@@ -435,9 +435,9 @@ func TestDeployment(t *testing.T) {
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
 
 		assert.Equal(t, 9, len(envVars))
-		assert.Equal(t, "R1_CERT1KEY_PATH", envVars[5].Name)
+		assert.Equal(t, "R1_CERT1KEY", envVars[5].Name)
 		assert.Equal(t, "/var/run/secrets/naisd.io/r1_cert1key", envVars[5].Value)
-		assert.Equal(t, "R2_CERT2KEY_PATH", envVars[8].Name)
+		assert.Equal(t, "R2_CERT2KEY", envVars[8].Name)
 		assert.Equal(t, "/var/run/secrets/naisd.io/r2_cert2key", envVars[8].Value)
 
 	})

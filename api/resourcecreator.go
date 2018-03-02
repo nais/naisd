@@ -337,7 +337,7 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 		if res.certificates != nil {
 			for k := range res.certificates {
 				envVar := k8score.EnvVar{
-					Name:  res.ToEnvironmentVariable(k + "_PATH"),
+					Name:  res.ToEnvironmentVariable(k)+"_PATH",
 					Value: "/var/run/secrets/naisd.io/" + res.ToResourceVariable(k),
 				}
 

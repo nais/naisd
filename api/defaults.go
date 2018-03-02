@@ -10,7 +10,7 @@ func DefaultResourceRequests() []ResourceRequest {
 		{
 			Alias:        NavTruststoreFasitAlias,
 			ResourceType: "certificate",
-			PropertyMap:  map[string]string{"nav_truststore_keystore": "NAV_TRUSTSTORE"},
+			PropertyMap:  map[string]string{"keystore": "NAV_TRUSTSTORE_PATH"},
 		},
 	}
 }

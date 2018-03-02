@@ -702,8 +702,8 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
-		assert.Equal(t, []byte(updatedSecretValue), secret.Data["r1_alias_"+secret1Key])
-		assert.Equal(t, updatedFileValue, secret.Data["r1_alias_"+fileKey1])
+		assert.Equal(t, []byte(updatedSecretValue), secret.Data["r1_alias_password"])
+		assert.Equal(t, updatedFileValue, secret.Data["r1_alias_filekey1"])
 	})
 }
 

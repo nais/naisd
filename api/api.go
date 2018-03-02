@@ -62,8 +62,8 @@ func (e appError) Error() string {
 	if e.OriginalError != nil {
 		return fmt.Sprintf("%s: %s (%d)", e.Message, e.OriginalError.Error(), e.StatusCode)
 	}
-	return fmt.Sprintf("%s (%d)", e.Message, e.StatusCode)
 
+	return fmt.Sprintf("%s (%d)", e.Message, e.StatusCode)
 }
 
 type appHandler func(w http.ResponseWriter, r *http.Request) *appError

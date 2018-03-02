@@ -13,10 +13,9 @@ import (
 	"time"
 )
 
-const DEPLOY_ENDPOINT = "/deploy"
-const STATUS_ENDPOINT = "/deploystatus"
-
-const DEFAULT_CLUSTER = "preprod-fss"
+const DeployEndpoint = "/deploy"
+const StatusEndpoint = "/deploystatus"
+const DefaultCluster = "preprod-fss"
 
 var clustersDict = map[string]string{
 	"ci":           "nais-ci.devillo.no",
@@ -50,7 +49,7 @@ func getClusterUrl(cluster string) (string, error) {
 		if len(urlEnv) > 0 {
 			return urlEnv, nil
 		} else {
-			cluster = DEFAULT_CLUSTER
+			cluster = DefaultCluster
 		}
 	}
 
@@ -74,15 +73,15 @@ var deployCmd = &cobra.Command{
 
 		var cluster string
 		strings := map[string]*string{
-			"app":          &deployRequest.Application,
-			"version":      &deployRequest.Version,
-			"environment":  &deployRequest.Environment,
-			"zone":         &deployRequest.Zone,
-			"namespace":    &deployRequest.Namespace,
-			"username":     &deployRequest.Username,
-			"password":     &deployRequest.Password,
-			"manifest-url": &deployRequest.ManifestUrl,
-			"cluster":      &cluster,
+			"app":               &deployRequest.Application,
+			"version":           &deployRequest.Version,
+			"zone":              &deployRequest.Zone,
+			"namespace":         &deployRequest.Namespace,
+			"fasit-environment": &deployRequest.FasitEnvironment,
+			"fasit-username":    &deployRequest.FasitUsername,
+			"fasit-password":    &deployRequest.FasitPassword,
+			"manifest-url":      &deployRequest.ManifestUrl,
+			"cluster":           &cluster,
 		}
 
 		for key, pointer := range strings {
@@ -114,7 +113,7 @@ var deployCmd = &cobra.Command{
 
 		fmt.Println(string(jsonStr))
 
-		resp, err := http.Post(clusterUrl+DEPLOY_ENDPOINT, "application/json", bytes.NewBuffer(jsonStr))
+		resp, err := http.Post(clusterUrl+DeployEndpoint, "application/json", bytes.NewBuffer(jsonStr))
 
 		if err != nil {
 			fmt.Printf("Error while POSTing to API: %v\n", err)
@@ -134,7 +133,7 @@ var deployCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 		} else if wait {
 			start := time.Now()
-			if err := waitForDeploy(clusterUrl + STATUS_ENDPOINT + "/" + deployRequest.Namespace + "/" + deployRequest.Application); err != nil {
+			if err := waitForDeploy(clusterUrl + StatusEndpoint + "/" + deployRequest.Namespace + "/" + deployRequest.Application); err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}
@@ -150,11 +149,11 @@ func init() {
 	deployCmd.Flags().StringP("app", "a", "", "name of your app")
 	deployCmd.Flags().StringP("version", "v", "", "version you want to deploy")
 	deployCmd.Flags().StringP("cluster", "c", "", "the cluster you want to deploy to")
-	deployCmd.Flags().StringP("environment", "e", "t0", "environment you want to use")
+	deployCmd.Flags().StringP("fasit-environment", "e", "t0", "environment you want to use")
 	deployCmd.Flags().StringP("zone", "z", api.ZONE_FSS, "the zone the app will be in")
 	deployCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")
-	deployCmd.Flags().StringP("username", "u", "", "the username")
-	deployCmd.Flags().StringP("password", "p", "", "the password")
+	deployCmd.Flags().StringP("fasit-username", "u", "", "the username")
+	deployCmd.Flags().StringP("fasit-password", "p", "", "the password")
 	deployCmd.Flags().StringP("manifest-url", "m", "", "alternative URL to the nais manifest")
 	deployCmd.Flags().Bool("wait", false, "whether to wait until the deploy has succeeded (or failed)")
 }

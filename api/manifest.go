@@ -41,7 +41,7 @@ type PrometheusConfig struct {
 }
 
 type IstioConfig struct {
-	Disabled bool
+	Enabled bool
 }
 
 type NaisManifest struct {

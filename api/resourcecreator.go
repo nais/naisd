@@ -117,7 +117,7 @@ func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest,
 		"prometheus.io/path":   manifest.Prometheus.Path,
 	}
 
-	if istioEnabled && !manifest.Istio.Disabled {
+	if istioEnabled && manifest.Istio.Enabled {
 		objectMeta.Annotations["sidecar.istio.io/inject"] = "true"
 	}
 

@@ -26,7 +26,7 @@ prometheus: #Optional
   enabled: false # if true the pod will be scraped for metrics by prometheus
   path: /metrics # Path to prometheus-metrics
 istio:
-  disabled: false # when false, envoy-proxy sidecar will be injected into pod and https urls envvars will be rewritten
+  enabled: false # when true, envoy-proxy sidecar will be injected into pod and https urls envvars will be rewritten
 resources: # Optional. See: http://kubernetes.io/docs/user-guide/compute-resources/
   limits:
     cpu: 500m # app will have its cpu usage throttled if exceeding this limit

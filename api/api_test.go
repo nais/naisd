@@ -376,38 +376,3 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.Contains(t, err, errors.New("password is required and is empty"))
 	})
 }
-
-func TestEnsureHttpUrls(t *testing.T) {
-
-	t.Run("correctly converts https urls", func(t *testing.T) {
-		httpsResources := []NaisResource{
-			{properties: map[string]string{
-				"url1": "https://url.no",
-				"url2": "https://url.no/path?x=y",
-				"url3": "https://url.no:6969",
-				"url4": "https://url.no:6969/",
-				"url5": "http://url.no",
-			}}}
-
-		transformed := ensureHttpUrls(httpsResources)
-
-		assert.Equal(t, "http://url.no:443", transformed[0].properties["url1"])
-		assert.Equal(t, "http://url.no:443/path?x=y", transformed[0].properties["url2"])
-		assert.Equal(t, "http://url.no:6969", transformed[0].properties["url3"])
-		assert.Equal(t, "http://url.no:6969/", transformed[0].properties["url4"])
-		assert.Equal(t, "http://url.no", transformed[0].properties["url5"])
-	})
-
-	t.Run("works on multiple resources", func(t *testing.T) {
-		httpsResources := []NaisResource{
-			{properties: map[string]string{"url": "https://url.no"}},
-			{properties: map[string]string{"url": "https://url.no:6969"}},
-		}
-
-		transformed := ensureHttpUrls(httpsResources)
-
-		assert.Equal(t, "http://url.no:443", transformed[0].properties["url"])
-		assert.Equal(t, "http://url.no:6969", transformed[1].properties["url"])
-	})
-
-}

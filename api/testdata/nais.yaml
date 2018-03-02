@@ -28,7 +28,7 @@ prometheus: #Optional
   enabled: true
   path: /path
 istio:
-  disabled: true
+  enabled: true
 fasitResources:
   used:
   - alias: mydb

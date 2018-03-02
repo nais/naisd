@@ -30,7 +30,7 @@ func GetDefaultManifest(application string) NaisManifest {
 			Path:    "/metrics",
 		},
 		Istio: IstioConfig{
-			Disabled: false,
+			Enabled: false,
 		},
 		Healthcheck: Healthcheck{
 			Liveness: Probe{

@@ -261,7 +261,7 @@ func TestDeployment(t *testing.T) {
 
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
 		manifest := newDefaultManifest()
-		manifest.Istio.Disabled = false
+		manifest.Istio.Enabled = true
 		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, Environment: environment}, manifest, naisResources, true, clientset)
 
 		assert.NoError(t, err)
@@ -504,8 +504,8 @@ func TestDeployment(t *testing.T) {
 			Version:     "1",
 		}
 
-		istioDisabledManifest := NaisManifest{Istio: IstioConfig{Disabled: true}}
-		istioEnabledManifest := NaisManifest{Istio: IstioConfig{Disabled: false}}
+		istioDisabledManifest := NaisManifest{Istio: IstioConfig{Enabled: false}}
+		istioEnabledManifest := NaisManifest{Istio: IstioConfig{Enabled: true}}
 
 		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
 		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, false).Annotations["sidecar.istio.io/inject"], "")

@@ -7,8 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
-
 	"github.com/golang/glog"
 	ver "github.com/nais/naisd/api/version"
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,7 +15,6 @@ import (
 	"goji.io/pat"
 	"k8s.io/client-go/kubernetes"
 	"strings"
-	"net"
 )
 
 type Api struct {
@@ -151,10 +148,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
 	}
 
-	if api.IstioEnabled && !manifest.Istio.Disabled {
-		naisResources = ensureHttpUrls(naisResources)
-	}
-
 	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.IstioEnabled, api.Clientset)
 	if err != nil {
 		return &appError{err, "failed while creating or updating k8s-resources", http.StatusInternalServerError}
@@ -256,39 +249,6 @@ func ensurePropertyCompatability(deploymentRequest NaisDeploymentRequest) (NaisD
 	}
 
 	return deploymentRequest, warnings
-}
-
-func ensureHttpUrls(resources []NaisResource) []NaisResource {
-	for _, resource := range resources {
-		for key, value := range resource.properties {
-			if strings.HasPrefix(value, "https://") {
-				parsedUrl, err := url.Parse(value)
-
-				if err != nil {
-					glog.V(2).Infof("attempted to parse url %s, got err %s", value, err)
-					continue
-				}
-
-				host, port, err := net.SplitHostPort(parsedUrl.Host)
-
-				if err != nil {
-					if strings.Contains(err.Error(), "missing port") {
-						host = parsedUrl.Host
-						port = "443"
-					} else {
-						glog.V(2).Infof("error %s, when parsing host and port from %. Skipping", err, parsedUrl.Host)
-						continue
-					}
-				}
-
-				parsedUrl.Scheme = "http"
-				parsedUrl.Host = fmt.Sprintf("%s:%s", host, port)
-
-				resource.properties[key] = parsedUrl.String()
-			}
-		}
-	}
-	return resources
 }
 
 func createResponse(deploymentResult DeploymentResult, warnings []string) []byte {

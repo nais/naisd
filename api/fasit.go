@@ -120,7 +120,7 @@ func (nr NaisResource) Secret() map[string]string {
 }
 
 func (nr NaisResource) ToEnvironmentVariable(property string) string {
-	return ToEnvironmentVariable(nr.ToResourceVariable(property))
+	return strings.ToUpper(nr.ToResourceVariable(property))
 }
 
 func (nr NaisResource) ToResourceVariable(property string) string {
@@ -131,10 +131,6 @@ func (nr NaisResource) ToResourceVariable(property string) string {
 	}
 
 	return strings.ToLower(normalizePropertyName(property))
-}
-
-func ToEnvironmentVariable(property string) string {
-	return strings.ToUpper(normalizePropertyName(property))
 }
 
 func normalizePropertyName(name string) string {

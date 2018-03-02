@@ -2,14 +2,14 @@ package api
 
 import (
 	"fmt"
-	"k8s.io/client-go/kubernetes"
+	k8sautoscaling "k8s.io/api/autoscaling/v1"
+	k8score "k8s.io/api/core/v1"
+	k8sextensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8score "k8s.io/api/core/v1"
-	k8sautoscaling "k8s.io/api/autoscaling/v1"
-	k8sextensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
 	"strconv"
 	"strings"
 )
@@ -240,8 +240,8 @@ func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources 
 		if res.certificates != nil {
 			for k := range res.certificates {
 				item := k8score.KeyToPath{
-					Key:  k,
-					Path: k,
+					Key:  res.ToResourceVariable(k),
+					Path: res.ToResourceVariable(k),
 				}
 				items = append(items, item)
 			}
@@ -337,8 +337,8 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 		if res.certificates != nil {
 			for k := range res.certificates {
 				envVar := k8score.EnvVar{
-					Name:  res.ToEnvironmentVariable(k) + "_PATH",
-					Value: "/var/run/secrets/naisd.io/" + k,
+					Name:  res.ToEnvironmentVariable(k + "_PATH"),
+					Value: "/var/run/secrets/naisd.io/" + res.ToResourceVariable(k),
 				}
 
 				if err := checkForDuplicates(envVars, envVar, k, res); err != nil {
@@ -415,7 +415,7 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 		}
 		if res.certificates != nil {
 			for k, v := range res.certificates {
-				data[k] = v
+				data[res.ToResourceVariable(k)] = v
 			}
 		}
 	}
@@ -744,7 +744,7 @@ func int32p(i int32) *int32 {
 	return &i
 }
 
-func createObjectMeta(applicationName string, namespace string) (k8smeta.ObjectMeta) {
+func createObjectMeta(applicationName string, namespace string) k8smeta.ObjectMeta {
 	return k8smeta.ObjectMeta{
 		Name:      applicationName,
 		Namespace: namespace,

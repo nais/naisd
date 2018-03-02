@@ -2,10 +2,10 @@ package api
 
 import (
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/apimachinery/pkg/api/resource"
 	k8score "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes/fake"
 	"strings"
 	"testing"
 )
@@ -297,9 +297,9 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, cpuRequest, ptr(container.Resources.Requests["cpu"]).String())
 		assert.Equal(t, cpuLimit, ptr(container.Resources.Limits["cpu"]).String())
 		assert.Equal(t, map[string]string{
-			"prometheus.io/scrape": "true",
-			"prometheus.io/path":   "/path",
-			"prometheus.io/port":   "http",
+			"prometheus.io/scrape":    "true",
+			"prometheus.io/path":      "/path",
+			"prometheus.io/port":      "http",
 			"sidecar.istio.io/inject": "true",
 		}, deployment.Spec.Template.Annotations)
 
@@ -405,7 +405,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items))
-		assert.Equal(t, updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
+		assert.Equal(t, resource1Name+"_"+updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
@@ -418,10 +418,10 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
 		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Volumes[0].Secret.Items))
-		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
-		assert.Equal(t, cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
-		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[1].Key)
-		assert.Equal(t, cert2Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[1].Path)
+		assert.Equal(t, resource1Name+"_"+cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
+		assert.Equal(t, resource1Name+"_"+cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
+		assert.Equal(t, resource2Name+"_"+cert2Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[1].Key)
+		assert.Equal(t, resource2Name+"_"+cert2Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[1].Path)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
@@ -436,9 +436,9 @@ func TestDeployment(t *testing.T) {
 
 		assert.Equal(t, 9, len(envVars))
 		assert.Equal(t, "R1_CERT1KEY_PATH", envVars[5].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/cert1key", envVars[5].Value)
+		assert.Equal(t, "/var/run/secrets/naisd.io/r1_cert1key", envVars[5].Value)
 		assert.Equal(t, "R2_CERT2KEY_PATH", envVars[8].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/cert2key", envVars[8].Value)
+		assert.Equal(t, "/var/run/secrets/naisd.io/r2_cert2key", envVars[8].Value)
 
 	})
 
@@ -513,7 +513,6 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, true).Annotations["sidecar.istio.io/inject"], "true")
 	})
 }
-
 
 func TestIngress(t *testing.T) {
 	appName := "appname"
@@ -679,8 +678,8 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, 4, len(secret.Data))
 		assert.Equal(t, []byte(secret1Value), secret.Data[naisResources[0].ToResourceVariable(secret1Key)])
 		assert.Equal(t, []byte(secret2Value), secret.Data[naisResources[1].ToResourceVariable(secret2Key)])
-		assert.Equal(t, fileValue1, secret.Data[fileKey1])
-		assert.Equal(t, fileValue2, secret.Data[fileKey2])
+		assert.Equal(t, fileValue1, secret.Data[naisResources[0].ToResourceVariable(fileKey1)])
+		assert.Equal(t, fileValue2, secret.Data[naisResources[1].ToResourceVariable(fileKey2)])
 	})
 
 	t.Run("when a secret exists, it's updated", func(t *testing.T) {
@@ -704,7 +703,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
 		assert.Equal(t, []byte(updatedSecretValue), secret.Data["r1_alias_"+secret1Key])
-		assert.Equal(t, updatedFileValue, secret.Data[fileKey1])
+		assert.Equal(t, updatedFileValue, secret.Data["r1_alias_"+fileKey1])
 	})
 }
 

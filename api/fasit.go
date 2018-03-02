@@ -87,8 +87,8 @@ type FasitClientAdapter interface {
 type FasitResource struct {
 	Id           int
 	Alias        string
-	ResourceType string                 `json:"type"`
-	Scope        Scope                  `json:"scope"`
+	ResourceType string `json:"type"`
+	Scope        Scope  `json:"scope"`
 	Properties   map[string]string
 	Secrets      map[string]map[string]string
 	Certificates map[string]interface{} `json:"files"`
@@ -121,7 +121,7 @@ func (nr NaisResource) Secret() map[string]string {
 }
 
 func (nr NaisResource) ToEnvironmentVariable(property string) string {
-	return strings.ToUpper(nr.ToResourceVariable(property))
+	return ToEnvironmentVariable(nr.ToResourceVariable(property))
 }
 
 func (nr NaisResource) ToResourceVariable(property string) string {
@@ -131,10 +131,14 @@ func (nr NaisResource) ToResourceVariable(property string) string {
 		property = nr.name + "_" + property
 	}
 
-	return strings.ToLower(nr.normalizePropertyName(property))
+	return strings.ToLower(normalizePropertyName(property))
 }
 
-func (nr NaisResource) normalizePropertyName(name string) string {
+func ToEnvironmentVariable(property string) string {
+	return strings.ToUpper(normalizePropertyName(property))
+}
+
+func normalizePropertyName(name string) string {
 	if strings.Contains(name, ".") {
 		name = strings.Replace(name, ".", "_", -1)
 	}
@@ -532,7 +536,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, property
 	}
 
 	if fasitResource.ResourceType == "certificate" && len(fasitResource.Certificates) > 0 {
-		files, err := resolveCertificates(fasitResource.Certificates, fasitResource.Alias)
+		files, err := resolveCertificates(fasitResource.Certificates)
 
 		if err != nil {
 			errorCounter.WithLabelValues("resolve_file").Inc()
@@ -555,7 +559,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, property
 
 	return resource, nil
 }
-func resolveCertificates(files map[string]interface{}, resourceName string) (map[string][]byte, error) {
+func resolveCertificates(files map[string]interface{}) (map[string][]byte, error) {
 	fileContent := make(map[string][]byte)
 
 	fileName, fileUrl, err := parseFilesObject(files)
@@ -576,7 +580,7 @@ func resolveCertificates(files map[string]interface{}, resourceName string) (map
 		return fileContent, fmt.Errorf("error downloading file: %s", err)
 	}
 
-	fileContent[resourceName+"_"+fileName] = bodyBytes
+	fileContent[fileName] = bodyBytes
 	return fileContent, nil
 
 }

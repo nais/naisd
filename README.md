@@ -78,19 +78,19 @@ nais deploy [flags]
 Flags:
   -a, --app string            name of your app
   -c, --cluster string        the cluster you want to deploy to (default: "preprod-fss")
-  -e, --environment string    environment you want to use (default "t0")
+  -e, --environment string    environment you want to use (default "q0")
   -m, --manifest-url string   alternative URL to the nais manifest
   -n, --namespace string      the kubernetes namespace (default "default")
-  -p, --password string       the password
-  -u, --username string       the username
+  -p, --fasit-password string the password
+  -u, --fasit-username string the username
   -v, --version string        version you want to deploy
       --wait                  whether to wait until the deploy has succeeded (or failed)
   -z, --zone string           the zone the app will be in (default "fss")
 ```
 
-If using default values, only `app`, `version`, `username` and `password` is required.
+If using default values, only `app`, `version`, `fasit-username` and `fasit-password` is required.
 
-The username and password may be specified using environment variable `NAIS_USERNAME` and `NAIS_PASSWORD` instead.
+The username and password may be specified using environment variable `FASIT_USERNAME` and `FASIT_PASSWORD` instead.
 
 
 ### Installation

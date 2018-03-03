@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"github.com/nais/naisd/api"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/user"
+	"syscall"
 	"time"
 )
 
@@ -67,8 +70,8 @@ var deployCmd = &cobra.Command{
 	Long:  `Deploys your application`,
 	Run: func(cmd *cobra.Command, args []string) {
 		deployRequest := api.NaisDeploymentRequest{
-			Username: os.Getenv("NAIS_USERNAME"),
-			Password: os.Getenv("NAIS_PASSWORD"),
+			FasitUsername: os.Getenv("FASIT_USERNAME"),
+			FasitPassword: os.Getenv("FASIT_PASSWORD"),
 		}
 
 		var cluster string
@@ -91,6 +94,26 @@ var deployCmd = &cobra.Command{
 			} else if len(value) > 0 {
 				*pointer = value
 			}
+		}
+
+		if deployRequest.FasitUsername == "" {
+			currentUser, err := user.Current()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Unable resolve a username, please specify FASIT_USERNAME")
+				os.Exit(1)
+			}
+			deployRequest.FasitUsername = currentUser.Username
+		}
+
+		if deployRequest.FasitPassword == "" {
+			fmt.Fprintf(os.Stderr, "Enter password for %s: ", deployRequest.FasitUsername)
+			passwordBytes, err := terminal.ReadPassword(int(syscall.Stdin))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error occurred while trying to read password from stdin\n")
+				os.Exit(1)
+			}
+			deployRequest.FasitPassword = string(passwordBytes)
+			fmt.Fprintln(os.Stderr)
 		}
 
 		if err := deployRequest.Validate(); err != nil {
@@ -149,7 +172,7 @@ func init() {
 	deployCmd.Flags().StringP("app", "a", "", "name of your app")
 	deployCmd.Flags().StringP("version", "v", "", "version you want to deploy")
 	deployCmd.Flags().StringP("cluster", "c", "", "the cluster you want to deploy to")
-	deployCmd.Flags().StringP("fasit-environment", "e", "t0", "environment you want to use")
+	deployCmd.Flags().StringP("fasit-environment", "e", "q0", "environment you want to use")
 	deployCmd.Flags().StringP("zone", "z", api.ZONE_FSS, "the zone the app will be in")
 	deployCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")
 	deployCmd.Flags().StringP("fasit-username", "u", "", "the username")

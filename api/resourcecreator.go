@@ -14,6 +14,8 @@ import (
 	"strings"
 )
 
+const RootMountPoint = "/var/run/secrets/naisd.io/"
+
 type DeploymentResult struct {
 	Autoscaler *k8sautoscaling.HorizontalPodAutoscaler
 	Ingress    *k8sextensions.Ingress
@@ -268,7 +270,7 @@ func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resou
 		if res.certificates != nil {
 			return k8score.VolumeMount{
 				Name:      validLabelName(deploymentRequest.Application),
-				MountPath: "/var/run/secrets/naisd.io/",
+				MountPath: RootMountPoint,
 			}
 		}
 	}
@@ -338,7 +340,7 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 			for k := range res.certificates {
 				envVar := k8score.EnvVar{
 					Name:  res.ToEnvironmentVariable(k),
-					Value: "/var/run/secrets/naisd.io/" + res.ToResourceVariable(k),
+					Value: res.MountPoint(k),
 				}
 
 				if err := checkForDuplicates(envVars, envVar, k, res); err != nil {

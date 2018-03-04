@@ -14,6 +14,7 @@ import (
 )
 
 var expected_vars = map[string]string{
+	"NAV_TRUSTSTORE_PATH":          "/var/run/secrets/naisd.io/nav_truststore_path",
 	"NAV_TRUSTSTORE_KEYSTOREALIAS": "app-key",
 	"APP_DB_URL":                   "jdbc:oracle:thin:@//testdatabase.local:1521/app_db",
 	"APP_DB_USERNAME":              "generic_database_username",

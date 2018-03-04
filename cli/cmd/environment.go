@@ -142,6 +142,10 @@ Or just save it to a file
 				environmentVariable := resource.ToEnvironmentVariable(key)
 				formattedVars = append(formattedVars, fmt.Sprintf(stringFormat, environmentVariable, val))
 			}
+			for key := range resource.Certificates() {
+				environmentVariable := resource.ToEnvironmentVariable(key)
+				formattedVars = append(formattedVars, fmt.Sprintf(stringFormat, environmentVariable, resource.MountPoint(key)))
+			}
 		}
 
 		joinChar := "\n"

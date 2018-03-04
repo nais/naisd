@@ -119,8 +119,16 @@ func (nr NaisResource) Secret() map[string]string {
 	return nr.secret
 }
 
+func (nr NaisResource) Certificates() map[string][]byte {
+	return nr.certificates
+}
+
 func (nr NaisResource) ToEnvironmentVariable(property string) string {
 	return strings.ToUpper(nr.ToResourceVariable(property))
+}
+
+func (nr NaisResource) MountPoint(property string) string {
+	return RootMountPoint + nr.ToResourceVariable(property)
 }
 
 func (nr NaisResource) ToResourceVariable(property string) string {

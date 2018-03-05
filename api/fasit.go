@@ -179,7 +179,7 @@ func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploym
 
 	glog.Infof("ApplicationInstancePayload: %s", payload)
 	req, err := http.NewRequest("POST", fasitPath, bytes.NewBuffer(payload))
-	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
+	req.SetBasicAuth(deploymentRequest.FasitUsername, deploymentRequest.FasitPassword)
 	req.Header.Set("Content-Type", "application/json")
 	if deploymentRequest.OnBehalfOf != "" {
 		glog.Infof("I am setting onbehalfofheader to: %s", deploymentRequest.OnBehalfOf)
@@ -412,7 +412,7 @@ func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironme
 		return 0, fmt.Errorf("unable to create request: %s", err)
 	}
 
-	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
+	req.SetBasicAuth(deploymentRequest.FasitUsername, deploymentRequest.FasitPassword)
 	req.Header.Set("Content-Type", "application/json")
 	if deploymentRequest.OnBehalfOf != "" {
 		req.Header.Set("x-onbehalfof", deploymentRequest.OnBehalfOf)
@@ -459,7 +459,7 @@ func (fasit FasitClient) updateResource(existingResource NaisResource, resource 
 		return 0, fmt.Errorf("unable to create request: %s", err)
 	}
 	glog.Infof("Putting to: %s/api/v2/resources/%d", fasit.FasitUrl, existingResource.id)
-	req.SetBasicAuth(deploymentRequest.Username, deploymentRequest.Password)
+	req.SetBasicAuth(deploymentRequest.FasitUsername, deploymentRequest.FasitPassword)
 	req.Header.Set("Content-Type", "application/json")
 	if deploymentRequest.OnBehalfOf != "" {
 		req.Header.Set("x-onbehalfof", deploymentRequest.OnBehalfOf)

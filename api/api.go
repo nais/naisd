@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"github.com/golang/glog"
 	ver "github.com/nais/naisd/api/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
 	"goji.io/pat"
+	"io"
+	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
+	"net/http"
 	"strings"
 )
 
@@ -273,7 +273,7 @@ func createResponse(deploymentResult DeploymentResult, warnings []string) []byte
 
 	if len(warnings) > 0 {
 		response += "\nWarnings:\n"
-		for _,warning := range warnings {
+		for _, warning := range warnings {
 			response += fmt.Sprintf("- %s\n", warning)
 		}
 	}
@@ -285,10 +285,10 @@ func (r NaisDeploymentRequest) Validate() []error {
 	required := map[string]*string{
 		"Application": &r.Application,
 		"Version":     &r.Version,
-		"Environment": &r.Environment,
+		"Environment": &r.FasitEnvironment,
 		"Zone":        &r.Zone,
-		"Username":    &r.Username,
-		"Password":    &r.Password,
+		"Username":    &r.FasitUsername,
+		"Password":    &r.FasitPassword,
 		"Namespace":   &r.Namespace,
 	}
 

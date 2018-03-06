@@ -8,8 +8,9 @@ before_script:
 - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
 - git clone https://github.com/nais/charts
 script:
-- make install test linux cli-dist
+- make install test
 - /bin/bash bump.sh $GH_TOKEN
+- make linux cli-dist
 - git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags https://$GH_TOKEN@github.com/nais/naisd
 - make docker-build push-dockerhub
 # unstable endpoint, disabling for now

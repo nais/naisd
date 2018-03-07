@@ -366,7 +366,7 @@ func createDefaultEnvironmentVariables(request *NaisDeploymentRequest) []k8score
 		},
 		{
 			Name:  "FASIT_ENVIRONMENT_NAME",
-			Value: request.Environment,
+			Value: request.FasitEnvironment,
 		}}
 }
 
@@ -445,7 +445,7 @@ func createIngressHostname(application, namespace, subdomain string) string {
 }
 
 func createSBSPublicHostname(request NaisDeploymentRequest) string {
-	environment := request.Environment
+	environment := request.FasitEnvironment
 	if environment != ENVIRONMENT_P {
 		return fmt.Sprintf("tjenester-%s.nav.no", environment)
 	} else {

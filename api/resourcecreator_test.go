@@ -262,7 +262,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Istio.Enabled = true
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, Environment: environment}, manifest, naisResources, true, clientset)
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, FasitEnvironment: environment}, manifest, naisResources, true, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, deployment.Name)
@@ -589,7 +589,7 @@ func TestIngress(t *testing.T) {
 		clientset := fake.NewSimpleClientset(ingress) //Avoid interfering with other tests in suite.
 		var naisResources []NaisResource
 
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: "testapp", Zone: ZONE_SBS, Environment: "testenv"}, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: "testapp", Zone: ZONE_SBS, FasitEnvironment: "testenv"}, subDomain, naisResources, clientset)
 		rules := ingress.Spec.Rules
 
 		assert.NoError(t, err)
@@ -786,12 +786,12 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 
 func TestCreateK8sResources(t *testing.T) {
 	deploymentRequest := NaisDeploymentRequest{
-		Application: appName,
-		Version:     version,
-		Environment: namespace,
-		ManifestUrl: "http://repo.com/app",
-		Zone:        "zone",
-		Namespace:   namespace,
+		Application:      appName,
+		Version:          version,
+		FasitEnvironment: namespace,
+		ManifestUrl:      "http://repo.com/app",
+		Zone:             "zone",
+		Namespace:        namespace,
 	}
 
 	manifest := NaisManifest{
@@ -942,9 +942,9 @@ func TestCheckForDuplicates(t *testing.T) {
 func TestCreateSBSPublicHostname(t *testing.T) {
 
 	t.Run("p", func(t *testing.T) {
-		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "p"}))
-		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "t6"}))
-		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{Environment: "q6"}))
+		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "p"}))
+		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "t6"}))
+		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "q6"}))
 	})
 }
 

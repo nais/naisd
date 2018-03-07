@@ -106,12 +106,12 @@ func TestNoManifestGivesError(t *testing.T) {
 
 	manifestUrl := "http://repo.com/app"
 	depReq := NaisDeploymentRequest{
-		Application: "appname",
-		Version:     "",
-		Environment: "",
-		ManifestUrl: manifestUrl,
-		Zone:        "zone",
-		Namespace:   "namespace",
+		Application:      "appname",
+		Version:          "",
+		FasitEnvironment: "",
+		ManifestUrl:      manifestUrl,
+		Zone:             "zone",
+		Namespace:        "namespace",
 	}
 
 	defer gock.Off()
@@ -340,12 +340,12 @@ func TestMissingResources(t *testing.T) {
 
 func CreateDefaultDeploymentRequest() string {
 	jsn, _ := json.Marshal(NaisDeploymentRequest{
-		Application: "appname",
-		Version:     "123",
-		Environment: "namespace",
-		ManifestUrl: "http://repo.com/app",
-		Zone:        "zone",
-		Namespace:   "namespace",
+		Application:      "appname",
+		Version:          "123",
+		FasitEnvironment: "namespace",
+		ManifestUrl:      "http://repo.com/app",
+		Zone:             "zone",
+		Namespace:        "namespace",
 	})
 
 	return string(jsn)
@@ -354,13 +354,13 @@ func CreateDefaultDeploymentRequest() string {
 func TestValidateDeploymentRequest(t *testing.T) {
 	t.Run("Empty fields should be marked invalid", func(t *testing.T) {
 		invalid := NaisDeploymentRequest{
-			Application: "",
-			Version:     "",
-			Environment: "",
-			Zone:        "",
-			Namespace:   "",
-			Username:    "",
-			Password:    "",
+			Application:      "",
+			Version:          "",
+			FasitEnvironment: "",
+			Zone:             "",
+			Namespace:        "",
+			Username:         "",
+			Password:         "",
 		}
 
 		err := invalid.Validate()

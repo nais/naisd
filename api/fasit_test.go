@@ -135,7 +135,7 @@ func TestCreatingApplicationInstance(t *testing.T) {
 
 	fasit := FasitClient{"https://fasit.local", "", ""}
 	exposedResourceIds, usedResourceIds := []int{1, 2, 3}, []int{4, 5, 6}
-	deploymentRequest := NaisDeploymentRequest{Application: "app", Environment: "env", Version: "123"}
+	deploymentRequest := NaisDeploymentRequest{Application: "app", FasitEnvironment: "env", Version: "123"}
 
 	t.Run("A valid payload creates ApplicationInstance", func(t *testing.T) {
 		err := fasit.createApplicationInstance(deploymentRequest, "", "", exposedResourceIds, usedResourceIds)
@@ -438,9 +438,9 @@ func TestUpdateFasit(t *testing.T) {
 	exposedResources := []ExposedResource{exposedResource, exposedResource}
 
 	deploymentRequest := NaisDeploymentRequest{
-		Application: application,
-		Environment: environment,
-		Version:     version,
+		Application:      application,
+		FasitEnvironment: environment,
+		Version:          version,
 	}
 
 	fakeFasitClient := FakeFasitClient{}
@@ -488,9 +488,9 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	wsdlPath := fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=%s&e=zip&g=%s&r=m2internal&v=%s", wsdlArtifactId, wsdlGroupId, version)
 
 	deploymentRequest := NaisDeploymentRequest{
-		Application: application,
-		Environment: environment,
-		Version:     version,
+		Application:      application,
+		FasitEnvironment: environment,
+		Version:          version,
 	}
 
 	restResource := ExposedResource{

@@ -60,6 +60,7 @@ func GetDefaultManifest(application string) NaisManifest {
 			},
 		},
 		LeaderElection: false,
+		Redis: false,
 	}
 	defaultManifest.Image = "docker.adeo.no:5000/" + application
 

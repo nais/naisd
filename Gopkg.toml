@@ -36,15 +36,19 @@
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.9.0-beta.2"
-
-[[constraint]]
-  name = "k8s.io/apimachinery"
   version = "kubernetes-1.9.0"
 
-[[constraint]]
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.9.3"
+
+[[override]]
   name = "k8s.io/client-go"
   version = "6.0.0"
+
+[[constraint]]
+  name = "github.com/spotahome/redis-operator"
+  version = "0.2.0"
 
 [prune]
   go-tests = true

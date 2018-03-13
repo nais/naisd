@@ -663,6 +663,17 @@ func createRedisFailover(deploymentRequest NaisDeploymentRequest) (*redisapi.Red
 		return nil, fmt.Errorf("can't create new Redis client for InClusterConfig: %s", err)
 	}
 
+	rfs, err := client.RedisFailovers(deploymentRequest.Namespace).List(k8smeta.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed getting list of redis failovers: %s, err")
+	}
+
+	for _, v := range rfs.Items {
+		if v.Name == deploymentRequest.Application {
+			return nil, nil // redis failover is running, nothing to do
+		}
+	}
+
 	return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Create(failover)
 }
 

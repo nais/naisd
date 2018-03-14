@@ -5,11 +5,14 @@ import (
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
 	k8sextensions "k8s.io/api/extensions/v1beta1"
+	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
+	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"strconv"
 	"strings"
 )
@@ -22,6 +25,7 @@ type DeploymentResult struct {
 	Deployment *k8sextensions.Deployment
 	Secret     *k8score.Secret
 	Service    *k8score.Service
+	Redis      *redisapi.RedisFailover
 }
 
 // Creates a Kubernetes Service object
@@ -514,6 +518,14 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifes
 	}
 	deploymentResult.Service = service
 
+	if manifest.Redis {
+		redis, err := createRedisFailover(deploymentRequest)
+		if err != nil {
+			return deploymentResult, fmt.Errorf("failed while creating Redis failover: %s", err)
+		}
+		deploymentResult.Redis = redis
+	}
+
 	deployment, err := createOrUpdateDeployment(deploymentRequest, manifest, resources, istioEnabled, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating or updating deployment: %s", err)
@@ -592,6 +604,7 @@ func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomai
 
 	return ingressRules
 }
+
 func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes.Interface) (*k8score.Service, error) {
 	existingService, err := getExistingService(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
@@ -605,6 +618,63 @@ func createService(deploymentRequest NaisDeploymentRequest, k8sClient kubernetes
 
 	serviceDef := createServiceDef(deploymentRequest.Application, deploymentRequest.Namespace)
 	return createServiceResource(serviceDef, deploymentRequest.Namespace, k8sClient)
+}
+
+func createRedisDef(deploymentRequest NaisDeploymentRequest) *redisapi.RedisFailover {
+	replicas := int32(3)
+	resources := redisapi.RedisFailoverResources{
+		Limits:   redisapi.CPUAndMem{Memory: "100Mi"},
+		Requests: redisapi.CPUAndMem{CPU: "100m"},
+	}
+	if deploymentRequest.FasitEnvironment != ENVIRONMENT_P {
+		replicas = int32(1)
+		resources = redisapi.RedisFailoverResources{
+			Limits:   redisapi.CPUAndMem{Memory: "50Mi"},
+			Requests: redisapi.CPUAndMem{CPU: "50m"},
+		}
+	}
+
+	spec := redisapi.RedisFailoverSpec{
+		HardAntiAffinity: false,
+		Sentinel: redisapi.SentinelSettings{
+			Replicas:  replicas,
+			Resources: resources,
+		},
+		Redis: redisapi.RedisSettings{
+			Replicas:  replicas,
+			Resources: resources,
+			Exporter:  true,
+		},
+	}
+	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
+	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
+}
+
+func createRedisFailover(deploymentRequest NaisDeploymentRequest) (*redisapi.RedisFailover, error) {
+	failover := createRedisDef(deploymentRequest)
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, fmt.Errorf("can't create InClusterConfig: %s", err)
+	}
+
+	client, err := redisclient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("can't create new Redis client for InClusterConfig: %s", err)
+	}
+
+	rfs, err := client.RedisFailovers(deploymentRequest.Namespace).List(k8smeta.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed getting list of redis failovers: %s, err")
+	}
+
+	for _, v := range rfs.Items {
+		if v.Name == deploymentRequest.Application {
+			return nil, nil // redis failover is running, nothing to do
+		}
+	}
+
+	return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Create(failover)
 }
 
 func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {

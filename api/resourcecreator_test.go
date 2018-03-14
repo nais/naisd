@@ -63,6 +63,7 @@ func newDefaultManifest() NaisManifest {
 			Enabled: true,
 		},
 		LeaderElection: false,
+		Redis: false,
 	}
 
 	return manifest
@@ -323,6 +324,8 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[10].Name)
 		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[11].Name)
 		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[12].Name)
+		assert.False(t, manifest.LeaderElection, "LeaderElection should default to false")
+		assert.False(t, manifest.Redis, "Redis should default to false")
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {

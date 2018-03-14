@@ -646,7 +646,7 @@ func createRedisDef(deploymentRequest NaisDeploymentRequest) *redisapi.RedisFail
 			Exporter:  true,
 		},
 	}
-	meta := k8smeta.ObjectMeta{Name: deploymentRequest.Application, Namespace: deploymentRequest.Namespace}
+	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
 	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
 }
 

@@ -51,3 +51,11 @@ fasitResources: # resources fetched from Fasit
   - alias: myservice
     resourceType: restservice
     path: /api
+alerts:
+- name: Nais-testapp deployed
+  expression: kube_deployment_status_replicas_unavailable{deployment="nais-testapp"} > 0
+  for: 5m
+  labels:
+    severity: Warning
+  annotations:
+    action: Investigate why nais-testapp can't spawn pods. kubectl describe deployment nais-testapp, kubectl describe pod nais-testapp-*.

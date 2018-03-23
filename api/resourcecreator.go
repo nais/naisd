@@ -26,6 +26,7 @@ type DeploymentResult struct {
 	Secret     *k8score.Secret
 	Service    *k8score.Service
 	Redis      *redisapi.RedisFailover
+	ConfigMap  *k8score.ConfigMap
 }
 
 // Creates a Kubernetes Service object
@@ -553,7 +554,38 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifes
 
 	deploymentResult.Autoscaler = autoscaler
 
+	configMap, err := createOrUpdateAlertRules(deploymentRequest, manifest, k8sClient)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("failed while creating or updating app-alerts configmap")
+	}
+	deploymentResult.ConfigMap = configMap
+
 	return deploymentResult, err
+}
+
+func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8score.ConfigMap, error) {
+	if len(manifest.Alerts) == 0 {
+		return nil, nil
+	}
+
+	namespace := "nais"
+	name := "app-alerts"
+	configMap, err := getExistingConfigMap(name, namespace, k8sClient)
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to get existing configmap: %s", err)
+	}
+
+	if configMap == nil {
+		configMap = createConfigMapDef(deploymentRequest)
+	}
+
+	configMapWithUpdatedAlertRules, err := addRulesToConfigMap(configMap, deploymentRequest, manifest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add alert rules to configmap %s", err)
+	}
+
+	return createOrUpdateConfigMapResource(configMapWithUpdatedAlertRules, namespace, k8sClient)
 }
 
 func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8sautoscaling.HorizontalPodAutoscaler, error) {
@@ -665,7 +697,7 @@ func createRedisFailover(deploymentRequest NaisDeploymentRequest) (*redisapi.Red
 
 	rfs, err := client.RedisFailovers(deploymentRequest.Namespace).List(k8smeta.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed getting list of redis failovers: %s, err")
+		return nil, fmt.Errorf("failed getting list of redis failovers: %s", err)
 	}
 
 	for _, v := range rfs.Items {
@@ -675,6 +707,11 @@ func createRedisFailover(deploymentRequest NaisDeploymentRequest) (*redisapi.Red
 	}
 
 	return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Create(failover)
+}
+
+func createConfigMapDef(deploymentRequest NaisDeploymentRequest) *k8score.ConfigMap {
+	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
+	return &k8score.ConfigMap{ObjectMeta: meta}
 }
 
 func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
@@ -776,6 +813,20 @@ func getExistingAutoscaler(application string, namespace string, k8sClient kuber
 	}
 }
 
+func getExistingConfigMap(configMapName string, namespace string, k8sClient kubernetes.Interface) (*k8score.ConfigMap, error) {
+	configMapClient := k8sClient.CoreV1().ConfigMaps(namespace)
+	configMap, err := configMapClient.Get(configMapName, k8smeta.GetOptions{})
+
+	switch {
+	case err == nil:
+		return configMap, err
+	case errors.IsNotFound(err):
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unexpected error: %s", err)
+	}
+}
+
 func createOrUpdateAutoscalerResource(autoscalerSpec *k8sautoscaling.HorizontalPodAutoscaler, namespace string, k8sClient kubernetes.Interface) (*k8sautoscaling.HorizontalPodAutoscaler, error) {
 	if autoscalerSpec.ObjectMeta.ResourceVersion != "" {
 		return k8sClient.AutoscalingV1().HorizontalPodAutoscalers(namespace).Update(autoscalerSpec)
@@ -809,6 +860,14 @@ func createOrUpdateSecretResource(secretSpec *k8score.Secret, namespace string, 
 		return k8sClient.CoreV1().Secrets(namespace).Update(secretSpec)
 	} else {
 		return k8sClient.CoreV1().Secrets(namespace).Create(secretSpec)
+	}
+}
+
+func createOrUpdateConfigMapResource(configMapSpec *k8score.ConfigMap, namespace string, k8sClient kubernetes.Interface) (*k8score.ConfigMap, error) {
+	if configMapSpec.ObjectMeta.ResourceVersion != "" {
+		return k8sClient.CoreV1().ConfigMaps(namespace).Update(configMapSpec)
+	} else {
+		return k8sClient.CoreV1().ConfigMaps(namespace).Create(configMapSpec)
 	}
 }
 

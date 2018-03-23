@@ -50,13 +50,14 @@ type NaisManifest struct {
 	Healthcheck     Healthcheck
 	PreStopHookPath string         `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
-	Istio      		IstioConfig
+	Istio           IstioConfig
 	Replicas        Replicas
 	Ingress         Ingress
 	Resources       ResourceRequirements
 	FasitResources  FasitResources `yaml:"fasitResources"`
 	LeaderElection  bool           `yaml:"leaderElection"`
 	Redis           bool           `yaml:"redis"`
+	Alerts          []PrometheusAlertRule
 }
 
 type Ingress struct {
@@ -199,6 +200,7 @@ func ValidateManifest(manifest NaisManifest) ValidationErrors {
 		validateMinIsSmallerThanMax,
 		validateCpuThreshold,
 		validateResources,
+		validateAlertRules,
 	}
 
 	var validationErrors ValidationErrors

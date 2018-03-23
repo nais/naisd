@@ -48,6 +48,11 @@ func TestManifestUnmarshal(t *testing.T) {
 	assert.Equal(t, 69, manifest.Healthcheck.Liveness.Timeout)
 	assert.Equal(t, "/stop", manifest.PreStopHookPath)
 	assert.Equal(t, true, manifest.Ingress.Disabled)
+	assert.Equal(t, "Nais-testapp deployed", manifest.Alerts[0].Alert)
+	assert.Equal(t, "kube_deployment_status_replicas_unavailable{deployment=\"nais-testapp\"} > 0", manifest.Alerts[0].Expr)
+	assert.Equal(t, "5m", manifest.Alerts[0].For)
+	assert.Equal(t, "Investigate why nais-testapp can't spawn pods. kubectl describe deployment nais-testapp, kubectl describe pod nais-testapp-*.", manifest.Alerts[0].Annotations["action"])
+	assert.Equal(t, "Critical", manifest.Alerts[1].Labels["severity"])
 }
 
 

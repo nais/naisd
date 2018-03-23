@@ -55,3 +55,18 @@ leaderElection: true
 redis: true
 ingress:
   disabled: true
+alerts:
+- alert: Nais-testapp deployed
+  expr: kube_deployment_status_replicas_unavailable{deployment="nais-testapp"} > 0
+  for: 5m
+  labels:
+    severity: Warning
+  annotations:
+    action: Investigate why nais-testapp can't spawn pods. kubectl describe deployment nais-testapp, kubectl describe pod nais-testapp-*.
+- alert: Nais-testapp other alert
+  expr: some_other_expression{deployment="nais-testapp"} < 10
+  for: 15m
+  labels:
+    severity: Critical
+  annotations:
+    action: Do something useful

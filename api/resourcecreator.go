@@ -556,7 +556,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifes
 
 	configMap, err := createOrUpdateAlertRules(deploymentRequest, manifest, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("failed while creating or updating app-alerts configmap")
+		return deploymentResult, fmt.Errorf("failed while creating or updating app-alerts configmap %s", err)
 	}
 	deploymentResult.ConfigMap = configMap
 

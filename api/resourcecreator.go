@@ -568,16 +568,16 @@ func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest 
 		return nil, nil
 	}
 
-	namespace := "nais"
-	name := "app-alerts"
-	configMap, err := getExistingConfigMap(name, namespace, k8sClient)
+	alertsConfigMapNamespace := "nais"
+	alertsConfigMapName := "app-alerts"
+	configMap, err := getExistingConfigMap(alertsConfigMapName, alertsConfigMapNamespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing configmap: %s", err)
 	}
 
 	if configMap == nil {
-		configMap = createConfigMapDef(deploymentRequest)
+		configMap = createConfigMapDef(alertsConfigMapName, alertsConfigMapNamespace)
 	}
 
 	configMapWithUpdatedAlertRules, err := addRulesToConfigMap(configMap, deploymentRequest, manifest)
@@ -585,7 +585,7 @@ func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest 
 		return nil, fmt.Errorf("failed to add alert rules to configmap: %s", err)
 	}
 
-	return createOrUpdateConfigMapResource(configMapWithUpdatedAlertRules, namespace, k8sClient)
+	return createOrUpdateConfigMapResource(configMapWithUpdatedAlertRules, alertsConfigMapNamespace, k8sClient)
 }
 
 func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8sautoscaling.HorizontalPodAutoscaler, error) {
@@ -709,8 +709,8 @@ func createRedisFailover(deploymentRequest NaisDeploymentRequest) (*redisapi.Red
 	return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Create(failover)
 }
 
-func createConfigMapDef(deploymentRequest NaisDeploymentRequest) *k8score.ConfigMap {
-	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
+func createConfigMapDef(name, namespace string) *k8score.ConfigMap {
+	meta := createObjectMeta(name, namespace)
 	return &k8score.ConfigMap{ObjectMeta: meta}
 }
 

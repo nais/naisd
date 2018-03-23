@@ -6,6 +6,10 @@ import (
 	"github.com/golang/glog"
 )
 
+type PrometheusAlertGroups struct {
+	Groups []PrometheusAlertGroup
+}
+
 type PrometheusAlertGroup struct {
 	Name  string
 	Rules []PrometheusAlertRule
@@ -22,7 +26,9 @@ type PrometheusAlertRule struct {
 func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDeploymentRequest, manifest NaisManifest) (*k8score.ConfigMap, error) {
 	ruleGroupName := deploymentRequest.Namespace + deploymentRequest.Application
 	alertGroup := PrometheusAlertGroup{Name: ruleGroupName, Rules: manifest.Alerts}
-	alertGroupYamlBytes, err := yaml.Marshal(alertGroup)
+	alertGroups := PrometheusAlertGroups{Groups: []PrometheusAlertGroup{alertGroup}}
+
+	alertGroupYamlBytes, err := yaml.Marshal(alertGroups)
 	if err != nil {
 		glog.Errorf("Failed to marshal %v to yaml\n", alertGroup)
 		return nil, err

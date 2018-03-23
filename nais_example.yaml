@@ -52,8 +52,8 @@ fasitResources: # resources fetched from Fasit
     resourceType: restservice
     path: /api
 alerts:
-- name: Nais-testapp deployed
-  expression: kube_deployment_status_replicas_unavailable{deployment="nais-testapp"} > 0
+- alert: Nais-testapp deployed
+  expr: kube_deployment_status_replicas_unavailable{deployment="nais-testapp"} > 0
   for: 5m
   labels:
     severity: Warning

@@ -20,13 +20,13 @@ import (
 const RootMountPoint = "/var/run/secrets/naisd.io/"
 
 type DeploymentResult struct {
-	Autoscaler *k8sautoscaling.HorizontalPodAutoscaler
-	Ingress    *k8sextensions.Ingress
-	Deployment *k8sextensions.Deployment
-	Secret     *k8score.Secret
-	Service    *k8score.Service
-	Redis      *redisapi.RedisFailover
-	ConfigMap  *k8score.ConfigMap
+	Autoscaler      *k8sautoscaling.HorizontalPodAutoscaler
+	Ingress         *k8sextensions.Ingress
+	Deployment      *k8sextensions.Deployment
+	Secret          *k8score.Secret
+	Service         *k8score.Service
+	Redis           *redisapi.RedisFailover
+	AlertsConfigMap *k8score.ConfigMap
 }
 
 // Creates a Kubernetes Service object
@@ -554,11 +554,11 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifes
 
 	deploymentResult.Autoscaler = autoscaler
 
-	configMap, err := createOrUpdateAlertRules(deploymentRequest, manifest, k8sClient)
+	alertsConfigMap, err := createOrUpdateAlertRules(deploymentRequest, manifest, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating or updating app-alerts configmap %s", err)
 	}
-	deploymentResult.ConfigMap = configMap
+	deploymentResult.AlertsConfigMap = alertsConfigMap
 
 	return deploymentResult, err
 }
@@ -582,7 +582,7 @@ func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest 
 
 	configMapWithUpdatedAlertRules, err := addRulesToConfigMap(configMap, deploymentRequest, manifest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add alert rules to configmap %s", err)
+		return nil, fmt.Errorf("failed to add alert rules to configmap: %s", err)
 	}
 
 	return createOrUpdateConfigMapResource(configMapWithUpdatedAlertRules, namespace, k8sClient)

@@ -270,6 +270,9 @@ func createResponse(deploymentResult DeploymentResult, warnings []string) []byte
 	if deploymentResult.Autoscaler != nil {
 		response += "- created autoscaler\n"
 	}
+	if deploymentResult.AlertsConfigMap != nil {
+		response += "- updated app-alerts configmap\n"
+	}
 
 	if len(warnings) > 0 {
 		response += "\nWarnings:\n"

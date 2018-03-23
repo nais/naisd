@@ -32,7 +32,7 @@ func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDep
 		configMap.Data = make(map[string]string)
 	}
 
-	configMap.Data[ruleGroupName + ".yaml"] = string(alertGroupYamlBytes)
+	configMap.Data[ruleGroupName + ".yml"] = string(alertGroupYamlBytes)
 
 	return configMap, nil
 }

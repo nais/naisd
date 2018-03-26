@@ -106,6 +106,7 @@ func TestAddRulesToConfigMap(t *testing.T ) {
 	assert.Equal(t, alertRule.Expr, resultingAlertRule.Expr)
 	assert.Equal(t, alertRule.For, resultingAlertRule.For)
 	assert.Equal(t, alertRule.Annotations["action"], resultingAlertRule.Annotations["action"])
+	assert.Equal(t, teamName, resultingAlertRule.Labels["team"])
 
 	assert.Equal(t, ruleGroupName, resultingAlertGroup.Name)
 	assert.Len(t, resultingAlertGroup.Rules, 1)

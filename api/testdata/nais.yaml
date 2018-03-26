@@ -1,4 +1,5 @@
 name: k8s-testapp
+team: teamName
 image: navikt/k8s-testapp
 replicas:
   min: 10

@@ -18,6 +18,7 @@ func TestManifestUnmarshal(t *testing.T) {
 
 	assert.NoError(t, err)
 
+	assert.Equal(t, "teamName", manifest.Team)
 	assert.Equal(t, 799, manifest.Port)
 	assert.Equal(t, "/api", manifest.FasitResources.Exposed[0].Path)
 	assert.Equal(t, "datasource", manifest.FasitResources.Used[0].ResourceType)
@@ -91,7 +92,7 @@ func TestManifestUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, 1, manifest.Healthcheck.Readiness.Timeout)
 	assert.Equal(t, false, manifest.Ingress.Disabled)
 	assert.Empty(t, manifest.PreStopHookPath)
-
+	assert.Empty(t, manifest.Team)
 }
 
 func TestManifestUsesPartialDefaultValues(t *testing.T) {

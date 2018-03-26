@@ -13,6 +13,8 @@ import (
 const (
 	appName         = "appname"
 	otherAppName    = "otherappname"
+	teamName        = "teamName"
+	otherTeamName   = "otherTeamName"
 	environment     = "testenv"
 	namespace       = "namespace"
 	image           = "docker.hub/app"
@@ -71,7 +73,7 @@ func newDefaultManifest() NaisManifest {
 }
 
 func TestService(t *testing.T) {
-	service := createServiceDef(appName, namespace)
+	service := createServiceDef(appName, namespace, teamName)
 	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)
 
@@ -88,16 +90,17 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("when no service exists, a new one is created", func(t *testing.T) {
-		service, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, clientset)
+		service, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, otherTeamName, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
+		assert.Equal(t, otherTeamName, service.ObjectMeta.Labels["team"])
 		assert.Equal(t, DefaultPortName, service.Spec.Ports[0].TargetPort.StrVal)
 		assert.Equal(t, "http", service.Spec.Ports[0].Name)
 		assert.Equal(t, map[string]string{"app": otherAppName}, service.Spec.Selector)
 	})
 	t.Run("when service exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, clientset)
+		nilValue, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})
@@ -522,7 +525,7 @@ func TestIngress(t *testing.T) {
 	namespace := "default"
 	subDomain := "example.no"
 	istioCertSecretName := "istio-ingress-certs"
-	ingress := createIngressDef(appName, namespace)
+	ingress := createIngressDef(appName, namespace, teamName)
 	ingress.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(ingress)
 
@@ -539,10 +542,11 @@ func TestIngress(t *testing.T) {
 	})
 
 	t.Run("when no ingress exists, a default ingress is created", func(t *testing.T) {
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, []NaisResource{}, clientset)
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, otherTeamName, subDomain, []NaisResource{}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, ingress.ObjectMeta.Name)
+		assert.Equal(t, otherTeamName, ingress.ObjectMeta.Labels["team"])
 		assert.Equal(t, 1, len(ingress.Spec.Rules))
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
 		assert.Equal(t, otherAppName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
@@ -552,7 +556,7 @@ func TestIngress(t *testing.T) {
 
 	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {
 		namespace := "nondefault"
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, []NaisResource{}, clientset)
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, teamName, subDomain, []NaisResource{}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName+"-"+namespace+"."+subDomain, ingress.Spec.Rules[0].Host)
 	})
@@ -573,7 +577,7 @@ func TestIngress(t *testing.T) {
 				},
 			},
 		}
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, teamName, subDomain, naisResources, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 3, len(ingress.Spec.Rules))
@@ -592,7 +596,7 @@ func TestIngress(t *testing.T) {
 		clientset := fake.NewSimpleClientset(ingress) //Avoid interfering with other tests in suite.
 		var naisResources []NaisResource
 
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: "testapp", Zone: ZONE_SBS, FasitEnvironment: "testenv"}, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: "testapp", Zone: ZONE_SBS, FasitEnvironment: "testenv"}, teamName, subDomain, naisResources, clientset)
 		rules := ingress.Spec.Rules
 
 		assert.NoError(t, err)
@@ -657,7 +661,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		},
 	}
 
-	secret := createSecretDef(naisResources, nil, appName, namespace)
+	secret := createSecretDef(naisResources, nil, appName, namespace, teamName)
 	secret.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(secret)
 
@@ -674,10 +678,11 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	})
 
 	t.Run("when no secret exists, a new one is created", func(t *testing.T) {
-		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, naisResources, clientset)
+		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, naisResources, clientset, otherTeamName)
 		assert.NoError(t, err)
 		assert.Equal(t, "", secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, otherAppName, secret.ObjectMeta.Name)
+		assert.Equal(t, otherTeamName, secret.ObjectMeta.Labels["team"])
 		assert.Equal(t, 4, len(secret.Data))
 		assert.Equal(t, []byte(secret1Value), secret.Data[naisResources[0].ToResourceVariable(secret1Key)])
 		assert.Equal(t, []byte(secret2Value), secret.Data[naisResources[1].ToResourceVariable(secret2Key)])
@@ -700,18 +705,19 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 				map[string][]byte{fileKey1: updatedFileValue},
 				nil,
 			},
-		}, clientset)
+		}, clientset, teamName)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
 		assert.Equal(t, appName, secret.ObjectMeta.Name)
+		assert.Equal(t, teamName, secret.ObjectMeta.Labels["team"])
 		assert.Equal(t, []byte(updatedSecretValue), secret.Data["r1_alias_password"])
 		assert.Equal(t, updatedFileValue, secret.Data["r1_alias_filekey1"])
 	})
 }
 
 func TestCreateOrUpdateAutoscaler(t *testing.T) {
-	autoscaler := createOrUpdateAutoscalerDef(1, 2, 3, nil, appName, namespace)
+	autoscaler := createOrUpdateAutoscalerDef(1, 2, 3, nil, appName, namespace, teamName)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(autoscaler)
 
@@ -728,7 +734,7 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 	})
 
 	t.Run("when no autoscaler exists, a new one is created", func(t *testing.T) {
-		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, NaisManifest{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}}, clientset)
+		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, NaisManifest{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}, Team: otherTeamName}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, "", autoscaler.ObjectMeta.ResourceVersion)
 		assert.Equal(t, int32(1), autoscaler.Spec.MaxReplicas)
@@ -736,6 +742,7 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 		assert.Equal(t, int32p(69), autoscaler.Spec.TargetCPUUtilizationPercentage)
 		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
 		assert.Equal(t, otherAppName, autoscaler.ObjectMeta.Name)
+		assert.Equal(t, otherTeamName, autoscaler.ObjectMeta.Labels["team"])
 		assert.Equal(t, otherAppName, autoscaler.Spec.ScaleTargetRef.Name)
 		assert.Equal(t, "Deployment", autoscaler.Spec.ScaleTargetRef.Kind)
 	})
@@ -749,6 +756,7 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 		assert.Equal(t, resourceVersion, autoscaler.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
 		assert.Equal(t, appName, autoscaler.ObjectMeta.Name)
+		assert.Equal(t, teamName, autoscaler.ObjectMeta.Labels["team"])
 		assert.Equal(t, int32p(int32(cpuThreshold)), autoscaler.Spec.TargetCPUUtilizationPercentage)
 		assert.Equal(t, int32p(int32(minReplicas)), autoscaler.Spec.MinReplicas)
 		assert.Equal(t, int32(maxReplicas), autoscaler.Spec.MaxReplicas)
@@ -827,9 +835,9 @@ func TestCreateK8sResources(t *testing.T) {
 		},
 	}
 
-	service := createServiceDef(appName, namespace)
+	service := createServiceDef(appName, namespace, teamName)
 
-	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, namespace)
+	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, namespace, teamName)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(autoscaler, service)
 
@@ -948,6 +956,21 @@ func TestCreateSBSPublicHostname(t *testing.T) {
 		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "p"}))
 		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "t6"}))
 		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "q6"}))
+	})
+}
+
+func TestCreateObjectMeta(t *testing.T) {
+	t.Run("Test required metadata field values", func(t *testing.T) {
+		objectMeta := createObjectMeta(appName, namespace, teamName)
+		objectMetaWithoutTeamName := createObjectMeta(appName, namespace, "")
+
+		assert.Equal(t, teamName, objectMeta.Labels["team"], "Team label should be equal to team name.")
+		assert.Equal(t, appName, objectMeta.Labels["app"], "App label should be equal to app name.")
+		assert.Equal(t, appName, objectMeta.Name, "Resource name should equal app name.")
+		assert.Equal(t, namespace, objectMeta.Namespace, "Resource namespace should equal namespace.")
+
+		_, ok := objectMetaWithoutTeamName.Labels["team"]
+		assert.False(t, ok, "Team label should not be set when team name is empty.")
 	})
 }
 

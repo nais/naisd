@@ -15,7 +15,11 @@ import (
 	"strings"
 )
 
-const RootMountPoint = "/var/run/secrets/naisd.io/"
+const (
+	RootMountPoint 				= "/var/run/secrets/naisd.io/"
+	alertsConfigMapNamespace 	= "nais"
+	alertsConfigMapName 		= "app-alerts"
+)
 
 type DeploymentResult struct {
 	Autoscaler      *k8sautoscaling.HorizontalPodAutoscaler
@@ -567,8 +571,6 @@ func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest 
 		return nil, nil
 	}
 
-	alertsConfigMapNamespace := "nais"
-	alertsConfigMapName := "app-alerts"
 	configMap, err := getExistingConfigMap(alertsConfigMapName, alertsConfigMapNamespace, k8sClient)
 
 	if err != nil {

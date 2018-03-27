@@ -94,6 +94,7 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 	mux.Handle(pat.Get("/version"), appHandler(api.version))
 	mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
+	mux.Handle(pat.Delete("/application/:namespace/:deployName"), appHandler(api.deleteApplication))
 	return mux
 }
 
@@ -208,6 +209,21 @@ func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
 		return &appError{err, "unable to encode JSON", 500}
 	}
 
+	return nil
+}
+
+func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appError {
+	namespace := pat.Param(r, "namespace")
+	deployName := pat.Param(r, "deployName")
+
+	err := deleteK8sResouces(namespace, deployName, api.Clientset)
+
+	if err != nil {
+		return &appError{err, "could not delete application", http.StatusInternalServerError}
+	}
+
+	glog.Infof("Deleted application %s in %s\n", deployName, namespace)
+	w.WriteHeader(200)
 	return nil
 }
 

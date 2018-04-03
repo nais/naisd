@@ -490,7 +490,9 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string)
 func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
-	service, err := createService(deploymentRequest, manifest, k8sClient)
+	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
+
+	service, err := createService(objectMeta, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating service: %s", err)
 	}

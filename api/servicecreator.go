@@ -9,19 +9,18 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-func createService(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	existingService, err := getExistingService(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
+func createService(meta k8smeta.ObjectMeta, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+	existingService, err := getExistingService(meta.Name, meta.Namespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing service: %s", err)
 	}
 
 	if existingService != nil {
-		return nil, nil // we have done nothing
+		return nil, nil // we have done nothing (service already exists)
 	}
 
-	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
-	serviceDef := createServiceDef(objectMeta)
+	serviceDef := createServiceDef(meta)
 
 	return createServiceResource(serviceDef, k8sClient)
 }
@@ -51,7 +50,7 @@ func createServiceDef(meta k8smeta.ObjectMeta) *k8score.Service {
 	}
 }
 
-func getExistingService(application string, namespace string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+func getExistingService(application, namespace string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
 	serviceClient := k8sClient.CoreV1().Services(namespace)
 	service, err := serviceClient.Get(application, k8smeta.GetOptions{})
 

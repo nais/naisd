@@ -8,6 +8,7 @@ import (
 
 func TestCreateService(t *testing.T) {
 	objectMeta := createObjectMeta(appName, namespace, teamName)
+	otherObjectMeta := createObjectMeta(otherAppName, namespace, otherTeamName)
 	service := createServiceDef(objectMeta)
 	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)
@@ -25,7 +26,7 @@ func TestCreateService(t *testing.T) {
 	})
 
 	t.Run("when no service exists, a new one is created", func(t *testing.T) {
-		service, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, NaisManifest{Team: otherTeamName}, clientset)
+		service, err := createService(otherObjectMeta, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
@@ -36,7 +37,7 @@ func TestCreateService(t *testing.T) {
 	})
 
 	t.Run("when service exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, NaisManifest{Team: teamName}, clientset)
+		nilValue, err := createService(objectMeta, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})

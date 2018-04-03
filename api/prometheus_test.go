@@ -78,7 +78,7 @@ func TestAddRulesToConfigMap(t *testing.T ) {
 	}
 
 	configMap := &v1.ConfigMap{
-		ObjectMeta: CreateObjectMeta(appName, namespace, teamName),
+		ObjectMeta: createObjectMeta(appName, namespace, teamName),
 		Data: map[string]string{
 			"asd-namespace-otherAppName.yml": "not touched",
 		},

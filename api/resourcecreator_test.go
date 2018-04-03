@@ -815,7 +815,7 @@ func TestCreateK8sResources(t *testing.T) {
 		},
 	}
 
-	objectMeta := CreateObjectMeta(appName, namespace, teamName)
+	objectMeta := createObjectMeta(appName, namespace, teamName)
 	service := createServiceDef(objectMeta)
 
 	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, namespace, teamName)

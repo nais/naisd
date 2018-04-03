@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreateService(t *testing.T) {
-	objectMeta := CreateObjectMeta(appName, namespace, teamName)
+	objectMeta := createObjectMeta(appName, namespace, teamName)
 	service := createServiceDef(objectMeta)
 	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)

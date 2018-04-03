@@ -50,7 +50,7 @@ func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, de
 				Kind:       "Deployment",
 				APIVersion: "apps/v1beta1",
 			},
-			ObjectMeta: CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team),
+			ObjectMeta: createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team),
 			Spec:       spec,
 		}
 		return deployment, nil
@@ -89,7 +89,7 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest Nais
 }
 
 func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, istioEnabled bool) k8smeta.ObjectMeta {
-	objectMeta := CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
+	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
 		"prometheus.io/port":   DefaultPortName,
@@ -377,7 +377,7 @@ func createSecretDef(naisResources []NaisResource, existingSecret *k8score.Secre
 				Kind:       "Secret",
 				APIVersion: "v1",
 			},
-			ObjectMeta: CreateObjectMeta(application, namespace, teamName),
+			ObjectMeta: createObjectMeta(application, namespace, teamName),
 			Data:       createSecretData(naisResources),
 			Type:       "Opaque",
 		}
@@ -413,7 +413,7 @@ func createIngressDef(application, namespace, teamName string) *k8sextensions.In
 			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
-		ObjectMeta: CreateObjectMeta(application, namespace, teamName),
+		ObjectMeta: createObjectMeta(application, namespace, teamName),
 		Spec:       k8sextensions.IngressSpec{},
 	}
 }
@@ -468,7 +468,7 @@ func createOrUpdateAutoscalerDef(min, max, cpuTargetPercentage int, existingAuto
 				Kind:       "HorizontalPodAutoscaler",
 				APIVersion: "autoscaling/v1",
 			},
-			ObjectMeta: CreateObjectMeta(application, namespace, teamName),
+			ObjectMeta: createObjectMeta(application, namespace, teamName),
 			Spec:       createAutoscalerSpec(min, max, cpuTargetPercentage, application),
 		}
 	}
@@ -615,7 +615,7 @@ func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomai
 }
 
 func createConfigMapDef(name, namespace, teamName string) *k8score.ConfigMap {
-	meta := CreateObjectMeta(name, namespace, teamName)
+	meta := createObjectMeta(name, namespace, teamName)
 	return &k8score.ConfigMap{ObjectMeta: meta}
 }
 

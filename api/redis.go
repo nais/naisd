@@ -55,7 +55,7 @@ func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest, team string
 			Exporter:  true,
 		},
 	}
-	meta := CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, team)
+	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, team)
 	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
 }
 

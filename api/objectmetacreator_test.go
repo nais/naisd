@@ -7,8 +7,8 @@ import (
 
 func TestCreateObjectMeta(t *testing.T) {
 	t.Run("Test required metadata field values", func(t *testing.T) {
-		objectMeta := CreateObjectMeta(appName, namespace, teamName)
-		objectMetaWithoutTeamName := CreateObjectMeta(appName, namespace, "")
+		objectMeta := createObjectMeta(appName, namespace, teamName)
+		objectMetaWithoutTeamName := createObjectMeta(appName, namespace, "")
 
 		assert.Equal(t, teamName, objectMeta.Labels["team"], "Team label should be equal to team name.")
 		assert.Equal(t, appName, objectMeta.Labels["app"], "App label should be equal to app name.")

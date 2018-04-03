@@ -20,7 +20,7 @@ func createService(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 		return nil, nil // we have done nothing
 	}
 
-	objectMeta := CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
+	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
 	serviceDef := createServiceDef(objectMeta)
 
 	return createServiceResource(serviceDef, k8sClient)

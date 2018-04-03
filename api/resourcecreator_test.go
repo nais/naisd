@@ -72,39 +72,6 @@ func newDefaultManifest() NaisManifest {
 
 }
 
-func TestService(t *testing.T) {
-	service := createServiceDef(appName, namespace, teamName)
-	service.Spec.ClusterIP = clusterIP
-	clientset := fake.NewSimpleClientset(service)
-
-	t.Run("Fetching nonexistant service yields nil and no error", func(t *testing.T) {
-		nonExistantService, err := getExistingService("nonexisting", namespace, clientset)
-		assert.NoError(t, err)
-		assert.Nil(t, nonExistantService)
-	})
-
-	t.Run("Fetching an existing service yields service and no error", func(t *testing.T) {
-		existingService, err := getExistingService(appName, namespace, clientset)
-		assert.NoError(t, err)
-		assert.Equal(t, service, existingService)
-	})
-
-	t.Run("when no service exists, a new one is created", func(t *testing.T) {
-		service, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, otherTeamName, clientset)
-
-		assert.NoError(t, err)
-		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
-		assert.Equal(t, otherTeamName, service.ObjectMeta.Labels["team"])
-		assert.Equal(t, DefaultPortName, service.Spec.Ports[0].TargetPort.StrVal)
-		assert.Equal(t, "http", service.Spec.Ports[0].Name)
-		assert.Equal(t, map[string]string{"app": otherAppName}, service.Spec.Selector)
-	})
-	t.Run("when service exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
-		assert.NoError(t, err)
-		assert.Nil(t, nilValue)
-	})
-}
 
 func TestDeployment(t *testing.T) {
 	newVersion := "14"
@@ -835,7 +802,8 @@ func TestCreateK8sResources(t *testing.T) {
 		},
 	}
 
-	service := createServiceDef(appName, namespace, teamName)
+	objectMeta := CreateObjectMeta(appName, namespace, teamName)
+	service := createServiceDef(objectMeta)
 
 	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, namespace, teamName)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
@@ -956,21 +924,6 @@ func TestCreateSBSPublicHostname(t *testing.T) {
 		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "p"}))
 		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "t6"}))
 		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "q6"}))
-	})
-}
-
-func TestCreateObjectMeta(t *testing.T) {
-	t.Run("Test required metadata field values", func(t *testing.T) {
-		objectMeta := createObjectMeta(appName, namespace, teamName)
-		objectMetaWithoutTeamName := createObjectMeta(appName, namespace, "")
-
-		assert.Equal(t, teamName, objectMeta.Labels["team"], "Team label should be equal to team name.")
-		assert.Equal(t, appName, objectMeta.Labels["app"], "App label should be equal to app name.")
-		assert.Equal(t, appName, objectMeta.Name, "Resource name should equal app name.")
-		assert.Equal(t, namespace, objectMeta.Namespace, "Resource namespace should equal namespace.")
-
-		_, ok := objectMetaWithoutTeamName.Labels["team"]
-		assert.False(t, ok, "Team label should not be set when team name is empty.")
 	})
 }
 

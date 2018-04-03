@@ -29,32 +29,6 @@ type DeploymentResult struct {
 	AlertsConfigMap *k8score.ConfigMap
 }
 
-// Creates a Kubernetes Service object
-func createServiceDef(application, namespace, teamName string) *k8score.Service {
-	return &k8score.Service{
-		TypeMeta: k8smeta.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
-		ObjectMeta: createObjectMeta(application, namespace, teamName),
-		Spec: k8score.ServiceSpec{
-			Type:     k8score.ServiceTypeClusterIP,
-			Selector: map[string]string{"app": application},
-			Ports: []k8score.ServicePort{
-				{
-					Name:     "http",
-					Protocol: k8score.ProtocolTCP,
-					Port:     80,
-					TargetPort: intstr.IntOrString{
-						Type:   intstr.String,
-						StrVal: DefaultPortName,
-					},
-				},
-			},
-		},
-	}
-}
-
 func validLabelName(str string) string {
 	tmpStr := strings.Replace(str, "_", "-", -1)
 	return strings.ToLower(tmpStr)
@@ -78,7 +52,7 @@ func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, de
 				Kind:       "Deployment",
 				APIVersion: "apps/v1beta1",
 			},
-			ObjectMeta: createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team),
+			ObjectMeta: CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team),
 			Spec:       spec,
 		}
 		return deployment, nil
@@ -117,7 +91,7 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest Nais
 }
 
 func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, istioEnabled bool) k8smeta.ObjectMeta {
-	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
+	objectMeta := CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
 		"prometheus.io/port":   DefaultPortName,
@@ -400,7 +374,7 @@ func createSecretDef(naisResources []NaisResource, existingSecret *k8score.Secre
 				Kind:       "Secret",
 				APIVersion: "v1",
 			},
-			ObjectMeta: createObjectMeta(application, namespace, teamName),
+			ObjectMeta: CreateObjectMeta(application, namespace, teamName),
 			Data:       createSecretData(naisResources),
 			Type:       "Opaque",
 		}
@@ -436,7 +410,7 @@ func createIngressDef(application, namespace, teamName string) *k8sextensions.In
 			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
-		ObjectMeta: createObjectMeta(application, namespace, teamName),
+		ObjectMeta: CreateObjectMeta(application, namespace, teamName),
 		Spec:       k8sextensions.IngressSpec{},
 	}
 }
@@ -491,7 +465,7 @@ func createOrUpdateAutoscalerDef(min, max, cpuTargetPercentage int, existingAuto
 				Kind:       "HorizontalPodAutoscaler",
 				APIVersion: "autoscaling/v1",
 			},
-			ObjectMeta: createObjectMeta(application, namespace, teamName),
+			ObjectMeta: CreateObjectMeta(application, namespace, teamName),
 			Spec:       createAutoscalerSpec(min, max, cpuTargetPercentage, application),
 		}
 	}
@@ -513,7 +487,7 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string)
 func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
-	service, err := createService(deploymentRequest, manifest.Team, k8sClient)
+	service, err := createService(deploymentRequest, manifest, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating service: %s", err)
 	}
@@ -637,21 +611,6 @@ func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomai
 	return ingressRules
 }
 
-func createService(deploymentRequest NaisDeploymentRequest, teamName string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	existingService, err := getExistingService(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to get existing service: %s", err)
-	}
-
-	if existingService != nil {
-		return nil, nil // we have done nothing
-	}
-
-	serviceDef := createServiceDef(deploymentRequest.Application, deploymentRequest.Namespace, teamName)
-	return createServiceResource(serviceDef, deploymentRequest.Namespace, k8sClient)
-}
-
 func createRedisDef(deploymentRequest NaisDeploymentRequest, teamName string) *redisapi.RedisFailover {
 	replicas := int32(3)
 	resources := redisapi.RedisFailoverResources{
@@ -678,7 +637,7 @@ func createRedisDef(deploymentRequest NaisDeploymentRequest, teamName string) *r
 			Exporter:  true,
 		},
 	}
-	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, teamName)
+	meta := CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, teamName)
 	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
 }
 
@@ -710,7 +669,7 @@ func createRedisFailover(deploymentRequest NaisDeploymentRequest, teamName strin
 }
 
 func createConfigMapDef(name, namespace, teamName string) *k8score.ConfigMap {
-	meta := createObjectMeta(name, namespace, teamName)
+	meta := CreateObjectMeta(name, namespace, teamName)
 	return &k8score.ConfigMap{ObjectMeta: meta}
 }
 
@@ -741,20 +700,6 @@ func createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, naisResources
 		return createOrUpdateSecretResource(secretDef, deploymentRequest.Namespace, k8sClient)
 	} else {
 		return nil, nil
-	}
-}
-
-func getExistingService(application string, namespace string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	serviceClient := k8sClient.CoreV1().Services(namespace)
-	service, err := serviceClient.Get(application, k8smeta.GetOptions{})
-
-	switch {
-	case err == nil:
-		return service, err
-	case errors.IsNotFound(err):
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("unexpected error: %s", err)
 	}
 }
 
@@ -851,9 +796,6 @@ func createOrUpdateDeploymentResource(deploymentSpec *k8sextensions.Deployment, 
 	}
 }
 
-func createServiceResource(serviceSpec *k8score.Service, namespace string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	return k8sClient.CoreV1().Services(namespace).Create(serviceSpec)
-}
 
 func createOrUpdateSecretResource(secretSpec *k8score.Secret, namespace string, k8sClient kubernetes.Interface) (*k8score.Secret, error) {
 	if secretSpec.ObjectMeta.ResourceVersion != "" {
@@ -873,18 +815,4 @@ func createOrUpdateConfigMapResource(configMapSpec *k8score.ConfigMap, namespace
 
 func int32p(i int32) *int32 {
 	return &i
-}
-
-func createObjectMeta(applicationName, namespace, teamName string) k8smeta.ObjectMeta {
-	labels := map[string]string{"app": applicationName,}
-
-	if teamName != "" {
-		labels["team"] = teamName
-	}
-
-	return k8smeta.ObjectMeta{
-		Name:      applicationName,
-		Namespace: namespace,
-		Labels: labels,
-	}
 }

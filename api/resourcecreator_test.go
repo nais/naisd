@@ -320,7 +320,20 @@ func TestDeployment(t *testing.T) {
 		containers := deployment.Spec.Template.Spec.Containers
 		assert.Len(t, containers, 2, "Simple check to see if leader-elector has been added")
 
-		container := getLeaderElectionContainer(containers)
+		container := getSidecarContainer(containers, "elector")
+		assert.NotNil(t, container)
+	})
+
+	t.Run("when Redis is true, extra container exists", func(t *testing.T) {
+		manifest := newDefaultManifest()
+		manifest.Redis = true
+		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		assert.NoError(t, err)
+
+		containers := deployment.Spec.Template.Spec.Containers
+		assert.Len(t, containers, 2, "Simple check to see if redis has been added")
+
+		container := getSidecarContainer(containers, "redis-exporter")
 		assert.NotNil(t, container)
 	})
 
@@ -938,9 +951,9 @@ func createSecretRef(appName string, resKey string, resName string) *k8score.Env
 	}
 }
 
-func getLeaderElectionContainer(containers []k8score.Container) *k8score.Container {
+func getSidecarContainer(containers []k8score.Container, sidecarName string) *k8score.Container {
 	for _, v := range containers {
-		if v.Name == "elector" {
+		if v.Name == sidecarName {
 			return &v
 		}
 	}

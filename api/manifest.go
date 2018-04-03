@@ -49,7 +49,7 @@ type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
-	PreStopHookPath string         `yaml:"preStopHookPath"`
+	PreStopHookPath string `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
 	Istio           IstioConfig
 	Replicas        Replicas
@@ -145,11 +145,17 @@ func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 
 	// not provided, using defaults
 	urls := createManifestUrl(deploymentRequest.Application, deploymentRequest.Version)
+	var lastError error
 	for _, url := range urls {
 		manifest, err := fetchManifest(url)
 		if err == nil {
 			return manifest, nil
 		}
+		lastError = err
+	}
+
+	if lastError != nil {
+		return NaisManifest{}, fmt.Errorf("unable to fetch manifest: %v\n", lastError.Error())
 	}
 
 	return NaisManifest{}, fmt.Errorf("No manifest found on the URLs %s, or the url %s\n", urls, manifestUrl)

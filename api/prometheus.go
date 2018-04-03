@@ -23,7 +23,23 @@ type PrometheusAlertRule struct {
 	Annotations map[string]string
 }
 
+func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
+	if teamName != "" {
+		for i := range alertRules {
+			if alertRules[i].Labels == nil {
+				alertRules[i].Labels = make(map[string]string)
+			}
+
+			alertRules[i].Labels["team"] = teamName
+		}
+	}
+
+	return
+}
+
 func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDeploymentRequest, manifest NaisManifest) (*k8score.ConfigMap, error) {
+	addTeamLabel(manifest.Alerts, manifest.Team)
+
 	ruleGroupName := deploymentRequest.Namespace + deploymentRequest.Application
 	alertGroup := PrometheusAlertGroup{Name: ruleGroupName, Rules: manifest.Alerts}
 	alertGroups := PrometheusAlertGroups{Groups: []PrometheusAlertGroup{alertGroup}}

@@ -45,6 +45,7 @@ type IstioConfig struct {
 }
 
 type NaisManifest struct {
+	Team            string
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck

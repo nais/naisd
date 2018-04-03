@@ -29,7 +29,7 @@ func createRedisExporterContainer(appName string) k8score.Container {
 	}
 }
 
-func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest) *redisapi.RedisFailover {
+func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest, team string) *redisapi.RedisFailover {
 	replicas := int32(3)
 	resources := redisapi.RedisFailoverResources{
 		Limits:   redisapi.CPUAndMem{Memory: "100Mi"},
@@ -55,7 +55,7 @@ func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest) *redisapi.R
 			Exporter:  true,
 		},
 	}
-	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace)
+	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, team)
 	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
 }
 
@@ -68,8 +68,8 @@ func redisSentinelClusterExist(failovers []redisapi.RedisFailover, appName strin
 	return false
 }
 
-func createRedisSentinelCluster(deploymentRequest NaisDeploymentRequest) (*redisapi.RedisFailover, error) {
-	failover := createRedisFailoverDef(deploymentRequest)
+func createRedisSentinelCluster(deploymentRequest NaisDeploymentRequest, team string) (*redisapi.RedisFailover, error) {
+	failover := createRedisFailoverDef(deploymentRequest, team)
 
 	config, err := k8srest.InClusterConfig()
 	if err != nil {

@@ -1,4 +1,5 @@
 image: navikt/nais-testapp # Optional. Defaults to docker.adeo.no:5000/appname
+team: teamName
 replicas: # set min = max to disable autoscaling
   min: 2 # minimum number of replicas.
   max: 4 # maximum number of replicas

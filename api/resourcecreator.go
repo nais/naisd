@@ -190,10 +190,6 @@ func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifes
 		mainContainer.Env = append(mainContainer.Env, electorPathEnv)
 	}
 
-	if manifest.Redis {
-		podSpec.Containers = append(podSpec.Containers, createRedisExporterContainer(deploymentRequest.Application))
-	}
-
 	if hasCertificate(naisResources) {
 		podSpec.Volumes = append(podSpec.Volumes, createCertificateVolume(deploymentRequest, naisResources))
 		container := &podSpec.Containers[0]

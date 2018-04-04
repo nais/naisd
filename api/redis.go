@@ -2,32 +2,11 @@ package api
 
 import (
 	"fmt"
-	k8score "k8s.io/api/core/v1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	k8srest "k8s.io/client-go/rest"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
 )
-
-func createRedisExporterContainer(appName string) k8score.Container {
-	return k8score.Container{
-		Name:  "redis-exporter",
-		Image: "oliver006/redis_exporter",
-		Resources: k8score.ResourceRequirements{
-			Requests: k8score.ResourceList{
-				k8score.ResourceCPU: k8sresource.MustParse("50m"),
-			},
-		},
-		Ports: []k8score.ContainerPort{
-			{Name: "http", ContainerPort: 9121, Protocol: k8score.ProtocolTCP},
-		},
-		Env: []k8score.EnvVar{{
-			Name:  "REDIS_ADDR",
-			Value: fmt.Sprintf("rfr-%s:6379", appName),
-		}},
-	}
-}
 
 func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest, team string) *redisapi.RedisFailover {
 	replicas := int32(3)
@@ -55,6 +34,7 @@ func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest, team string
 			Exporter:  true,
 		},
 	}
+
 	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, team)
 	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
 }

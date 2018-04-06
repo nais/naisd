@@ -1,15 +1,15 @@
-package api
+package naisresource
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
+	"testing"
 )
 
 func TestCreateService(t *testing.T) {
-	objectMeta := createObjectMeta(appName, namespace, teamName)
-	otherObjectMeta := createObjectMeta(otherAppName, namespace, otherTeamName)
-	service := createServiceDef(objectMeta)
+	objectMeta := CreateObjectMeta(appName, namespace, teamName)
+	otherObjectMeta := CreateObjectMeta(otherAppName, namespace, otherTeamName)
+	service := CreateServiceDef(objectMeta)
 	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)
 
@@ -26,7 +26,7 @@ func TestCreateService(t *testing.T) {
 	})
 
 	t.Run("when no service exists, a new one is created", func(t *testing.T) {
-		service, err := createService(otherObjectMeta, clientset)
+		service, err := CreateService(otherObjectMeta, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
@@ -37,7 +37,7 @@ func TestCreateService(t *testing.T) {
 	})
 
 	t.Run("when service exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createService(objectMeta, clientset)
+		nilValue, err := CreateService(objectMeta, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})

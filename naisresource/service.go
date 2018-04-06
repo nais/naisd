@@ -1,15 +1,17 @@
-package api
+package naisresource
 
 import (
-	"k8s.io/client-go/kubernetes"
 	"fmt"
 	k8score "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/kubernetes"
 )
 
-func createService(meta k8smeta.ObjectMeta, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+type Service k8score.Service
+
+func CreateService(meta k8smeta.ObjectMeta, k8sClient kubernetes.Interface) (*k8score.Service, error) {
 	existingService, err := getExistingService(meta.Name, meta.Namespace, k8sClient)
 
 	if err != nil {
@@ -20,12 +22,12 @@ func createService(meta k8smeta.ObjectMeta, k8sClient kubernetes.Interface) (*k8
 		return nil, nil // we have done nothing (service already exists)
 	}
 
-	serviceDef := createServiceDef(meta)
+	serviceDef := CreateServiceDef(meta)
 
-	return createServiceResource(serviceDef, k8sClient)
+	return applyService(serviceDef, k8sClient)
 }
 
-func createServiceDef(meta k8smeta.ObjectMeta) *k8score.Service {
+func CreateServiceDef(meta k8smeta.ObjectMeta) *k8score.Service {
 	return &k8score.Service{
 		TypeMeta: k8smeta.TypeMeta{
 			Kind:       "Service",
@@ -64,6 +66,6 @@ func getExistingService(application, namespace string, k8sClient kubernetes.Inte
 	}
 }
 
-func createServiceResource(serviceSpec *k8score.Service, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	return k8sClient.CoreV1().Services(serviceSpec.Namespace).Create(serviceSpec)
+func applyService(spec *k8score.Service, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+	return k8sClient.CoreV1().Services(spec.Namespace).Create(spec)
 }

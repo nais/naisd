@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/nais/naisd/naisresource"
 	"github.com/stretchr/testify/assert"
 	k8score "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -65,13 +66,12 @@ func newDefaultManifest() NaisManifest {
 			Enabled: true,
 		},
 		LeaderElection: false,
-		Redis: false,
+		Redis:          false,
 	}
 
 	return manifest
 
 }
-
 
 func TestDeployment(t *testing.T) {
 	newVersion := "14"
@@ -210,22 +210,26 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	deployment, err := createDeploymentDef(naisResources, newDefaultManifest(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil, false)
+	meta := naisresource.CreateObjectMeta(appName, namespace, teamName)
+	otherMeta := naisresource.CreateObjectMeta(otherAppName, namespace, otherTeamName)
+	deployment := naisresource.CreateDeploymentDef(meta)
+	deploymentSpec, err := assembleDeploymentSpec(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisResources)
 
 	assert.Nil(t, err)
 
 	deployment.ObjectMeta.ResourceVersion = resourceVersion
+	deployment.Spec = deploymentSpec
 
 	clientset := fake.NewSimpleClientset(deployment)
 
 	t.Run("Nonexistant deployment yields empty string and no error", func(t *testing.T) {
-		nilValue, err := getExistingDeployment("nonexisting", namespace, clientset)
+		nilValue, err := naisresource.GetExistingDeployment("nonexisting", namespace, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})
 
 	t.Run("Existing deployment yields def and no error", func(t *testing.T) {
-		id, err := getExistingDeployment(appName, namespace, clientset)
+		id, err := naisresource.GetExistingDeployment(appName, namespace, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, id.ObjectMeta.ResourceVersion)
 	})
@@ -233,7 +237,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Istio.Enabled = true
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, FasitEnvironment: environment}, manifest, naisResources, true, clientset)
+		deployment, err := createOrUpdateDeployment(otherMeta, NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, FasitEnvironment: environment}, manifest, naisResources, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, deployment.Name)
@@ -299,7 +303,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
@@ -314,7 +318,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when leaderElection is true, extra container exists", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.LeaderElection = true
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
 		assert.NoError(t, err)
 
 		containers := deployment.Spec.Template.Spec.Containers
@@ -327,7 +331,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when Redis is true, extra container exists", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Redis = true
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
 		assert.NoError(t, err)
 
 		containers := deployment.Spec.Template.Spec.Containers
@@ -343,7 +347,7 @@ func TestDeployment(t *testing.T) {
 		manifest.Prometheus.Path = "/newPath"
 		manifest.Prometheus.Enabled = false
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, map[string]string{
@@ -359,7 +363,7 @@ func TestDeployment(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.PreStopHookPath = path
 
-		d, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		d, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, path, d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Path)
 		assert.Equal(t, intstr.FromString(DefaultPortName), d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Port)
@@ -385,7 +389,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
@@ -399,7 +403,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
+		deployment, _ := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, clientset)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
@@ -416,7 +420,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("Env variable is created for file secrets ", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
+		deployment, _ := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, clientset)
 
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
 
@@ -443,7 +447,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, false, clientset)
+		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, clientset)
 
 		assert.NoError(t, err)
 
@@ -477,27 +481,32 @@ func TestDeployment(t *testing.T) {
 			Version:     "1",
 		}
 
-		_, err := createOrUpdateDeployment(deploymentRequest, newDefaultManifest(), []NaisResource{resource1, resource2}, false, clientset)
+		_, err := createOrUpdateDeployment(createObjectMeta("myapp", "default", "team"), deploymentRequest, newDefaultManifest(), []NaisResource{resource1, resource2}, clientset)
 
 		assert.NotNil(t, err)
-		assert.Equal(t, "unable to create deployment: found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
+		assert.Equal(t, "unable to assemble deployment spec: unable to create environment: found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
 			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
 	})
-	t.Run("Injects envoy sidecar based on settings", func(t *testing.T) {
-		deploymentRequest := NaisDeploymentRequest{
-			Namespace:   "default",
-			Application: "myapp",
-			Version:     "1",
-		}
 
-		istioDisabledManifest := NaisManifest{Istio: IstioConfig{Enabled: false}}
-		istioEnabledManifest := NaisManifest{Istio: IstioConfig{Enabled: true}}
+	// test disabled for the moment as we aren't using istio. Also the function used here has been removed in favor of "annotateObjectMeta", so the logic being tested here will be reimplemented when we start using istio again.
+	/*
+		t.Run("Injects envoy sidecar based on settings", func(t *testing.T) {
+			deploymentRequest := NaisDeploymentRequest{
+				Namespace:   "default",
+				Application: "myapp",
+				Version:     "1",
+			}
 
-		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
-		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
-		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, true).Annotations["sidecar.istio.io/inject"], "")
-		assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, true).Annotations["sidecar.istio.io/inject"], "true")
-	})
+			istioDisabledManifest := NaisManifest{Istio: IstioConfig{Enabled: false}}
+			istioEnabledManifest := NaisManifest{Istio: IstioConfig{Enabled: true}}
+
+			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
+			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
+			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
+			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, true).Annotations["sidecar.istio.io/inject"], "")
+			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, true).Annotations["sidecar.istio.io/inject"], "true")
+		})
+	*/
 }
 
 func TestIngress(t *testing.T) {
@@ -696,55 +705,6 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	})
 }
 
-func TestCreateOrUpdateAutoscaler(t *testing.T) {
-	autoscaler := createOrUpdateAutoscalerDef(1, 2, 3, nil, appName, namespace, teamName)
-	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
-	clientset := fake.NewSimpleClientset(autoscaler)
-
-	t.Run("nonexistant autoscaler yields empty string and no error", func(t *testing.T) {
-		nonExistingAutoscaler, err := getExistingAutoscaler("nonexisting", namespace, clientset)
-		assert.NoError(t, err)
-		assert.Nil(t, nonExistingAutoscaler)
-	})
-
-	t.Run("existing autoscaler yields id and no error", func(t *testing.T) {
-		existingAutoscaler, err := getExistingAutoscaler(appName, namespace, clientset)
-		assert.NoError(t, err)
-		assert.Equal(t, resourceVersion, existingAutoscaler.ObjectMeta.ResourceVersion)
-	})
-
-	t.Run("when no autoscaler exists, a new one is created", func(t *testing.T) {
-		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, NaisManifest{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}, Team: otherTeamName}, clientset)
-		assert.NoError(t, err)
-		assert.Equal(t, "", autoscaler.ObjectMeta.ResourceVersion)
-		assert.Equal(t, int32(1), autoscaler.Spec.MaxReplicas)
-		assert.Equal(t, int32p(2), autoscaler.Spec.MinReplicas)
-		assert.Equal(t, int32p(69), autoscaler.Spec.TargetCPUUtilizationPercentage)
-		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
-		assert.Equal(t, otherAppName, autoscaler.ObjectMeta.Name)
-		assert.Equal(t, otherTeamName, autoscaler.ObjectMeta.Labels["team"])
-		assert.Equal(t, otherAppName, autoscaler.Spec.ScaleTargetRef.Name)
-		assert.Equal(t, "Deployment", autoscaler.Spec.ScaleTargetRef.Kind)
-	})
-
-	t.Run("when autoscaler exists, it's updated", func(t *testing.T) {
-		cpuThreshold := 69
-		minReplicas := 6
-		maxReplicas := 9
-		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: appName}, NaisManifest{Replicas: Replicas{CpuThresholdPercentage: cpuThreshold, Min: minReplicas, Max: maxReplicas}}, clientset)
-		assert.NoError(t, err)
-		assert.Equal(t, resourceVersion, autoscaler.ObjectMeta.ResourceVersion)
-		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
-		assert.Equal(t, appName, autoscaler.ObjectMeta.Name)
-		assert.Equal(t, teamName, autoscaler.ObjectMeta.Labels["team"])
-		assert.Equal(t, int32p(int32(cpuThreshold)), autoscaler.Spec.TargetCPUUtilizationPercentage)
-		assert.Equal(t, int32p(int32(minReplicas)), autoscaler.Spec.MinReplicas)
-		assert.Equal(t, int32(maxReplicas), autoscaler.Spec.MaxReplicas)
-		assert.Equal(t, appName, autoscaler.Spec.ScaleTargetRef.Name)
-		assert.Equal(t, "Deployment", autoscaler.Spec.ScaleTargetRef.Kind)
-	})
-}
-
 func TestDNS1123ValidResourceNames(t *testing.T) {
 	name := "key_underscore_Upper"
 	naisResource := []NaisResource{
@@ -816,10 +776,12 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	objectMeta := createObjectMeta(appName, namespace, teamName)
-	service := createServiceDef(objectMeta)
+	service := naisresource.CreateServiceDef(objectMeta)
 
-	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, namespace, teamName)
+	autoscaler := naisresource.CreateAutoscalerDef(objectMeta)
+	autoscaler.Spec = naisresource.CreateAutoscalerSpec(6, 9, 6, appName)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
+
 	clientset := fake.NewSimpleClientset(autoscaler, service)
 
 	t.Run("creates all resources", func(t *testing.T) {

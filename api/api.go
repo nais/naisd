@@ -94,7 +94,7 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 	mux.Handle(pat.Get("/version"), appHandler(api.version))
 	mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
-	mux.Handle(pat.Delete("/application/:namespace/:deployName"), appHandler(api.deleteApplication))
+	mux.Handle(pat.Post("/deleteapp/:namespace/:deployName"), appHandler(api.deleteApplication))
 	return mux
 }
 

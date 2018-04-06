@@ -121,3 +121,27 @@ func TestDeleteIngress(t *testing.T) {
 		assert.Nil(t, ingress)
 	})
 }
+
+func TestDeleteConfigMapRules(t *testing.T) {
+	configmap := createConfigMapDef(alertsConfigMapName, alertsConfigMapNamespace, teamName)
+	configmap.ObjectMeta.ResourceVersion = resourceVersion
+	clientset := fake.NewSimpleClientset(configmap)
+
+	t.Run("No error when deleting nonexistant app from alerts configmap", func(t *testing.T) {
+		err := deleteConfigMapRules(appName, "nonexisting", clientset)
+		assert.NoError(t, err)
+	})
+
+	t.Run("No error when deleting alerts configmap for existing configmap", func(t *testing.T) {
+		err := deleteConfigMapRules(namespace, appName, clientset)
+		assert.NoError(t, err)
+	})
+
+	t.Run("No alert for appName existant after deletion", func(t *testing.T) {
+		configmap, err := getExistingConfigMap(alertsConfigMapName, alertsConfigMapNamespace, clientset)
+		assert.NoError(t, err)
+		assert.NotNil(t, configmap)
+		alert, _ := configmap.Data[appName + namespace + ".yml" ]
+		assert.Empty(t, alert)
+	})
+}

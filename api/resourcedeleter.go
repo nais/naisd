@@ -4,6 +4,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"fmt"
+	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
+	"k8s.io/client-go/rest"
 )
 
 
@@ -27,7 +29,7 @@ func deleteK8sResouces(namespace string, deployName string, k8sClient kubernetes
 		return fmt.Errorf("did not find secret for: %s in namespace: %s: %s", deployName, namespace, err)
 	}
 
-	err = deleteRedisFailover(namespace, deployName, deploymentDeleteOption, k8sClient)
+	err = deleteRedisFailover(namespace, deployName)
 	if err != nil {
 		return err
 	}
@@ -52,18 +54,14 @@ func deleteK8sResouces(namespace string, deployName string, k8sClient kubernetes
 func deleteConfigMapRules(namespace string, deployName string, k8sClient kubernetes.Interface) error {
 	configMap, err := getExistingConfigMap(alertsConfigMapName, alertsConfigMapNamespace, k8sClient)
 	if configMap == nil {
-		return fmt.Errorf("did not find config map: %s", err)
+		return fmt.Errorf("unable to get  existing configmap: %s", err)
 	}
 
-	configMap, err = removeRulesFromConfigMap(configMap, deployName, namespace)
-	if err != nil {
-		return fmt.Errorf("could not remove rules from config map: %s", err)
-	}
-
+	configMap = removeRulesFromConfigMap(configMap, deployName, namespace)
 	configMap, err = createOrUpdateConfigMapResource(configMap, alertsConfigMapNamespace, k8sClient)
 
 	if err != nil {
-		return fmt.Errorf("could not update config map: %s", err)
+		return fmt.Errorf("failed to remove alert rules from configmap: %s", err)
 	}
 
 	return nil
@@ -92,20 +90,24 @@ func deleteIngress(namespace string, deployName string, k8sClient kubernetes.Int
 		return fmt.Errorf("could not delete ingress for %s: %s", deployName, err)
 	}
 
-	return err
+	return nil
 }
 
-func deleteRedisFailover(namespace string, deployName string, deleteOption k8smeta.DeletionPropagation, k8sClient kubernetes.Interface) error {
-	deploymentPrefix := "rfs-"
-	deployment, err := getExistingDeployment(deploymentPrefix + deployName, namespace, k8sClient)
-	if deployment != nil {
-		err = k8sClient.ExtensionsV1beta1().Deployments(namespace).Delete(deploymentPrefix + deployName, &k8smeta.DeleteOptions{
-			PropagationPolicy: &deleteOption,
-		})
+func deleteRedisFailover(namespace string, deployName string) error {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return fmt.Errorf("can't create InClusterConfig: %s", err)
 	}
 
+	client, err := redisclient.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("could not delete redis failover for %s in namespace %s: %s", deployName, namespace, err)
+		return fmt.Errorf("can't create new Redis client for InClusterConfig: %s", err)
+	}
+
+	failoverInterface := redisclient.RedisFailoversGetter(client).RedisFailovers(namespace)
+	failover, err := failoverInterface.Get(deployName, k8smeta.GetOptions{})
+	if  failover != nil {
+		err = failoverInterface.Delete(deployName, &k8smeta.DeleteOptions{})
 	}
 
 	return nil

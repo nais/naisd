@@ -59,7 +59,7 @@ func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDep
 	return configMap, nil
 }
 
-func removeRulesFromConfigMap(configMap *k8score.ConfigMap, deployName string, namespace string) (*k8score.ConfigMap, error) {
+func removeRulesFromConfigMap(configMap *k8score.ConfigMap, deployName string, namespace string) (*k8score.ConfigMap) {
 	ruleGroupName := namespace + deployName
 	if configMap.Data == nil {
 		configMap.Data = make(map[string]string)
@@ -67,7 +67,7 @@ func removeRulesFromConfigMap(configMap *k8score.ConfigMap, deployName string, n
 
 	delete(configMap.Data, ruleGroupName + ".yml")
 
-	return configMap, nil
+	return configMap
 }
 
 func validateAlertRules(manifest NaisManifest) *ValidationError {

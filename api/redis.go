@@ -2,12 +2,13 @@ package api
 
 import (
 	"fmt"
-	k8score "k8s.io/api/core/v1"
-	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sresource "k8s.io/apimachinery/pkg/api/resource"
-	k8srest "k8s.io/client-go/rest"
+	"github.com/nais/naisd/naisresource"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
+	k8score "k8s.io/api/core/v1"
+	k8sresource "k8s.io/apimachinery/pkg/api/resource"
+	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8srest "k8s.io/client-go/rest"
 )
 
 func createRedisExporterContainer(appName string) k8score.Container {
@@ -55,7 +56,7 @@ func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest, team string
 			Exporter:  true,
 		},
 	}
-	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, team)
+	meta := naisresource.CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, team)
 	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
 }
 

@@ -28,7 +28,7 @@ const (
 	cpuLimit        = "200m"
 	memoryRequest   = "200Mi"
 	memoryLimit     = "400Mi"
-	clusterIP       = "1.2.3.4"
+	//clusterIP       = "1.2.3.4"
 )
 
 func newDefaultManifest() NaisManifest {
@@ -213,7 +213,7 @@ func TestDeployment(t *testing.T) {
 	meta := naisresource.CreateObjectMeta(appName, namespace, teamName)
 	otherMeta := naisresource.CreateObjectMeta(otherAppName, namespace, otherTeamName)
 	deployment := naisresource.CreateDeploymentDef(meta)
-	deploymentSpec, err := assembleDeploymentSpec(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisResources)
+	deploymentSpec, err := assembleDeploymentSpec(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisResources, false)
 
 	assert.Nil(t, err)
 
@@ -237,7 +237,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Istio.Enabled = true
-		deployment, err := createOrUpdateDeployment(otherMeta, NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, FasitEnvironment: environment}, manifest, naisResources, clientset)
+		deployment, err := createOrUpdateDeployment(otherMeta, NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, FasitEnvironment: environment}, manifest, naisResources, true, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, deployment.Name)
@@ -303,7 +303,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
@@ -318,7 +318,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when leaderElection is true, extra container exists", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.LeaderElection = true
-		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
+		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		containers := deployment.Spec.Template.Spec.Containers
@@ -331,7 +331,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when Redis is true, extra container exists", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Redis = true
-		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
+		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		containers := deployment.Spec.Template.Spec.Containers
@@ -347,7 +347,7 @@ func TestDeployment(t *testing.T) {
 		manifest.Prometheus.Path = "/newPath"
 		manifest.Prometheus.Enabled = false
 
-		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, map[string]string{
@@ -363,7 +363,7 @@ func TestDeployment(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.PreStopHookPath = path
 
-		d, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, clientset)
+		d, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, path, d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Path)
 		assert.Equal(t, intstr.FromString(DefaultPortName), d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Port)
@@ -389,7 +389,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
@@ -403,7 +403,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, clientset)
+		deployment, _ := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
@@ -420,7 +420,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("Env variable is created for file secrets ", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, clientset)
+		deployment, _ := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
 
@@ -447,7 +447,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, clientset)
+		deployment, err := createOrUpdateDeployment(meta, NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, false, clientset)
 
 		assert.NoError(t, err)
 
@@ -481,32 +481,19 @@ func TestDeployment(t *testing.T) {
 			Version:     "1",
 		}
 
-		_, err := createOrUpdateDeployment(createObjectMeta("myapp", "default", "team"), deploymentRequest, newDefaultManifest(), []NaisResource{resource1, resource2}, clientset)
+		_, err := createOrUpdateDeployment(naisresource.CreateObjectMeta("myapp", "default", "team"), deploymentRequest, newDefaultManifest(), []NaisResource{resource1, resource2}, false, clientset)
 
 		assert.NotNil(t, err)
 		assert.Equal(t, "unable to assemble deployment spec: unable to create environment: found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
 			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
 	})
 
-	// test disabled for the moment as we aren't using istio. Also the function used here has been removed in favor of "annotateObjectMeta", so the logic being tested here will be reimplemented when we start using istio again.
-	/*
-		t.Run("Injects envoy sidecar based on settings", func(t *testing.T) {
-			deploymentRequest := NaisDeploymentRequest{
-				Namespace:   "default",
-				Application: "myapp",
-				Version:     "1",
-			}
-
-			istioDisabledManifest := NaisManifest{Istio: IstioConfig{Enabled: false}}
-			istioEnabledManifest := NaisManifest{Istio: IstioConfig{Enabled: true}}
-
-			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
-			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
-			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, false).Annotations["sidecar.istio.io/inject"], "")
-			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioDisabledManifest, true).Annotations["sidecar.istio.io/inject"], "")
-			assert.Equal(t, createPodObjectMetaWithAnnotations(deploymentRequest, istioEnabledManifest, true).Annotations["sidecar.istio.io/inject"], "true")
-		})
-	*/
+	t.Run("Injects envoy sidecar based on settings", func(t *testing.T) {
+		assert.Equal(t, createPodAnnotationsMap(false, "", true, false)["sidecar.istio.io/inject"], "")
+		assert.Equal(t, createPodAnnotationsMap(false, "", false, false)["sidecar.istio.io/inject"], "")
+		assert.Equal(t, createPodAnnotationsMap(false, "", false, true)["sidecar.istio.io/inject"], "")
+		assert.Equal(t, createPodAnnotationsMap(false, "", true, true)["sidecar.istio.io/inject"], "true")
+	})
 }
 
 func TestIngress(t *testing.T) {
@@ -775,10 +762,10 @@ func TestCreateK8sResources(t *testing.T) {
 		},
 	}
 
-	objectMeta := createObjectMeta(appName, namespace, teamName)
-	service := naisresource.CreateServiceDef(objectMeta)
+	meta := naisresource.CreateObjectMeta(appName, namespace, teamName)
+	service := naisresource.CreateServiceDef(meta)
 
-	autoscaler := naisresource.CreateAutoscalerDef(objectMeta)
+	autoscaler := naisresource.CreateAutoscalerDef(meta)
 	autoscaler.Spec = naisresource.CreateAutoscalerSpec(6, 9, 6, appName)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
 

@@ -191,7 +191,7 @@ func createSecretDef(naisResources []NaisResource, existingSecret *k8score.Secre
 				Kind:       "Secret",
 				APIVersion: "v1",
 			},
-			ObjectMeta: createObjectMeta(application, namespace, teamName),
+			ObjectMeta: naisresource.CreateObjectMeta(application, namespace, teamName),
 			Data:       createSecretData(naisResources),
 			Type:       "Opaque",
 		}
@@ -227,7 +227,7 @@ func createIngressDef(application, namespace, teamName string) *k8sextensions.In
 			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
-		ObjectMeta: createObjectMeta(application, namespace, teamName),
+		ObjectMeta: naisresource.CreateObjectMeta(application, namespace, teamName),
 		Spec:       k8sextensions.IngressSpec{},
 	}
 }
@@ -271,7 +271,7 @@ func createIngressRule(serviceName, host, path string) k8sextensions.IngressRule
 func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabledGlobally bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
-	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
+	objectMeta := naisresource.CreateObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
 
 	service, err := naisresource.CreateService(objectMeta, k8sClient)
 	if err != nil {
@@ -387,7 +387,7 @@ func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomai
 }
 
 func createConfigMapDef(name, namespace, teamName string) *k8score.ConfigMap {
-	meta := createObjectMeta(name, namespace, teamName)
+	meta := naisresource.CreateObjectMeta(name, namespace, teamName)
 	return &k8score.ConfigMap{ObjectMeta: meta}
 }
 
@@ -472,20 +472,6 @@ func createOrUpdateConfigMapResource(configMapSpec *k8score.ConfigMap, namespace
 
 func int32p(i int32) *int32 {
 	return &i
-}
-
-func createObjectMeta(applicationName, namespace, teamName string) k8smeta.ObjectMeta {
-	labels := map[string]string{"app": applicationName}
-
-	if teamName != "" {
-		labels["team"] = teamName
-	}
-
-	return k8smeta.ObjectMeta{
-		Name:      applicationName,
-		Namespace: namespace,
-		Labels:    labels,
-	}
 }
 
 func createPodAnnotationsMap(prometheusEnabled bool, prometheusPath string, istioEnabledForDeployment, istioEnabledGlobally bool) map[string]string {

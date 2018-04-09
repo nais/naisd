@@ -1,10 +1,11 @@
 package api
 
 import (
-	"testing"
+	"github.com/nais/naisd/naisresource"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
 	"gopkg.in/yaml.v2"
+	"k8s.io/api/core/v1"
+	"testing"
 )
 
 func TestValidatePrometheusAlertRules(t *testing.T) {
@@ -16,8 +17,8 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 		Alerts: []PrometheusAlertRule{
 			{
 				Alert: "Name",
-				For: "For",
-				Expr: "Expression",
+				For:   "For",
+				Expr:  "Expression",
 			},
 		},
 	}
@@ -26,8 +27,8 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 		Alerts: []PrometheusAlertRule{
 			{
 				Alert: "Name",
-				For: "For",
-				Expr: "Expression",
+				For:   "For",
+				Expr:  "Expression",
 				Annotations: map[string]string{
 					"action": "action",
 				},
@@ -39,8 +40,8 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 		Alerts: []PrometheusAlertRule{
 			{
 				Alert: "Name",
-				For: "For",
-				Expr: "Expression",
+				For:   "For",
+				Expr:  "Expression",
 				Annotations: map[string]string{
 					"action": "action",
 				},
@@ -52,10 +53,10 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 	}
 
 	err := validateAlertRules(invalidManifest)
-	assert.Equal(t,"Expr must be specified", err.ErrorMessage)
+	assert.Equal(t, "Expr must be specified", err.ErrorMessage)
 
 	err2 := validateAlertRules(invalidManifestNoAction)
-	assert.Equal(t,"An annotation named action must be specified", err2.ErrorMessage)
+	assert.Equal(t, "An annotation named action must be specified", err2.ErrorMessage)
 
 	noErr := validateAlertRules(validManifest)
 	assert.Nil(t, noErr)
@@ -64,21 +65,21 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 	assert.Nil(t, noErr2)
 }
 
-func TestAddRulesToConfigMap(t *testing.T ) {
+func TestAddRulesToConfigMap(t *testing.T) {
 	ruleGroupName := namespace + appName
 	rulesGroupFilename := ruleGroupName + ".yml"
 
 	alertRule := PrometheusAlertRule{
 		Alert: "alertName",
-		For: "5m",
-		Expr: "expr",
+		For:   "5m",
+		Expr:  "expr",
 		Annotations: map[string]string{
 			"action": "alertAction",
 		},
 	}
 
 	configMap := &v1.ConfigMap{
-		ObjectMeta: createObjectMeta(appName, namespace, teamName),
+		ObjectMeta: naisresource.CreateObjectMeta(appName, namespace, teamName),
 		Data: map[string]string{
 			"asd-namespace-otherAppName.yml": "not touched",
 		},
@@ -86,11 +87,11 @@ func TestAddRulesToConfigMap(t *testing.T ) {
 
 	deploymentRequest := NaisDeploymentRequest{
 		Application: appName,
-		Namespace: namespace,
+		Namespace:   namespace,
 	}
 
 	manifest := NaisManifest{
-		Team: teamName,
+		Team:   teamName,
 		Alerts: []PrometheusAlertRule{alertRule},
 	}
 

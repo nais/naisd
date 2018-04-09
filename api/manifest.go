@@ -132,19 +132,16 @@ func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 }
 
 func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
-	// manifest url is provided in deployment request
-	manifestUrl := deploymentRequest.ManifestUrl
-	if len(manifestUrl) > 0 {
-		manifest, err := fetchManifest(manifestUrl)
-		if err != nil {
-			return NaisManifest{}, err
-		} else {
-			return manifest, nil
-		}
+
+	var urls []string
+
+	if len(deploymentRequest.ManifestUrl) > 0 {
+		urls = []string{deploymentRequest.ManifestUrl}
+	} else {
+		glog.Info("No manifest url specified. Using defaults")
+		urls = createManifestUrl(deploymentRequest.Application, deploymentRequest.Version)
 	}
 
-	// not provided, using defaults
-	urls := createManifestUrl(deploymentRequest.Application, deploymentRequest.Version)
 	for _, url := range urls {
 		manifest, err := fetchManifest(url)
 		if err == nil {
@@ -152,7 +149,7 @@ func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 		}
 	}
 
-	return NaisManifest{}, fmt.Errorf("No manifest found on the URLs %s, or the url %s\n", urls, manifestUrl)
+	return NaisManifest{}, fmt.Errorf("Error fetching or parsing manifests from URL(s):  %s", urls)
 }
 
 func createManifestUrl(application, version string) []string {
@@ -177,6 +174,7 @@ func fetchManifest(url string) (NaisManifest, error) {
 	defer response.Body.Close()
 
 	if response.StatusCode > 299 {
+		glog.Errorf("got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
 		return NaisManifest{}, fmt.Errorf("got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
 	}
 

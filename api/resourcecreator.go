@@ -268,7 +268,7 @@ func createIngressRule(serviceName, host, path string) k8sextensions.IngressRule
 	}
 }
 
-func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
+func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabledGlobally bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
 	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
@@ -287,7 +287,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifes
 		deploymentResult.Redis = redis
 	}
 
-	deployment, err := createOrUpdateDeployment(objectMeta, deploymentRequest, manifest, resources, k8sClient)
+	deployment, err := createOrUpdateDeployment(objectMeta, deploymentRequest, manifest, resources, istioEnabledGlobally, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating or updating deployment: %s", err)
 	}
@@ -488,73 +488,73 @@ func createObjectMeta(applicationName, namespace, teamName string) k8smeta.Objec
 	}
 }
 
-func createPrometheusAnnotations(prometheusEnabled bool, prometheusPath string) map[string]string {
-	return map[string]string{
+func createPodAnnotationsMap(prometheusEnabled bool, prometheusPath string, istioEnabledForDeployment, istioEnabledGlobally bool) map[string]string {
+	annotations := map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(prometheusEnabled),
 		"prometheus.io/port":   DefaultPortName,
 		"prometheus.io/path":   prometheusPath,
 	}
+
+	if istioEnabledForDeployment && istioEnabledGlobally {
+		annotations["sidecar.istio.io/inject"] = "true"
+	}
+
+	return annotations
 }
 
 func naisProbeToK8sProbe(probe Probe) k8score.Probe {
 	return naisresource.CreateProbe(probe.Path, int32(probe.InitialDelay), int32(probe.Timeout), int32(probe.PeriodSeconds), int32(probe.FailureThreshold))
 }
 
-func assembleDeploymentSpec(meta k8smeta.ObjectMeta, deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource) (k8sapps.DeploymentSpec, error) {
-	containers := make([]k8score.Container, 0)
-	volumes := make([]k8score.Volume, 0)
-	volumeMounts := make([]k8score.VolumeMount, 0)
-
-	if hasCertificate(naisResources) {
-		volumes = append(volumes, createCertificateVolume(deploymentRequest, naisResources))
-		volumeMounts = append(volumeMounts, createCertificateVolumeMount(deploymentRequest, naisResources))
-	}
-
-	containerLifecycle := naisresource.CreateLifeCycle(manifest.PreStopHookPath)
-	resourceLimits := naisresource.CreateResourceLimits(manifest.Resources.Requests.Cpu, manifest.Resources.Requests.Memory, manifest.Resources.Limits.Cpu, manifest.Resources.Limits.Memory)
-	liveness := naisProbeToK8sProbe(manifest.Healthcheck.Liveness)
-	readiness := naisProbeToK8sProbe(manifest.Healthcheck.Readiness)
-	environment, err := createEnvironmentVariables(deploymentRequest, naisResources)
+func assembleDeploymentSpec(meta k8smeta.ObjectMeta, deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabledGlobally bool) (k8sapps.DeploymentSpec, error) {
+	environmentVariables, err := createEnvironmentVariables(deploymentRequest, naisResources)
 
 	if err != nil {
 		return k8sapps.DeploymentSpec{}, fmt.Errorf("unable to create environment: %s", err)
 	}
 
-	container := naisresource.CreateContainerSpec(meta, manifest.Image, deploymentRequest.Version, manifest.Port, liveness, readiness, containerLifecycle, resourceLimits, environment, volumeMounts)
-	containers = append(containers, container)
+	volumes := make([]k8score.Volume, 0)
+	volumeMounts := make([]k8score.VolumeMount, 0)
+	if hasCertificate(naisResources) {
+		volumes = append(volumes, createCertificateVolume(deploymentRequest, naisResources))
+		volumeMounts = append(volumeMounts, createCertificateVolumeMount(deploymentRequest, naisResources))
+	}
 
+	sidecars := make([]k8score.Container, 0)
 	if manifest.LeaderElection {
-		containers = append(containers, naisresource.CreateLeaderElectionContainer(meta.Name))
-
-		electorPathEnv := k8score.EnvVar{
-			Name:  "ELECTOR_PATH",
-			Value: "localhost:4040",
-		}
-
-		environment = append(environment, electorPathEnv)
+		sidecars = append(sidecars, naisresource.CreateLeaderElectionContainer(meta.Name))
+		electorPathEnv := naisresource.CreateEnvVar("ELECTOR_PATH", "localhost:4040")
+		environmentVariables = append(environmentVariables, electorPathEnv)
 	}
 
 	if manifest.Redis {
-		containers = append(containers, createRedisExporterContainer(deploymentRequest.Application))
+		sidecars = append(sidecars, createRedisExporterContainer(deploymentRequest.Application))
 	}
 
-	podSpec := naisresource.CreatePodSpec(containers, volumes)
-	podAnnotations := createPrometheusAnnotations(manifest.Prometheus.Enabled, manifest.Prometheus.Path)
+	containerLifecycle := naisresource.CreateLifeCycle(manifest.PreStopHookPath)
+	resourceLimits := resourcesToResourceLimits(manifest.Resources)
+	livenessProbe := naisProbeToK8sProbe(manifest.Healthcheck.Liveness)
+	readinessProbe := naisProbeToK8sProbe(manifest.Healthcheck.Readiness)
+	taggedImage := fmt.Sprintf("%s:%s", manifest.Image, deploymentRequest.Version)
+	containerSpec := naisresource.CreateContainerSpec(meta, taggedImage, manifest.Port, livenessProbe, readinessProbe, containerLifecycle, resourceLimits, environmentVariables, volumeMounts)
 
-	if manifest.Istio.Enabled {
-		podAnnotations["sidecar.istio.io/inject"] = "true"
-	}
+	podSpec := naisresource.CreatePodSpec(containerSpec, sidecars, volumes)
+	podAnnotations := createPodAnnotationsMap(manifest.Prometheus.Enabled, manifest.Prometheus.Path, manifest.Istio.Enabled, istioEnabledGlobally)
 
 	return naisresource.CreateDeploymentSpec(meta, podAnnotations, podSpec), nil
 }
 
-func createOrUpdateDeployment(meta k8smeta.ObjectMeta, deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
+func resourcesToResourceLimits(resources ResourceRequirements) k8score.ResourceRequirements {
+	return naisresource.CreateResourceLimits(resources.Requests.Cpu, resources.Requests.Memory, resources.Limits.Cpu, resources.Limits.Memory)
+}
+
+func createOrUpdateDeployment(meta k8smeta.ObjectMeta, deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabledGlobally bool, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
 	deployment, err := naisresource.GetExistingDeployment(meta.Name, meta.Namespace, k8sClient)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing deployment: %s", err)
 	}
 
-	deploymentSpec, err := assembleDeploymentSpec(meta, deploymentRequest, manifest, naisResources)
+	deploymentSpec, err := assembleDeploymentSpec(meta, deploymentRequest, manifest, naisResources, istioEnabledGlobally)
 	if err != nil {
 		return nil, fmt.Errorf("unable to assemble deployment spec: %s", err)
 	}

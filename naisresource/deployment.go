@@ -60,10 +60,10 @@ func GetExistingDeployment(application string, namespace string, k8sClient kuber
 	}
 }
 
-func CreateContainerSpec(meta k8smeta.ObjectMeta, image, version string, port int, liveness, readiness k8score.Probe, lifecycle k8score.Lifecycle, resourceLimits k8score.ResourceRequirements, envVars []k8score.EnvVar, volumeMounts []k8score.VolumeMount) k8score.Container {
+func CreateContainerSpec(meta k8smeta.ObjectMeta, taggedImage string, port int, liveness, readiness k8score.Probe, lifecycle k8score.Lifecycle, resourceLimits k8score.ResourceRequirements, envVars []k8score.EnvVar, volumeMounts []k8score.VolumeMount) k8score.Container {
 	return k8score.Container{
 		Name:  meta.Name,
-		Image: fmt.Sprintf("%s:%s", image, version),
+		Image: taggedImage,
 		Ports: []k8score.ContainerPort{
 			{ContainerPort: int32(port), Protocol: k8score.ProtocolTCP, Name: DefaultPortName},
 		},
@@ -77,9 +77,9 @@ func CreateContainerSpec(meta k8smeta.ObjectMeta, image, version string, port in
 	}
 }
 
-func CreatePodSpec(containers []k8score.Container, volumes []k8score.Volume) k8score.PodSpec {
+func CreatePodSpec(container k8score.Container, sidecars []k8score.Container, volumes []k8score.Volume) k8score.PodSpec {
 	return k8score.PodSpec{
-		Containers:    containers,
+		Containers:    append([]k8score.Container{container}, sidecars...),
 		RestartPolicy: k8score.RestartPolicyAlways,
 		DNSPolicy:     k8score.DNSClusterFirst,
 		Volumes:       volumes,
@@ -143,5 +143,12 @@ func CreateProbe(path string, initialDelay, timeout, period, failureThreshold in
 		TimeoutSeconds:      timeout,
 		PeriodSeconds:       period,
 		FailureThreshold:    failureThreshold,
+	}
+}
+
+func CreateEnvVar(name, value string) k8score.EnvVar {
+	return k8score.EnvVar{
+		Name:  name,
+		Value: value,
 	}
 }

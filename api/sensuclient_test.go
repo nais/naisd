@@ -6,9 +6,6 @@ import (
 	"testing"
 )
 
-
-
-
 func TestSensuClient(t *testing.T) {
 	t.Run("Check generated deploy message", func(t *testing.T) {
 		deploymentRequest := NaisDeploymentRequest{

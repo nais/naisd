@@ -139,67 +139,6 @@ func TestNoManifestGivesError(t *testing.T) {
 	assert.Contains(t, string(rr.Body.Bytes()), manifestUrl)
 }
 
-//TODO remove once grace period ends
-func TestWarningsWhenUsingOldPropertyNames(t *testing.T) {
-	appName := "appname"
-	namespace := "namespace"
-	environment := "environmentName"
-	image := "name/Container"
-	version := "123"
-
-	clientset := fake.NewSimpleClientset()
-
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
-
-	depReq := NaisDeploymentRequest{
-		Application: appName,
-		Version:     version,
-		Environment: environment,
-		Username:    "user",
-		Password:    "password",
-		ManifestUrl: "http://repo.com/app",
-		Zone:        "zone",
-		Namespace:   namespace,
-	}
-
-	manifest := NaisManifest{
-		Image: image,
-		Port:  321,
-	}
-	data, _ := yaml.Marshal(manifest)
-
-	defer gock.Off()
-
-	gock.New("https://fasit.local").
-		Get("/api/v2/scopedresource").
-		MatchParam("alias", NavTruststoreFasitAlias).
-		Reply(200).File("testdata/fasitTruststoreResponse.json")
-
-	gock.New("https://fasit.local").
-		Get("/api/v2/resources/3024713/file/keystore").
-		Reply(200).
-		BodyString("")
-
-	gock.New("http://repo.com").
-		Get("/app").
-		Reply(200).
-		BodyString(string(data))
-
-	jsn, _ := json.Marshal(depReq)
-
-	body := strings.NewReader(string(jsn))
-
-	req, _ := http.NewRequest("POST", "/deploy", body)
-
-	rr := httptest.NewRecorder()
-	handler := http.Handler(appHandler(api.deploy))
-
-	handler.ServeHTTP(rr, req)
-
-	assert.Equal(t, 200, rr.Code)
-	assert.True(t, gock.IsDone())
-	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n\nWarnings:\n- Deployment request property 'environment' is deprecated. Use 'fasitEnvironment' instead\n- Deployment request property 'username' is deprecated. Use 'fasitUsername' instead\n- Deployment request property 'password' is deprecated. Use 'fasitPassword' instead\n", string(rr.Body.Bytes()))
-}
 func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	appName := "appname"
 	namespace := "namespace"
@@ -430,8 +369,8 @@ func TestValidateDeploymentRequest(t *testing.T) {
 			FasitEnvironment: "",
 			Zone:             "",
 			Namespace:        "",
-			Username:         "",
-			Password:         "",
+			FasitUsername:    "",
+			FasitPassword:    "",
 		}
 
 		err := invalid.Validate()
@@ -439,11 +378,11 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Contains(t, err, errors.New("application is required and is empty"))
 		assert.Contains(t, err, errors.New("version is required and is empty"))
-		assert.Contains(t, err, errors.New("environment is required and is empty"))
+		assert.Contains(t, err, errors.New("fasitenvironment is required and is empty"))
 		assert.Contains(t, err, errors.New("zone is required and is empty"))
 		assert.Contains(t, err, errors.New("zone can only be fss, sbs or iapp"))
 		assert.Contains(t, err, errors.New("namespace is required and is empty"))
-		assert.Contains(t, err, errors.New("username is required and is empty"))
-		assert.Contains(t, err, errors.New("password is required and is empty"))
+		assert.Contains(t, err, errors.New("fasitusername is required and is empty"))
+		assert.Contains(t, err, errors.New("fasitpassword is required and is empty"))
 	})
 }

@@ -219,7 +219,7 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 	err := deleteK8sResouces(namespace, deployName, api.Clientset)
 
 	if err != nil {
-		return &appError{err, "could not delete application", http.StatusInternalServerError}
+		return &appError{err, "could not delete application", http.StatusNotFound}
 	}
 
 	glog.Infof("Deleted application %s in %s\n", deployName, namespace)

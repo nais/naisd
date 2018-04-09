@@ -124,7 +124,6 @@ func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 			Reply(404)
 
 		_, err := GenerateManifest(NaisDeploymentRequest{Application: application, Version: version})
-		//fmt.Sprintln("%s", err)
 		assert.Error(t, err)
 		assert.True(t, gock.IsDone())
 	})

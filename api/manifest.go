@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"github.com/hashicorp/go-multierror"
 )
 
 type Probe struct {
@@ -134,6 +135,7 @@ func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
 
 	var urls []string
+	var errors error
 
 	if len(deploymentRequest.ManifestUrl) > 0 {
 		urls = []string{deploymentRequest.ManifestUrl}
@@ -143,13 +145,15 @@ func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 	}
 
 	for _, url := range urls {
-		manifest, err := fetchManifest(url)
-		if err == nil {
+		if manifest, err := fetchManifest(url); err != nil {
+			errors = multierror.Append(errors, err)
+		} else {
 			return manifest, nil
 		}
+
 	}
 
-	return NaisManifest{}, fmt.Errorf("Error fetching or parsing manifests from URL(s):  %s", urls)
+	return NaisManifest{}, errors
 }
 
 func createManifestUrl(application, version string) []string {
@@ -183,8 +187,8 @@ func fetchManifest(url string) (NaisManifest, error) {
 	} else {
 		var manifest NaisManifest
 		if err := yaml.Unmarshal(body, &manifest); err != nil {
-			glog.Errorf("Could not unmarshal yaml %s", err)
-			return NaisManifest{}, fmt.Errorf("unable to unmarshal yaml: %s", err.Error())
+			glog.Errorf("Could not unmarshal yaml %s from URL: %s", err, url)
+			return NaisManifest{}, fmt.Errorf("unable to unmarshal %s from URL: %s", err.Error(), url)
 		}
 		glog.Infof("Got manifest %s", manifest)
 		return manifest, err

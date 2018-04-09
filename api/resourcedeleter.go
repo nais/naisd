@@ -29,7 +29,7 @@ func deleteK8sResouces(namespace string, deployName string, k8sClient kubernetes
 		return fmt.Errorf("did not find secret for: %s in namespace: %s: %s", deployName, namespace, err)
 	}
 
-	err = deleteRedisFailover(namespace, deployName)
+	err = deleteRedisFailover(namespace, deployName, k8sClient)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,12 @@ func deleteIngress(namespace string, deployName string, k8sClient kubernetes.Int
 	return nil
 }
 
-func deleteRedisFailover(namespace string, deployName string) error {
+func deleteRedisFailover(namespace string, deployName string, k8sClient kubernetes.Interface) error {
+	svc, err := getExistingService("rfs-" + deployName, namespace, k8sClient)
+	if svc == nil {
+		return nil
+	}
+
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return fmt.Errorf("can't create InClusterConfig: %s", err)
@@ -108,6 +113,10 @@ func deleteRedisFailover(namespace string, deployName string) error {
 	failover, err := failoverInterface.Get(deployName, k8smeta.GetOptions{})
 	if  failover != nil {
 		err = failoverInterface.Delete(deployName, &k8smeta.DeleteOptions{})
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed while deleting Redis sentinel cluster: %s", err)
 	}
 
 	return nil

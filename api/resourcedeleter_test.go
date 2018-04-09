@@ -42,7 +42,7 @@ func TestDeleteK8sResouces(t *testing.T) {
 
 	t.Run("Deleting non-existing app should return error", func(t *testing.T) {
 		err := deleteK8sResouces("nonexisting", appName, clientset)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Deleting existing app should return no error", func(t *testing.T) {

@@ -35,19 +35,21 @@ func TestDeleteK8sResouces(t *testing.T) {
 	deploymentDef, _ := createDeploymentDef(naisResources, newDefaultManifest(), naisDeploymentRequest, nil, false)
 	secretDef := createSecretDef(naisResources, nil, appName, namespace, teamName)
 	secretDef.ObjectMeta.ResourceVersion = resourceVersion
-	configMapDef := createConfigMapDef(alertsConfigMapName, alertsConfigMapNamespace, teamName)
+	configMapDef := createConfigMapDef(AlertsConfigMapName, AlertsConfigMapNamespace, teamName)
 	configMapDef.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(serviceDef, deploymentDef, secretDef, configMapDef)
 	createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
 
-	t.Run("Deleting non-existing app should return error", func(t *testing.T) {
-		err := deleteK8sResouces("nonexisting", appName, clientset)
-		assert.Error(t, err)
+	t.Run("Deleting non-existing app should return no error and not nil result", func(t *testing.T) {
+		res, err := deleteK8sResouces("nonexisting", appName, clientset)
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
 	})
 
-	t.Run("Deleting existing app should return no error", func(t *testing.T) {
-		err := deleteK8sResouces(namespace, appName, clientset)
-		assert.Nil(t, err)
+	t.Run("Deleting existing app should return no error and nil result", func(t *testing.T) {
+		res, err := deleteK8sResouces(namespace, appName, clientset)
+		assert.NoError(t, err)
+		assert.Nil(t, res)
 	})
 
 	t.Run("Deployment should be deleted", func(t *testing.T) {
@@ -69,7 +71,7 @@ func TestDeleteK8sResouces(t *testing.T) {
 	})
 
 	t.Run("Secret should be deleted", func(t *testing.T) {
-		nilValue, err := getExistingSecret(alertsConfigMapNamespace, appName, clientset)
+		nilValue, err := getExistingSecret(AlertsConfigMapNamespace, appName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})
@@ -81,15 +83,17 @@ func TestDeleteAutoscaler(t *testing.T) {
 	clientset := fake.NewSimpleClientset(autoscaler)
 
 	t.Run("no error when autoscaler not existant", func(t *testing.T) {
-		err := deleteAutoscaler(namespace, "nonexisting", clientset)
+		res, err := deleteAutoscaler(namespace, "nonexisting", clientset)
 		assert.NoError(t, err)
+		assert.Empty(t, res)
 		autoscaler, err = getExistingAutoscaler(appName, namespace, clientset)
 		assert.NoError(t, err)
 		assert.NotNil(t, autoscaler)
 	})
 
 	t.Run("no error when deleting existant autoscaler", func(t *testing.T) {
-		err := deleteAutoscaler(namespace, appName, clientset)
+		res, err := deleteAutoscaler(namespace, appName, clientset)
+		assert.Empty(t, res)
 		assert.NoError(t, err)
 	})
 
@@ -106,16 +110,18 @@ func TestDeleteIngress(t *testing.T) {
 	clientset := fake.NewSimpleClientset(ingress)
 
 	t.Run("No error when ingress not present", func(t *testing.T) {
-		err := deleteIngress(namespace,"nonexisting", clientset)
+		res, err := deleteIngress(namespace,"nonexisting", clientset)
 		assert.NoError(t, err)
+		assert.Empty(t, res)
 		ingress, err := getExistingIngress(appName, namespace, clientset)
 		assert.NoError(t, err)
 		assert.NotNil(t, ingress)
 	})
 
 	t.Run("No error when deleting existant ingress", func(t *testing.T) {
-		err := deleteIngress(namespace, appName, clientset)
+		res, err := deleteIngress(namespace, appName, clientset)
 		assert.NoError(t, err)
+		assert.Empty(t, res)
 		ingress, err := getExistingIngress(appName, namespace, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, ingress)
@@ -123,22 +129,24 @@ func TestDeleteIngress(t *testing.T) {
 }
 
 func TestDeleteConfigMapRules(t *testing.T) {
-	configmap := createConfigMapDef(alertsConfigMapName, alertsConfigMapNamespace, teamName)
+	configmap := createConfigMapDef(AlertsConfigMapName, AlertsConfigMapNamespace, teamName)
 	configmap.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(configmap)
 
 	t.Run("No error when deleting nonexistant app from alerts configmap", func(t *testing.T) {
-		err := deleteConfigMapRules(appName, "nonexisting", clientset)
+		res, err := deleteConfigMapRules(appName, "nonexisting", clientset)
 		assert.NoError(t, err)
+		assert.Empty(t, res)
 	})
 
 	t.Run("No error when deleting alerts configmap for existing configmap", func(t *testing.T) {
-		err := deleteConfigMapRules(namespace, appName, clientset)
+		res, err := deleteConfigMapRules(namespace, appName, clientset)
 		assert.NoError(t, err)
+		assert.Empty(t, res)
 	})
 
 	t.Run("No alert for appName existant after deletion", func(t *testing.T) {
-		configmap, err := getExistingConfigMap(alertsConfigMapName, alertsConfigMapNamespace, clientset)
+		configmap, err := getExistingConfigMap(AlertsConfigMapName, AlertsConfigMapNamespace, clientset)
 		assert.NoError(t, err)
 		assert.NotNil(t, configmap)
 		alert, _ := configmap.Data[appName + namespace + ".yml" ]

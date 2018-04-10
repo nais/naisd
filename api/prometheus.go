@@ -64,11 +64,11 @@ func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDep
 }
 
 func removeRulesFromConfigMap(configMap *k8score.ConfigMap, deployName string, namespace string) (*k8score.ConfigMap) {
-	ruleGroupName := createRuleGroupName(namespace, deployName)
 	if configMap.Data == nil {
 		return configMap
 	}
 
+	ruleGroupName := createRuleGroupName(namespace, deployName)
 	delete(configMap.Data, ruleGroupName + ".yml")
 
 	return configMap

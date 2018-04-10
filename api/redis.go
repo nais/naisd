@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8srest "k8s.io/client-go/rest"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
@@ -39,16 +40,20 @@ func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest, team string
 	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
 }
 
-func redisSentinelClusterExist(failovers []redisapi.RedisFailover, appName string) bool {
-	for _, v := range failovers {
-		if v.Name == appName {
-			return true
-		}
+func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, appName string) (*redisapi.RedisFailover, error) {
+	failover, err := failoverInterface.Get(appName, k8smeta.GetOptions{})
+
+	switch {
+	case err == nil:
+		return failover, err
+	case k8serrors.IsNotFound(err):
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unexpected error: %s", err)
 	}
-	return false
 }
 
-func createRedisSentinelCluster(deploymentRequest NaisDeploymentRequest, team string) (*redisapi.RedisFailover, error) {
+func updateOrCreateRedisSentinelCluster(deploymentRequest NaisDeploymentRequest, team string) (*redisapi.RedisFailover, error) {
 	failover := createRedisFailoverDef(deploymentRequest, team)
 
 	config, err := k8srest.InClusterConfig()
@@ -61,13 +66,13 @@ func createRedisSentinelCluster(deploymentRequest NaisDeploymentRequest, team st
 		return nil, fmt.Errorf("can't create new Redis client for InClusterConfig: %s", err)
 	}
 
-	rfs, err := client.RedisFailovers(deploymentRequest.Namespace).List(k8smeta.ListOptions{})
+	existingFailover, err := getExistingFailover(redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace), deploymentRequest.Application)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting list of redis failovers: %s", err)
+		return nil, fmt.Errorf("unable to get existing redis failover: %s", err)
 	}
 
-	if redisSentinelClusterExist(rfs.Items, deploymentRequest.Application) {
-		return nil, nil // redis failover is running, nothing to do
+	if existingFailover != nil {
+		return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Update(failover)
 	}
 
 	return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Create(failover)

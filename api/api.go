@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
-	"strings"
 )
 
 type Api struct {
@@ -253,19 +252,19 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 
 func (r NaisDeploymentRequest) Validate() []error {
 	required := map[string]*string{
-		"Application": &r.Application,
-		"Version":     &r.Version,
-		"FasitEnvironment": &r.FasitEnvironment,
-		"Zone":        &r.Zone,
-		"FasitUsername":    &r.FasitUsername,
-		"FasitPassword":    &r.FasitPassword,
-		"Namespace":   &r.Namespace,
+		"application": &r.Application,
+		"version":     &r.Version,
+		"fasitEnvironment": &r.FasitEnvironment,
+		"zone":        &r.Zone,
+		"fasitUsername":    &r.FasitUsername,
+		"fasitPassword":    &r.FasitPassword,
+		"namespace":   &r.Namespace,
 	}
 
 	var errs []error
 	for key, pointer := range required {
 		if len(*pointer) == 0 {
-			errs = append(errs, fmt.Errorf("%s is required and is empty", strings.ToLower(key)))
+			errs = append(errs, fmt.Errorf("%s is required and is empty", key))
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"github.com/hashicorp/go-multierror"
 )
 
 type Probe struct {
@@ -132,27 +133,27 @@ func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 }
 
 func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
-	// manifest url is provided in deployment request
-	manifestUrl := deploymentRequest.ManifestUrl
-	if len(manifestUrl) > 0 {
-		manifest, err := fetchManifest(manifestUrl)
-		if err != nil {
-			return NaisManifest{}, err
+
+	var urls []string
+	var errors error
+
+	if len(deploymentRequest.ManifestUrl) > 0 {
+		urls = []string{deploymentRequest.ManifestUrl}
+	} else {
+		glog.Info("No manifest url specified. Using defaults")
+		urls = createManifestUrl(deploymentRequest.Application, deploymentRequest.Version)
+	}
+
+	for _, url := range urls {
+		if manifest, err := fetchManifest(url); err != nil {
+			errors = multierror.Append(errors, err)
 		} else {
 			return manifest, nil
 		}
+
 	}
 
-	// not provided, using defaults
-	urls := createManifestUrl(deploymentRequest.Application, deploymentRequest.Version)
-	for _, url := range urls {
-		manifest, err := fetchManifest(url)
-		if err == nil {
-			return manifest, nil
-		}
-	}
-
-	return NaisManifest{}, fmt.Errorf("No manifest found on the URLs %s, or the url %s\n", urls, manifestUrl)
+	return NaisManifest{}, errors
 }
 
 func createManifestUrl(application, version string) []string {
@@ -177,6 +178,7 @@ func fetchManifest(url string) (NaisManifest, error) {
 	defer response.Body.Close()
 
 	if response.StatusCode > 299 {
+		glog.Errorf("got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
 		return NaisManifest{}, fmt.Errorf("got HTTP status code %d fetching manifest from URL: %s", response.StatusCode, url)
 	}
 
@@ -185,8 +187,8 @@ func fetchManifest(url string) (NaisManifest, error) {
 	} else {
 		var manifest NaisManifest
 		if err := yaml.Unmarshal(body, &manifest); err != nil {
-			glog.Errorf("Could not unmarshal yaml %s", err)
-			return NaisManifest{}, fmt.Errorf("unable to unmarshal yaml: %s", err.Error())
+			glog.Errorf("Could not unmarshal yaml %s from URL: %s", err, url)
+			return NaisManifest{}, fmt.Errorf("unable to unmarshal %s from URL: %s", err.Error(), url)
 		}
 		glog.Infof("Got manifest %s", manifest)
 		return manifest, err

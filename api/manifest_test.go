@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 	"testing"
+	"github.com/hashicorp/go-multierror"
 )
 
 func TestManifestUnmarshal(t *testing.T) {
@@ -55,7 +56,6 @@ func TestManifestUnmarshal(t *testing.T) {
 	assert.Equal(t, "Investigate why nais-testapp can't spawn pods. kubectl describe deployment nais-testapp, kubectl describe pod nais-testapp-*.", manifest.Alerts[0].Annotations["action"])
 	assert.Equal(t, "Critical", manifest.Alerts[1].Labels["severity"])
 }
-
 
 func TestManifestUsesDefaultValues(t *testing.T) {
 
@@ -155,6 +155,42 @@ func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, application, manifest.Image)
 		assert.True(t, gock.IsPending())
+	})
+}
+
+func TestDownLoadManifestErrors(t *testing.T) {
+	request := NaisDeploymentRequest{
+		Application: "appname",
+		Version:     "42",
+	}
+	urls := createManifestUrl(request.Application, request.Version)
+
+	t.Run("Single error is wrapped correctly ", func(t *testing.T) {
+		defer gock.Off()
+		gock.New(urls[0]).
+			Reply(404)
+
+		_, err := downloadManifest(NaisDeploymentRequest{ManifestUrl: urls[0]})
+		assert.Error(t, err)
+		merr, _ := err.(*multierror.Error)
+		assert.Equal(t, 1, len(merr.Errors))
+	})
+
+	t.Run("Multiple errors are wrapped correctly", func(t *testing.T) {
+
+		defer gock.Off()
+		gock.New(urls[0]).
+			Reply(404)
+		gock.New(urls[1]).
+			Reply(404)
+		gock.New(urls[2]).
+			Reply(200).
+			File("testdata/nais_yaml_error.yaml")
+		_, err := downloadManifest(request)
+
+		assert.Error(t, err)
+		merr, _ := err.(*multierror.Error)
+		assert.Equal(t, 3, len(merr.Errors))
 	})
 }
 

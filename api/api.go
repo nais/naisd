@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
-	"strings"
 )
 
 type Api struct {
@@ -31,9 +30,6 @@ type NaisDeploymentRequest struct {
 	Version          string `json:"version"`
 	Zone             string `json:"zone"`
 	ManifestUrl      string `json:"manifesturl,omitempty"`
-	Environment      string `json:"environment"` // Deprecated: Use FasitEnvironment instead
-	Username         string `json:"username"`    // Deprecated: Use FasitUsername instead
-	Password         string `json:"password"`    // Deprecated: Use FasitPassword instead
 	FasitEnvironment string `json:"fasitEnvironment"`
 	FasitUsername    string `json:"fasitUsername"`
 	FasitPassword    string `json:"fasitPassword"`
@@ -117,9 +113,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
 	}
 
-	//TODO remove this once grace period ends
-	deploymentRequest, warnings := ensurePropertyCompatability(deploymentRequest)
-
 	fasit := FasitClient{api.FasitUrl, deploymentRequest.FasitUsername, deploymentRequest.FasitPassword}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.FasitEnvironment)
@@ -164,7 +157,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	NotifySensuAboutDeploy(&deploymentRequest, &api.ClusterName)
 
 	w.WriteHeader(200)
-	w.Write(createResponse(deploymentResult, warnings))
+	w.Write(createResponse(deploymentResult))
 	return nil
 }
 func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
@@ -231,27 +224,7 @@ func hasResources(manifest NaisManifest) bool {
 	return true
 }
 
-func ensurePropertyCompatability(deploymentRequest NaisDeploymentRequest) (NaisDeploymentRequest, []string) {
-	var warnings []string
-	if deploymentRequest.Environment != "" {
-		deploymentRequest.FasitEnvironment = deploymentRequest.Environment
-		warnings = append(warnings, "Deployment request property 'environment' is deprecated. Use 'fasitEnvironment' instead")
-	}
-
-	if deploymentRequest.Username != "" {
-		deploymentRequest.FasitUsername = deploymentRequest.Username
-		warnings = append(warnings, "Deployment request property 'username' is deprecated. Use 'fasitUsername' instead")
-	}
-
-	if deploymentRequest.Password != "" {
-		deploymentRequest.FasitPassword = deploymentRequest.Password
-		warnings = append(warnings, "Deployment request property 'password' is deprecated. Use 'fasitPassword' instead")
-	}
-
-	return deploymentRequest, warnings
-}
-
-func createResponse(deploymentResult DeploymentResult, warnings []string) []byte {
+func createResponse(deploymentResult DeploymentResult) []byte {
 
 	response := "result: \n"
 
@@ -274,31 +247,24 @@ func createResponse(deploymentResult DeploymentResult, warnings []string) []byte
 		response += "- updated app-alerts configmap\n"
 	}
 
-	if len(warnings) > 0 {
-		response += "\nWarnings:\n"
-		for _, warning := range warnings {
-			response += fmt.Sprintf("- %s\n", warning)
-		}
-	}
-
 	return []byte(response)
 }
 
 func (r NaisDeploymentRequest) Validate() []error {
 	required := map[string]*string{
-		"Application": &r.Application,
-		"Version":     &r.Version,
-		"Environment": &r.FasitEnvironment,
-		"Zone":        &r.Zone,
-		"Username":    &r.FasitUsername,
-		"Password":    &r.FasitPassword,
-		"Namespace":   &r.Namespace,
+		"application": &r.Application,
+		"version":     &r.Version,
+		"fasitEnvironment": &r.FasitEnvironment,
+		"zone":        &r.Zone,
+		"fasitUsername":    &r.FasitUsername,
+		"fasitPassword":    &r.FasitPassword,
+		"namespace":   &r.Namespace,
 	}
 
 	var errs []error
 	for key, pointer := range required {
 		if len(*pointer) == 0 {
-			errs = append(errs, fmt.Errorf("%s is required and is empty", strings.ToLower(key)))
+			errs = append(errs, fmt.Errorf("%s is required and is empty", key))
 		}
 	}
 

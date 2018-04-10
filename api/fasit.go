@@ -214,7 +214,6 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 		return nil, nil
 	}
 
-	//todo UGh...
 	return &NaisResource{
 		name:         "",
 		properties:   nil,

@@ -273,6 +273,9 @@ func createResponse(deploymentResult DeploymentResult, warnings []string) []byte
 	if deploymentResult.AlertsConfigMap != nil {
 		response += "- updated app-alerts configmap\n"
 	}
+	if deploymentResult.Redis != nil {
+		response += "- created redis\n"
+	}
 
 	if len(warnings) > 0 {
 		response += "\nWarnings:\n"

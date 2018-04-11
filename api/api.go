@@ -219,7 +219,7 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 	result, err := deleteK8sResouces(namespace, deployName, api.Clientset)
 
 	response := ""
-	if len(result) < 0 {
+	if len(result) > 0 {
 		response = "result: \n"
 		for _, res := range result {
 			response += res + "\n"
@@ -227,7 +227,7 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 	}
 
 	if err != nil {
-		return &appError{err, fmt.Sprintf("There were errors when trying to delete app: %+v", response), http.StatusInternalServerError}
+		return &appError{err, fmt.Sprintf("there were errors when trying to delete app: %+v", response), http.StatusInternalServerError}
 	}
 
 	glog.Infof("Deleted application %s in %s\n", deployName, namespace)

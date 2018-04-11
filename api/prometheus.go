@@ -37,10 +37,14 @@ func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 	return
 }
 
+func createRuleGroupName(namespace string, deployName string) string {
+	return namespace + "-" + deployName
+}
+
 func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDeploymentRequest, manifest NaisManifest) (*k8score.ConfigMap, error) {
 	addTeamLabel(manifest.Alerts, manifest.Team)
 
-	ruleGroupName := deploymentRequest.Namespace + deploymentRequest.Application
+	ruleGroupName := createRuleGroupName(deploymentRequest.Namespace, deploymentRequest.Application)
 	alertGroup := PrometheusAlertGroup{Name: ruleGroupName, Rules: manifest.Alerts}
 	alertGroups := PrometheusAlertGroups{Groups: []PrometheusAlertGroup{alertGroup}}
 
@@ -57,6 +61,17 @@ func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDep
 	configMap.Data[ruleGroupName + ".yml"] = string(alertGroupYamlBytes)
 
 	return configMap, nil
+}
+
+func removeRulesFromConfigMap(configMap *k8score.ConfigMap, deployName string, namespace string) (*k8score.ConfigMap) {
+	if configMap.Data == nil {
+		return configMap
+	}
+
+	ruleGroupName := createRuleGroupName(namespace, deployName)
+	delete(configMap.Data, ruleGroupName + ".yml")
+
+	return configMap
 }
 
 func validateAlertRules(manifest NaisManifest) *ValidationError {

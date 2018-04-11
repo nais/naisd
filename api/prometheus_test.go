@@ -65,7 +65,7 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 }
 
 func TestAddRulesToConfigMap(t *testing.T ) {
-	ruleGroupName := namespace + appName
+	ruleGroupName := createRuleGroupName(namespace, appName)
 	rulesGroupFilename := ruleGroupName + ".yml"
 
 	alertRule := PrometheusAlertRule{

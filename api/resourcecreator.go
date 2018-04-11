@@ -15,7 +15,11 @@ import (
 	"strings"
 )
 
-const RootMountPoint = "/var/run/secrets/naisd.io/"
+const (
+	RootMountPoint           = "/var/run/secrets/naisd.io/"
+	AlertsConfigMapNamespace = "nais"
+	AlertsConfigMapName      = "app-alerts"
+)
 
 type DeploymentResult struct {
 	Autoscaler      *k8sautoscaling.HorizontalPodAutoscaler
@@ -567,16 +571,14 @@ func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest 
 		return nil, nil
 	}
 
-	alertsConfigMapNamespace := "nais"
-	alertsConfigMapName := "app-alerts"
-	configMap, err := getExistingConfigMap(alertsConfigMapName, alertsConfigMapNamespace, k8sClient)
+	configMap, err := getExistingConfigMap(AlertsConfigMapName, AlertsConfigMapNamespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing configmap: %s", err)
 	}
 
 	if configMap == nil {
-		configMap = createConfigMapDef(alertsConfigMapName, alertsConfigMapNamespace, manifest.Team)
+		configMap = createConfigMapDef(AlertsConfigMapName, AlertsConfigMapNamespace, manifest.Team)
 	}
 
 	configMapWithUpdatedAlertRules, err := addRulesToConfigMap(configMap, deploymentRequest, manifest)
@@ -584,7 +586,7 @@ func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest 
 		return nil, fmt.Errorf("failed to add alert rules to configmap: %s", err)
 	}
 
-	return createOrUpdateConfigMapResource(configMapWithUpdatedAlertRules, alertsConfigMapNamespace, k8sClient)
+	return createOrUpdateConfigMapResource(configMapWithUpdatedAlertRules, AlertsConfigMapNamespace, k8sClient)
 }
 
 func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8sautoscaling.HorizontalPodAutoscaler, error) {

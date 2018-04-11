@@ -54,7 +54,7 @@ func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, a
 }
 
 func updateOrCreateRedisSentinelCluster(deploymentRequest NaisDeploymentRequest, team string) (*redisapi.RedisFailover, error) {
-	failover := createRedisFailoverDef(deploymentRequest, team)
+	newFailover := createRedisFailoverDef(deploymentRequest, team)
 
 	config, err := k8srest.InClusterConfig()
 	if err != nil {
@@ -72,8 +72,10 @@ func updateOrCreateRedisSentinelCluster(deploymentRequest NaisDeploymentRequest,
 	}
 
 	if existingFailover != nil {
-		return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Update(failover)
+		existingFailover.Spec = newFailover.Spec
+		existingFailover.ObjectMeta = mergeObjectMeta(existingFailover.ObjectMeta, newFailover.ObjectMeta)
+		return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Update(existingFailover)
 	}
 
-	return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Create(failover)
+	return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Create(newFailover)
 }

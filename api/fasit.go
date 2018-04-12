@@ -549,7 +549,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, property
 		resource.certificates = files
 
 	} else if fasitResource.ResourceType == "applicationproperties" {
-		lineFilter, err := regexp.Compile(`[\p{L}\d_.]+=[\p{L}\d_,]+`)
+		lineFilter, err := regexp.Compile(`^[\p{L}\d_.]+=.+`)
 		if err != nil {
 			return NaisResource{}, fmt.Errorf("unable to compile regex: %s", err)
 		}

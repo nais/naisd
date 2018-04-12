@@ -14,6 +14,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	"regexp"
 )
 
 func init() {
@@ -548,10 +549,14 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, property
 		resource.certificates = files
 
 	} else if fasitResource.ResourceType == "applicationproperties" {
+		lineFilter, err := regexp.Compile(`[\p{L}\d_.]+=[\p{L}\d_,]+`)
+		if err != nil {
+			return NaisResource{}, fmt.Errorf("unable to compile regex: %s", err)
+		}
+
 		for _, line := range strings.Split(fasitResource.Properties["applicationProperties"], "\n") {
 			line = strings.TrimSpace(line)
-
-			if len(line) > 0 {
+			if lineFilter.MatchString(line) {
 				parts := strings.SplitN(line, "=", 2)
 				resource.properties[parts[0]] = parts[1]
 			}

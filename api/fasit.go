@@ -559,6 +559,8 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, property
 			if lineFilter.MatchString(line) {
 				parts := strings.SplitN(line, "=", 2)
 				resource.properties[parts[0]] = parts[1]
+			} else if (len(line) > 0) {
+				glog.Infof("the following string did not match our regex: %s", line)
 			}
 		}
 		delete(resource.properties, "applicationProperties")

@@ -833,11 +833,12 @@ func createObjectMeta(applicationName, namespace, teamName string) k8smeta.Objec
 	}
 }
 
-func mergeObjectMeta(exisitingObjectMeta, newObjectMeta k8smeta.ObjectMeta) (existingObjectMeta k8smeta.ObjectMeta) {
+func mergeObjectMeta(exisitingObjectMeta, newObjectMeta k8smeta.ObjectMeta) k8smeta.ObjectMeta {
 	exisitingObjectMeta.Name = newObjectMeta.Name
 	exisitingObjectMeta.Namespace = newObjectMeta.Namespace
 	for k, v := range newObjectMeta.Labels {
 		exisitingObjectMeta.Labels[k] = v
 	}
-	return
+
+	return exisitingObjectMeta
 }

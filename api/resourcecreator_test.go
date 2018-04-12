@@ -962,15 +962,34 @@ func TestCreateSBSPublicHostname(t *testing.T) {
 func TestCreateObjectMeta(t *testing.T) {
 	t.Run("Test required metadata field values", func(t *testing.T) {
 		objectMeta := createObjectMeta(appName, namespace, teamName)
-		objectMetaWithoutTeamName := createObjectMeta(appName, namespace, "")
 
 		assert.Equal(t, teamName, objectMeta.Labels["team"], "Team label should be equal to team name.")
 		assert.Equal(t, appName, objectMeta.Labels["app"], "App label should be equal to app name.")
 		assert.Equal(t, appName, objectMeta.Name, "Resource name should equal app name.")
 		assert.Equal(t, namespace, objectMeta.Namespace, "Resource namespace should equal namespace.")
+	})
 
+	t.Run("Test creating objectmeta without team name", func(t *testing.T) {
+		objectMetaWithoutTeamName := createObjectMeta(appName, namespace, "")
 		_, ok := objectMetaWithoutTeamName.Labels["team"]
 		assert.False(t, ok, "Team label should not be set when team name is empty.")
+	})
+}
+
+func TestMergeObjectMeta(t *testing.T) {
+	t.Run("Test merging objectmeta", func(t *testing.T) {
+		existingObjectMeta := createObjectMeta(appName, namespace, teamName)
+		existingObjectMeta.ResourceVersion = "asd"
+
+		newObjectMeta := createObjectMeta(otherAppName, namespace, otherTeamName)
+
+		mergedObjectMeta := mergeObjectMeta(existingObjectMeta, newObjectMeta)
+
+		assert.Equal(t, otherTeamName, mergedObjectMeta.Labels["team"], "Team label should be equal to team name.")
+		assert.Equal(t, otherAppName, mergedObjectMeta.Labels["app"], "App label should be equal to app name.")
+		assert.Equal(t, otherAppName, mergedObjectMeta.Name, "Resource name should equal app name.")
+		assert.Equal(t, namespace, mergedObjectMeta.Namespace, "Resource namespace should equal namespace.")
+		assert.Equal(t, "asd", mergedObjectMeta.ResourceVersion, "Resource version should be preserved when merging")
 	})
 }
 

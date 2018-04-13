@@ -1,9 +1,10 @@
 package api
 
 import (
-	k8score "k8s.io/api/core/v1"
-	"gopkg.in/yaml.v2"
+	"fmt"
 	"github.com/golang/glog"
+	"gopkg.in/yaml.v2"
+	k8score "k8s.io/api/core/v1"
 )
 
 type PrometheusAlertGroups struct {
@@ -23,6 +24,18 @@ type PrometheusAlertRule struct {
 	Annotations map[string]string
 }
 
+func prefixAlertName(prefix, alertName string) string {
+	return fmt.Sprintf("%s_%s", prefix, alertName)
+}
+
+func prefixAlertNames(alertRules []PrometheusAlertRule, prefix string) {
+	for i := range alertRules {
+		alertRules[i].Alert = prefixAlertName(prefix, alertRules[i].Alert)
+	}
+
+	return
+}
+
 func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 	if teamName != "" {
 		for i := range alertRules {
@@ -37,15 +50,17 @@ func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 	return
 }
 
-func createRuleGroupName(namespace string, deployName string) string {
+func createDeploymentPrefix(namespace string, deployName string) string {
 	return namespace + "-" + deployName
 }
 
 func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDeploymentRequest, manifest NaisManifest) (*k8score.ConfigMap, error) {
-	addTeamLabel(manifest.Alerts, manifest.Team)
+	deploymentPrefix := createDeploymentPrefix(deploymentRequest.Namespace, deploymentRequest.Application)
 
-	ruleGroupName := createRuleGroupName(deploymentRequest.Namespace, deploymentRequest.Application)
-	alertGroup := PrometheusAlertGroup{Name: ruleGroupName, Rules: manifest.Alerts}
+	addTeamLabel(manifest.Alerts, manifest.Team)
+	prefixAlertNames(manifest.Alerts, deploymentPrefix)
+
+	alertGroup := PrometheusAlertGroup{Name: deploymentPrefix, Rules: manifest.Alerts}
 	alertGroups := PrometheusAlertGroups{Groups: []PrometheusAlertGroup{alertGroup}}
 
 	alertGroupYamlBytes, err := yaml.Marshal(alertGroups)
@@ -58,18 +73,18 @@ func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDep
 		configMap.Data = make(map[string]string)
 	}
 
-	configMap.Data[ruleGroupName + ".yml"] = string(alertGroupYamlBytes)
+	configMap.Data[deploymentPrefix+".yml"] = string(alertGroupYamlBytes)
 
 	return configMap, nil
 }
 
-func removeRulesFromConfigMap(configMap *k8score.ConfigMap, deployName string, namespace string) (*k8score.ConfigMap) {
+func removeRulesFromConfigMap(configMap *k8score.ConfigMap, deployName string, namespace string) *k8score.ConfigMap {
 	if configMap.Data == nil {
 		return configMap
 	}
 
-	ruleGroupName := createRuleGroupName(namespace, deployName)
-	delete(configMap.Data, ruleGroupName + ".yml")
+	ruleGroupName := createDeploymentPrefix(namespace, deployName)
+	delete(configMap.Data, ruleGroupName+".yml")
 
 	return configMap
 }

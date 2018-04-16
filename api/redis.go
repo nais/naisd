@@ -2,20 +2,22 @@ package api
 
 import (
 	"fmt"
+	"github.com/nais/naisd/api/constant"
+	"github.com/nais/naisd/api/naisrequest"
+	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
+	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8srest "k8s.io/client-go/rest"
-	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
-	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
 )
 
-func createRedisFailoverDef(deploymentRequest NaisDeploymentRequest, team string) *redisapi.RedisFailover {
+func createRedisFailoverDef(deploymentRequest naisrequest.Deploy, team string) *redisapi.RedisFailover {
 	replicas := int32(3)
 	resources := redisapi.RedisFailoverResources{
 		Limits:   redisapi.CPUAndMem{Memory: "100Mi"},
 		Requests: redisapi.CPUAndMem{CPU: "100m"},
 	}
-	if deploymentRequest.FasitEnvironment != ENVIRONMENT_P {
+	if deploymentRequest.FasitEnvironment != constant.ENVIRONMENT_P {
 		replicas = int32(1)
 		resources = redisapi.RedisFailoverResources{
 			Limits:   redisapi.CPUAndMem{Memory: "50Mi"},
@@ -53,7 +55,7 @@ func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, a
 	}
 }
 
-func updateOrCreateRedisSentinelCluster(deploymentRequest NaisDeploymentRequest, team string) (*redisapi.RedisFailover, error) {
+func updateOrCreateRedisSentinelCluster(deploymentRequest naisrequest.Deploy, team string) (*redisapi.RedisFailover, error) {
 	newFailover := createRedisFailoverDef(deploymentRequest, team)
 
 	config, err := k8srest.InClusterConfig()

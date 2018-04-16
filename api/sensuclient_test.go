@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
@@ -8,16 +9,16 @@ import (
 
 func TestSensuClient(t *testing.T) {
 	t.Run("Check generated deploy message", func(t *testing.T) {
-		deploymentRequest := NaisDeploymentRequest{
-			Application: "TestApp",
-			Version: "42.0.0",
+		deploymentRequest := naisrequest.Deploy{
+			Application:      "TestApp",
+			Version:          "42.0.0",
 			FasitEnvironment: "environment",
-			Zone: "zone",
-			ManifestUrl: "manifesturl",
-			FasitUsername: "username",
-			FasitPassword: "password",
-			OnBehalfOf: "onbehalfof",
-			Namespace: "nais",
+			Zone:             "zone",
+			ManifestUrl:      "manifesturl",
+			FasitUsername:    "username",
+			FasitPassword:    "password",
+			OnBehalfOf:       "onbehalfof",
+			Namespace:        "nais",
 		}
 		clusterName := "nais-dev"
 

@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nais/naisd/api"
+	"github.com/nais/naisd/api/constant"
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
@@ -69,7 +70,7 @@ var deployCmd = &cobra.Command{
 	Short: "Deploys your application",
 	Long:  `Deploys your application`,
 	Run: func(cmd *cobra.Command, args []string) {
-		deployRequest := api.NaisDeploymentRequest{
+		deployRequest := naisrequest.Deploy{
 			FasitUsername: os.Getenv("FASIT_USERNAME"),
 			FasitPassword: os.Getenv("FASIT_PASSWORD"),
 		}
@@ -78,7 +79,7 @@ var deployCmd = &cobra.Command{
 			deployRequest.FasitUsername = os.Getenv("NAIS_USERNAME")
 
 			if deployRequest.FasitUsername != "" {
-				fmt.Fprintf(os.Stderr, "Deprecation warning: NAIS_USERNAME is replaced by FASIT_USERNAME.\n" +
+				fmt.Fprintf(os.Stderr, "Deprecation warning: NAIS_USERNAME is replaced by FASIT_USERNAME.\n"+
 					"It will be removed in future versions.\n")
 			}
 		}
@@ -87,7 +88,7 @@ var deployCmd = &cobra.Command{
 			deployRequest.FasitPassword = os.Getenv("NAIS_PASSWORD")
 
 			if deployRequest.FasitPassword != "" {
-				fmt.Fprintf(os.Stderr, "Deprecation warning: NAIS_PASSWORD is replaced by FASIT_PASSWORD.\n" +
+				fmt.Fprintf(os.Stderr, "Deprecation warning: NAIS_PASSWORD is replaced by FASIT_PASSWORD.\n"+
 					"It will be removed in future versions.\n")
 			}
 		}
@@ -191,7 +192,7 @@ func init() {
 	deployCmd.Flags().StringP("version", "v", "", "version you want to deploy")
 	deployCmd.Flags().StringP("cluster", "c", "", "the cluster you want to deploy to")
 	deployCmd.Flags().StringP("fasit-environment", "e", "q0", "environment you want to use")
-	deployCmd.Flags().StringP("zone", "z", api.ZONE_FSS, "the zone the app will be in")
+	deployCmd.Flags().StringP("zone", "z", constant.ZONE_FSS, "the zone the app will be in")
 	deployCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")
 	deployCmd.Flags().StringP("fasit-username", "u", "", "the username")
 	deployCmd.Flags().StringP("fasit-password", "p", "", "the password")

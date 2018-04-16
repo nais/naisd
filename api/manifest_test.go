@@ -1,10 +1,11 @@
 package api
 
 import (
+	"github.com/hashicorp/go-multierror"
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 	"testing"
-	"github.com/hashicorp/go-multierror"
 )
 
 func TestManifestUnmarshal(t *testing.T) {
@@ -15,7 +16,7 @@ func TestManifestUnmarshal(t *testing.T) {
 		Reply(200).
 		File("testdata/nais.yaml")
 
-	manifest, err := GenerateManifest(NaisDeploymentRequest{ManifestUrl: repopath})
+	manifest, err := GenerateManifest(naisrequest.Deploy{ManifestUrl: repopath})
 
 	assert.NoError(t, err)
 
@@ -66,7 +67,7 @@ func TestManifestUsesDefaultValues(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_minimal.yaml")
 
-	manifest, err := GenerateManifest(NaisDeploymentRequest{ManifestUrl: repopath})
+	manifest, err := GenerateManifest(naisrequest.Deploy{ManifestUrl: repopath})
 
 	assert.NoError(t, err)
 	assert.Equal(t, "docker.adeo.no:5000/", manifest.Image)
@@ -102,7 +103,7 @@ func TestManifestUsesPartialDefaultValues(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_partial.yaml")
 
-	manifest, err := GenerateManifest(NaisDeploymentRequest{ManifestUrl: repopath})
+	manifest, err := GenerateManifest(naisrequest.Deploy{ManifestUrl: repopath})
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, manifest.Replicas.Min)
@@ -123,7 +124,7 @@ func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 		gock.New(urls[2]).
 			Reply(404)
 
-		_, err := GenerateManifest(NaisDeploymentRequest{Application: application, Version: version})
+		_, err := GenerateManifest(naisrequest.Deploy{Application: application, Version: version})
 		assert.Error(t, err)
 		assert.True(t, gock.IsDone())
 	})
@@ -137,7 +138,7 @@ func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"image": application})
 
-		manifest, err := GenerateManifest(NaisDeploymentRequest{Application: application, Version: version})
+		manifest, err := GenerateManifest(naisrequest.Deploy{Application: application, Version: version})
 		assert.NoError(t, err)
 		assert.Equal(t, application, manifest.Image)
 		assert.True(t, gock.IsDone())
@@ -151,7 +152,7 @@ func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"image": "incorrect"})
 
-		manifest, err := GenerateManifest(NaisDeploymentRequest{Application: application, Version: version})
+		manifest, err := GenerateManifest(naisrequest.Deploy{Application: application, Version: version})
 		assert.NoError(t, err)
 		assert.Equal(t, application, manifest.Image)
 		assert.True(t, gock.IsPending())
@@ -159,7 +160,7 @@ func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 }
 
 func TestDownLoadManifestErrors(t *testing.T) {
-	request := NaisDeploymentRequest{
+	request := naisrequest.Deploy{
 		Application: "appname",
 		Version:     "42",
 	}
@@ -170,7 +171,7 @@ func TestDownLoadManifestErrors(t *testing.T) {
 		gock.New(urls[0]).
 			Reply(404)
 
-		_, err := downloadManifest(NaisDeploymentRequest{ManifestUrl: urls[0]})
+		_, err := downloadManifest(naisrequest.Deploy{ManifestUrl: urls[0]})
 		assert.Error(t, err)
 		merr, _ := err.(*multierror.Error)
 		assert.Equal(t, 1, len(merr.Errors))
@@ -201,7 +202,7 @@ func TestInvalidReplicasConfigGivesValidationErrors(t *testing.T) {
 		Reply(200).
 		File("testdata/nais_error.yaml")
 
-	_, err := GenerateManifest(NaisDeploymentRequest{ManifestUrl: repopath})
+	_, err := GenerateManifest(naisrequest.Deploy{ManifestUrl: repopath})
 	assert.Error(t, err)
 }
 
@@ -210,8 +211,8 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 		Image: "myapp:1",
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max:                    4,
-			Min:                    5,
+			Max: 4,
+			Min: 5,
 		},
 	}
 	errors := ValidateManifest(invalidConfig)
@@ -226,8 +227,8 @@ func TestInvalidCpuThreshold(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max:                    4,
-			Min:                    5,
+			Max: 4,
+			Min: 5,
 		},
 	}
 	errors := validateCpuThreshold(invalidManifest)
@@ -237,8 +238,8 @@ func TestMinCannotBeZero(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
-			Max:                    4,
-			Min:                    0,
+			Max: 4,
+			Min: 0,
 		},
 	}
 	errors := validateReplicasMin(invalidManifest)

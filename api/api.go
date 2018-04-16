@@ -2,9 +2,9 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api/naisrequest"
 	ver "github.com/nais/naisd/api/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -23,18 +23,6 @@ type Api struct {
 	ClusterName            string
 	IstioEnabled           bool
 	DeploymentStatusViewer DeploymentStatusViewer
-}
-
-type NaisDeploymentRequest struct {
-	Application      string `json:"application"`
-	Version          string `json:"version"`
-	Zone             string `json:"zone"`
-	ManifestUrl      string `json:"manifesturl,omitempty"`
-	FasitEnvironment string `json:"fasitEnvironment"`
-	FasitUsername    string `json:"fasitUsername"`
-	FasitPassword    string `json:"fasitPassword"`
-	OnBehalfOf       string `json:"onbehalfof,omitempty"`
-	Namespace        string `json:"namespace"`
 }
 
 type AppError interface {
@@ -279,40 +267,15 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 	return []byte(response)
 }
 
-func (r NaisDeploymentRequest) Validate() []error {
-	required := map[string]*string{
-		"application": &r.Application,
-		"version":     &r.Version,
-		"fasitEnvironment": &r.FasitEnvironment,
-		"zone":        &r.Zone,
-		"fasitUsername":    &r.FasitUsername,
-		"fasitPassword":    &r.FasitPassword,
-		"namespace":   &r.Namespace,
-	}
-
-	var errs []error
-	for key, pointer := range required {
-		if len(*pointer) == 0 {
-			errs = append(errs, fmt.Errorf("%s is required and is empty", key))
-		}
-	}
-
-	if r.Zone != ZONE_FSS && r.Zone != ZONE_SBS && r.Zone != ZONE_IAPP {
-		errs = append(errs, errors.New("zone can only be fss, sbs or iapp"))
-	}
-
-	return errs
-}
-
-func unmarshalDeploymentRequest(body io.ReadCloser) (NaisDeploymentRequest, error) {
+func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) {
 	requestBody, err := ioutil.ReadAll(body)
 	if err != nil {
-		return NaisDeploymentRequest{}, fmt.Errorf("could not read deployment request body %s", err)
+		return naisrequest.Deploy{}, fmt.Errorf("could not read deployment request body %s", err)
 	}
 
-	var deploymentRequest NaisDeploymentRequest
+	var deploymentRequest naisrequest.Deploy
 	if err = json.Unmarshal(requestBody, &deploymentRequest); err != nil {
-		return NaisDeploymentRequest{}, fmt.Errorf("could not unmarshal body %s", err)
+		return naisrequest.Deploy{}, fmt.Errorf("could not unmarshal body %s", err)
 	}
 
 	return deploymentRequest, nil

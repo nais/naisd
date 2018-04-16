@@ -1,6 +1,8 @@
 package api
 
 import (
+	"github.com/nais/naisd/api/constant"
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	k8score "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -65,7 +67,7 @@ func newDefaultManifest() NaisManifest {
 			Enabled: true,
 		},
 		LeaderElection: false,
-		Redis: false,
+		Redis:          false,
 	}
 
 	return manifest
@@ -90,7 +92,7 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("when no service exists, a new one is created", func(t *testing.T) {
-		service, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version}, otherTeamName, clientset)
+		service, err := createService(naisrequest.Deploy{Namespace: namespace, Application: otherAppName, Version: version}, otherTeamName, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
@@ -100,7 +102,7 @@ func TestService(t *testing.T) {
 		assert.Equal(t, map[string]string{"app": otherAppName}, service.Spec.Selector)
 	})
 	t.Run("when service exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
+		nilValue, err := createService(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})
@@ -146,7 +148,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			resource1Name,
 			resource1Type,
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{},
 			map[string]string{secret1Key: secret1Value},
@@ -157,7 +159,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			resource2Name,
 			resource2Type,
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{
 				resource2Key: resource2KeyMapping,
@@ -170,7 +172,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			"resource3",
 			"applicationproperties",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{
 				"key1": "value1",
 			},
@@ -183,7 +185,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			"resource4",
 			"applicationproperties",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{
 				"key2.Property": "dc=preprod,dc=local",
 			},
@@ -196,7 +198,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			invalidlyNamedResourceNameDot,
 			invalidlyNamedResourceTypeDot,
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{invalidlyNamedResourceKeyDot: invalidlyNamedResourceValueDot},
 			map[string]string{},
 			map[string]string{invalidlyNamedResourceSecretKeyDot: invalidlyNamedResourceSecretValueDot},
@@ -207,7 +209,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			invalidlyNamedResourceNameColon,
 			invalidlyNamedResourceTypeColon,
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{invalidlyNamedResourceKeyColon: invalidlyNamedResourceValueColon},
 			map[string]string{},
 			map[string]string{invalidlyNamedResourceSecretKeyColon: invalidlyNamedResourceSecretValueColon},
@@ -221,7 +223,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			resource1Name,
 			"certificate",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{},
 			map[string]string{secret1Key: secret1Value},
@@ -232,7 +234,7 @@ func TestDeployment(t *testing.T) {
 			1,
 			resource2Name,
 			resource2Type,
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{
 				resource2Key: resource2KeyMapping,
@@ -243,7 +245,7 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	deployment, err := createDeploymentDef(naisResources, newDefaultManifest(), NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, nil, false)
+	deployment, err := createDeploymentDef(naisResources, newDefaultManifest(), naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, nil, false)
 
 	assert.Nil(t, err)
 
@@ -266,7 +268,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Istio.Enabled = true
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName, Version: version, FasitEnvironment: environment}, manifest, naisResources, true, clientset)
+		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: otherAppName, Version: version, FasitEnvironment: environment}, manifest, naisResources, true, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, deployment.Name)
@@ -332,7 +334,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
@@ -347,7 +349,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when leaderElection is true, extra container exists", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.LeaderElection = true
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		containers := deployment.Spec.Template.Spec.Containers
@@ -363,7 +365,7 @@ func TestDeployment(t *testing.T) {
 		manifest.Prometheus.Path = "/newPath"
 		manifest.Prometheus.Enabled = false
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, map[string]string{
@@ -379,7 +381,7 @@ func TestDeployment(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.PreStopHookPath = path
 
-		d, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		d, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, path, d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Path)
 		assert.Equal(t, intstr.FromString(DefaultPortName), d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Port)
@@ -396,7 +398,7 @@ func TestDeployment(t *testing.T) {
 				1,
 				resource1Name,
 				resource1Type,
-				Scope{"u", "u1", ZONE_FSS},
+				Scope{"u", "u1", constant.ZONE_FSS},
 				nil,
 				nil,
 				nil,
@@ -405,7 +407,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		updatedDeployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
@@ -419,7 +421,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
+		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
@@ -436,7 +438,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("Env variable is created for file secrets ", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
+		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
 
@@ -454,7 +456,7 @@ func TestDeployment(t *testing.T) {
 				1,
 				resource1Name,
 				resource1Type,
-				Scope{"u", "u1", ZONE_FSS},
+				Scope{"u", "u1", constant.ZONE_FSS},
 				nil,
 				nil,
 				nil,
@@ -463,7 +465,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		deployment, err := createOrUpdateDeployment(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, false, clientset)
+		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, false, clientset)
 
 		assert.NoError(t, err)
 
@@ -491,7 +493,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		deploymentRequest := NaisDeploymentRequest{
+		deploymentRequest := naisrequest.Deploy{
 			Namespace:   "default",
 			Application: "myapp",
 			Version:     "1",
@@ -504,7 +506,7 @@ func TestDeployment(t *testing.T) {
 			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
 	})
 	t.Run("Injects envoy sidecar based on settings", func(t *testing.T) {
-		deploymentRequest := NaisDeploymentRequest{
+		deploymentRequest := naisrequest.Deploy{
 			Namespace:   "default",
 			Application: "myapp",
 			Version:     "1",
@@ -542,7 +544,7 @@ func TestIngress(t *testing.T) {
 	})
 
 	t.Run("when no ingress exists, a default ingress is created", func(t *testing.T) {
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, otherTeamName, subDomain, []NaisResource{}, clientset)
+		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, otherTeamName, subDomain, []NaisResource{}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, ingress.ObjectMeta.Name)
@@ -556,7 +558,7 @@ func TestIngress(t *testing.T) {
 
 	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {
 		namespace := "nondefault"
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, teamName, subDomain, []NaisResource{}, clientset)
+		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, teamName, subDomain, []NaisResource{}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName+"-"+namespace+"."+subDomain, ingress.Spec.Rules[0].Host)
 	})
@@ -577,7 +579,7 @@ func TestIngress(t *testing.T) {
 				},
 			},
 		}
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, teamName, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, teamName, subDomain, naisResources, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 3, len(ingress.Spec.Rules))
@@ -596,7 +598,7 @@ func TestIngress(t *testing.T) {
 		clientset := fake.NewSimpleClientset(ingress) //Avoid interfering with other tests in suite.
 		var naisResources []NaisResource
 
-		ingress, err := createOrUpdateIngress(NaisDeploymentRequest{Namespace: namespace, Application: "testapp", Zone: ZONE_SBS, FasitEnvironment: "testenv"}, teamName, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Namespace: namespace, Application: "testapp", Zone: constant.ZONE_SBS, FasitEnvironment: "testenv"}, teamName, subDomain, naisResources, clientset)
 		rules := ingress.Spec.Rules
 
 		assert.NoError(t, err)
@@ -642,7 +644,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 			1,
 			resource1Name,
 			resource1Type,
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{resource1Key: resource1Value},
 			map[string]string{},
 			map[string]string{secret1Key: secret1Value},
@@ -652,7 +654,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 			1,
 			resource2Name,
 			resource2Type,
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{resource2Key: resource2Value},
 			map[string]string{},
 			map[string]string{secret2Key: secret2Value},
@@ -678,7 +680,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	})
 
 	t.Run("when no secret exists, a new one is created", func(t *testing.T) {
-		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, naisResources, clientset, otherTeamName)
+		secret, err := createOrUpdateSecret(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, naisResources, clientset, otherTeamName)
 		assert.NoError(t, err)
 		assert.Equal(t, "", secret.ObjectMeta.ResourceVersion)
 		assert.Equal(t, otherAppName, secret.ObjectMeta.Name)
@@ -693,12 +695,12 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	t.Run("when a secret exists, it's updated", func(t *testing.T) {
 		updatedSecretValue := "newsecret"
 		updatedFileValue := []byte("newfile")
-		secret, err := createOrUpdateSecret(NaisDeploymentRequest{Namespace: namespace, Application: appName}, []NaisResource{
+		secret, err := createOrUpdateSecret(naisrequest.Deploy{Namespace: namespace, Application: appName}, []NaisResource{
 			{
 				1,
 				resource1Name,
 				resource1Type,
-				Scope{"u", "u1", ZONE_FSS},
+				Scope{"u", "u1", constant.ZONE_FSS},
 				nil,
 				map[string]string{},
 				map[string]string{secret1Key: updatedSecretValue},
@@ -734,7 +736,7 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 	})
 
 	t.Run("when no autoscaler exists, a new one is created", func(t *testing.T) {
-		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: otherAppName}, NaisManifest{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}, Team: otherTeamName}, clientset)
+		autoscaler, err := createOrUpdateAutoscaler(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, NaisManifest{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}, Team: otherTeamName}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, "", autoscaler.ObjectMeta.ResourceVersion)
 		assert.Equal(t, int32(1), autoscaler.Spec.MaxReplicas)
@@ -751,7 +753,7 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 		cpuThreshold := 69
 		minReplicas := 6
 		maxReplicas := 9
-		autoscaler, err := createOrUpdateAutoscaler(NaisDeploymentRequest{Namespace: namespace, Application: appName}, NaisManifest{Replicas: Replicas{CpuThresholdPercentage: cpuThreshold, Min: minReplicas, Max: maxReplicas}}, clientset)
+		autoscaler, err := createOrUpdateAutoscaler(naisrequest.Deploy{Namespace: namespace, Application: appName}, NaisManifest{Replicas: Replicas{CpuThresholdPercentage: cpuThreshold, Min: minReplicas, Max: maxReplicas}}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, autoscaler.ObjectMeta.ResourceVersion)
 		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
@@ -772,7 +774,7 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 			1,
 			"name",
 			"resourcrType",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			nil,
 			nil,
 			nil,
@@ -782,13 +784,13 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 	}
 
 	t.Run("Generate valid volume mount name", func(t *testing.T) {
-		volumeMount := createCertificateVolumeMount(NaisDeploymentRequest{Namespace: namespace, Application: name}, naisResource)
+		volumeMount := createCertificateVolumeMount(naisrequest.Deploy{Namespace: namespace, Application: name}, naisResource)
 		assert.Equal(t, "key-underscore-upper", volumeMount.Name)
 
 	})
 
 	t.Run("Generate valid volume name", func(t *testing.T) {
-		volume := createCertificateVolume(NaisDeploymentRequest{Namespace: namespace, Application: name}, naisResource)
+		volume := createCertificateVolume(naisrequest.Deploy{Namespace: namespace, Application: name}, naisResource)
 		assert.Equal(t, "key-underscore-upper", volume.Name)
 
 	})
@@ -796,7 +798,7 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 }
 
 func TestCreateK8sResources(t *testing.T) {
-	deploymentRequest := NaisDeploymentRequest{
+	deploymentRequest := naisrequest.Deploy{
 		Application:      appName,
 		Version:          version,
 		FasitEnvironment: namespace,
@@ -826,7 +828,7 @@ func TestCreateK8sResources(t *testing.T) {
 			1,
 			"resourceName",
 			"resourceType",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{"resourceKey": "resource1Value"},
 			nil,
 			map[string]string{"secretKey": "secretValue"},
@@ -860,7 +862,7 @@ func TestCreateK8sResources(t *testing.T) {
 			1,
 			"resourceName",
 			"resourceType",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{"resourceKey": "resource1Value"},
 			map[string]string{},
 			map[string]string{},
@@ -907,7 +909,7 @@ func TestCheckForDuplicates(t *testing.T) {
 			},
 		}
 
-		deploymentRequest := NaisDeploymentRequest{
+		deploymentRequest := naisrequest.Deploy{
 			Application: "myapp",
 			Version:     "1",
 		}
@@ -953,9 +955,9 @@ func TestCheckForDuplicates(t *testing.T) {
 func TestCreateSBSPublicHostname(t *testing.T) {
 
 	t.Run("p", func(t *testing.T) {
-		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "p"}))
-		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "t6"}))
-		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(NaisDeploymentRequest{FasitEnvironment: "q6"}))
+		assert.Equal(t, "tjenester.nav.no", createSBSPublicHostname(naisrequest.Deploy{FasitEnvironment: "p"}))
+		assert.Equal(t, "tjenester-t6.nav.no", createSBSPublicHostname(naisrequest.Deploy{FasitEnvironment: "t6"}))
+		assert.Equal(t, "tjenester-q6.nav.no", createSBSPublicHostname(naisrequest.Deploy{FasitEnvironment: "q6"}))
 	})
 }
 

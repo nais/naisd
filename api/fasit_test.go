@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nais/naisd/api/constant"
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 )
@@ -18,7 +20,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			1,
 			"test.resource",
 			"type",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{},
 			map[string]string{},
 			map[string]string{},
@@ -32,7 +34,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			1,
 			"test.resource",
 			"applicationproperties",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{
 				"foo.var-with.mixed_stuff": "fizz",
 			},
@@ -50,7 +52,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			1,
 			"test.resource",
 			"applicationproperties",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{
 				"foo.var-with.mixed_stuff": "fizz",
 			},
@@ -68,7 +70,7 @@ func TestResourceEnvironmentVariableName(t *testing.T) {
 			1,
 			"test.resource",
 			"datasource",
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{
 				"url":      "fizzbuzz",
 				"username": "fizz",
@@ -135,7 +137,7 @@ func TestCreatingApplicationInstance(t *testing.T) {
 
 	fasit := FasitClient{"https://fasit.local", "", ""}
 	exposedResourceIds, usedResourceIds := []int{1, 2, 3}, []int{4, 5, 6}
-	deploymentRequest := NaisDeploymentRequest{Application: "app", FasitEnvironment: "env", Version: "123"}
+	deploymentRequest := naisrequest.Deploy{Application: "app", FasitEnvironment: "env", Version: "123"}
 
 	t.Run("A valid payload creates ApplicationInstance", func(t *testing.T) {
 		err := fasit.createApplicationInstance(deploymentRequest, "", "", exposedResourceIds, usedResourceIds)
@@ -153,7 +155,7 @@ func TestCreatingResource(t *testing.T) {
 		ResourceType: "RestService",
 		Path:         "",
 	}
-	deploymentRequest := NaisDeploymentRequest{
+	deploymentRequest := naisrequest.Deploy{
 		Application: "application",
 		Zone:        "zone",
 	}
@@ -200,7 +202,7 @@ func TestUpdateResource(t *testing.T) {
 		ResourceType: "RestService",
 		Path:         "",
 	}
-	deploymentRequest := NaisDeploymentRequest{
+	deploymentRequest := naisrequest.Deploy{
 		Application: "application",
 		Zone:        "zone",
 	}
@@ -304,7 +306,7 @@ func (fasit FakeFasitClient) getScopedResource(resourcesRequest ResourceRequest,
 	}
 }
 
-func (fasit FakeFasitClient) createResource(resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
+func (fasit FakeFasitClient) createResource(resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest naisrequest.Deploy) (int, error) {
 	switch deploymentRequest.Zone {
 	case "failed":
 		return 0, fmt.Errorf("random error")
@@ -315,7 +317,7 @@ func (fasit FakeFasitClient) createResource(resource ExposedResource, fasitEnvir
 
 var updateCalled bool
 
-func (fasit FakeFasitClient) updateResource(existingResource NaisResource, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
+func (fasit FakeFasitClient) updateResource(existingResource NaisResource, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest naisrequest.Deploy) (int, error) {
 	updateCalled = true
 	switch deploymentRequest.Zone {
 	case "failed":
@@ -328,7 +330,7 @@ func (fasit FakeFasitClient) updateResource(existingResource NaisResource, resou
 
 var createApplicationInstanceCalled bool
 
-func (fasit FakeFasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error {
+func (fasit FakeFasitClient) createApplicationInstance(deploymentRequest naisrequest.Deploy, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error {
 	createApplicationInstanceCalled = true
 	return nil
 }
@@ -347,7 +349,7 @@ func TestCreateOrUpdateFasitResources(t *testing.T) {
 		Path:         "",
 	}
 
-	deploymentRequest := NaisDeploymentRequest{
+	deploymentRequest := naisrequest.Deploy{
 		Application: "application",
 		Zone:        "zone",
 	}
@@ -437,7 +439,7 @@ func TestUpdateFasit(t *testing.T) {
 	usedResources := []NaisResource{{id: 1}, {id: 2}}
 	exposedResources := []ExposedResource{exposedResource, exposedResource}
 
-	deploymentRequest := NaisDeploymentRequest{
+	deploymentRequest := naisrequest.Deploy{
 		Application:      application,
 		FasitEnvironment: environment,
 		Version:          version,
@@ -476,7 +478,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	version := "2.1"
 	exposedResourceIds := []int{1, 2, 3}
 	usedResourceIds := []int{4, 5, 6}
-	zone := ZONE_FSS
+	zone := constant.ZONE_FSS
 	alias := "resourceAlias"
 	path := "/myPath"
 	hostname := "hostname"
@@ -487,7 +489,7 @@ func TestBuildingFasitPayloads(t *testing.T) {
 	description := "myDescription"
 	wsdlPath := fmt.Sprintf("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=%s&e=zip&g=%s&r=m2internal&v=%s", wsdlArtifactId, wsdlGroupId, version)
 
-	deploymentRequest := NaisDeploymentRequest{
+	deploymentRequest := naisrequest.Deploy{
 		Application:      application,
 		FasitEnvironment: environment,
 		Version:          version,
@@ -509,8 +511,8 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		SecurityToken:  securityToken,
 		Description:    description,
 	}
-	exposedResources := []Resource{Resource{1}, Resource{2}, Resource{3}}
-	usedResources := []Resource{Resource{4}, Resource{5}, Resource{6}}
+	exposedResources := []Resource{{1}, {2}, {3}}
+	usedResources := []Resource{{4}, {5}, {6}}
 
 	t.Run("Building ApplicationInstancePayload", func(t *testing.T) {
 		payload := buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, exposedResourceIds, usedResourceIds)
@@ -588,7 +590,7 @@ func TestGenerateScope(t *testing.T) {
 	existingResource := NaisResource{}
 	fasitEnvironmentClass := "u"
 	environment := "u1"
-	zone := ZONE_FSS
+	zone := constant.ZONE_FSS
 	t.Run("default scope set when creating a resource", func(t *testing.T) {
 		scope := generateScope(resource, existingResource, fasitEnvironmentClass, environment, zone)
 		defaultScope := Scope{EnvironmentClass: fasitEnvironmentClass, Environment: environment, Zone: zone}

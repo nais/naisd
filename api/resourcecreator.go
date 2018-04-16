@@ -2,10 +2,12 @@ package api
 
 import (
 	"fmt"
+	"github.com/nais/naisd/api/constant"
+	"github.com/nais/naisd/api/naisrequest"
+	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
 	k8sextensions "k8s.io/api/extensions/v1beta1"
-	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +66,7 @@ func validLabelName(str string) string {
 
 // Creates a Kubernetes Deployment object
 // If existingDeployment is provided, this is updated with modifiable fields
-func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, deploymentRequest NaisDeploymentRequest, existingDeployment *k8sextensions.Deployment, istioEnabled bool) (*k8sextensions.Deployment, error) {
+func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, deploymentRequest naisrequest.Deploy, existingDeployment *k8sextensions.Deployment, istioEnabled bool) (*k8sextensions.Deployment, error) {
 	spec, err := createDeploymentSpec(deploymentRequest, manifest, naisResources, istioEnabled)
 
 	if err != nil {
@@ -87,7 +89,7 @@ func createDeploymentDef(naisResources []NaisResource, manifest NaisManifest, de
 	}
 }
 
-func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool) (k8sextensions.DeploymentSpec, error) {
+func createDeploymentSpec(deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool) (k8sextensions.DeploymentSpec, error) {
 	spec, err := createPodSpec(deploymentRequest, manifest, naisResources)
 
 	if err != nil {
@@ -118,7 +120,7 @@ func createDeploymentSpec(deploymentRequest NaisDeploymentRequest, manifest Nais
 	}, nil
 }
 
-func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, istioEnabled bool) k8smeta.ObjectMeta {
+func createPodObjectMetaWithAnnotations(deploymentRequest naisrequest.Deploy, manifest NaisManifest, istioEnabled bool) k8smeta.ObjectMeta {
 	objectMeta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
@@ -133,7 +135,7 @@ func createPodObjectMetaWithAnnotations(deploymentRequest NaisDeploymentRequest,
 	return objectMeta
 }
 
-func createPodSpec(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource) (k8score.PodSpec, error) {
+func createPodSpec(deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) (k8score.PodSpec, error) {
 	envVars, err := createEnvironmentVariables(deploymentRequest, naisResources)
 
 	if err != nil {
@@ -244,7 +246,7 @@ func hasCertificate(naisResources []NaisResource) bool {
 	return false
 }
 
-func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources []NaisResource) k8score.Volume {
+func createCertificateVolume(deploymentRequest naisrequest.Deploy, resources []NaisResource) k8score.Volume {
 	var items []k8score.KeyToPath
 	for _, res := range resources {
 		if res.certificates != nil {
@@ -273,7 +275,7 @@ func createCertificateVolume(deploymentRequest NaisDeploymentRequest, resources 
 	return k8score.Volume{}
 }
 
-func createCertificateVolumeMount(deploymentRequest NaisDeploymentRequest, resources []NaisResource) k8score.VolumeMount {
+func createCertificateVolumeMount(deploymentRequest naisrequest.Deploy, resources []NaisResource) k8score.VolumeMount {
 	for _, res := range resources {
 		if res.certificates != nil {
 			return k8score.VolumeMount{
@@ -309,7 +311,7 @@ func checkForDuplicates(envVars []k8score.EnvVar, envVar k8score.EnvVar, propert
 	return nil
 }
 
-func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource) ([]k8score.EnvVar, error) {
+func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, naisResources []NaisResource) ([]k8score.EnvVar, error) {
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
 	for _, res := range naisResources {
@@ -363,7 +365,7 @@ func createEnvironmentVariables(deploymentRequest NaisDeploymentRequest, naisRes
 	return envVars, nil
 }
 
-func createDefaultEnvironmentVariables(request *NaisDeploymentRequest) []k8score.EnvVar {
+func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.EnvVar {
 	return []k8score.EnvVar{{
 		Name:  "APP_NAME",
 		Value: request.Application,
@@ -452,9 +454,9 @@ func createIngressHostname(application, namespace, subdomain string) string {
 	}
 }
 
-func createSBSPublicHostname(request NaisDeploymentRequest) string {
+func createSBSPublicHostname(request naisrequest.Deploy) string {
 	environment := request.FasitEnvironment
-	if environment != ENVIRONMENT_P {
+	if environment != constant.ENVIRONMENT_P {
 		return fmt.Sprintf("tjenester-%s.nav.no", environment)
 	} else {
 		return "tjenester.nav.no"
@@ -513,7 +515,7 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string)
 	}
 }
 
-func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
+func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
 	service, err := createService(deploymentRequest, manifest.Team, k8sClient)
@@ -566,7 +568,7 @@ func createOrUpdateK8sResources(deploymentRequest NaisDeploymentRequest, manifes
 	return deploymentResult, err
 }
 
-func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8score.ConfigMap, error) {
+func createOrUpdateAlertRules(deploymentRequest naisrequest.Deploy, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8score.ConfigMap, error) {
 	if len(manifest.Alerts) == 0 {
 		return nil, nil
 	}
@@ -589,7 +591,7 @@ func createOrUpdateAlertRules(deploymentRequest NaisDeploymentRequest, manifest 
 	return createOrUpdateConfigMapResource(configMapWithUpdatedAlertRules, AlertsConfigMapNamespace, k8sClient)
 }
 
-func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8sautoscaling.HorizontalPodAutoscaler, error) {
+func createOrUpdateAutoscaler(deploymentRequest naisrequest.Deploy, manifest NaisManifest, k8sClient kubernetes.Interface) (*k8sautoscaling.HorizontalPodAutoscaler, error) {
 	autoscaler, err := getExistingAutoscaler(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
@@ -601,7 +603,7 @@ func createOrUpdateAutoscaler(deploymentRequest NaisDeploymentRequest, manifest 
 }
 
 // Returns nil,nil if ingress already exists. No reason to do update, as nothing can change
-func createOrUpdateIngress(deploymentRequest NaisDeploymentRequest, teamName, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
+func createOrUpdateIngress(deploymentRequest naisrequest.Deploy, teamName, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
 	ingress, err := getExistingIngress(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
@@ -617,13 +619,13 @@ func createOrUpdateIngress(deploymentRequest NaisDeploymentRequest, teamName, cl
 	return createOrUpdateIngressResource(ingress, deploymentRequest.Namespace, k8sClient)
 }
 
-func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomain string, naisResources []NaisResource) []k8sextensions.IngressRule {
+func createIngressRules(deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource) []k8sextensions.IngressRule {
 	var ingressRules []k8sextensions.IngressRule
 
 	defaultIngressRule := createIngressRule(deploymentRequest.Application, createIngressHostname(deploymentRequest.Application, deploymentRequest.Namespace, clusterSubdomain), "")
 	ingressRules = append(ingressRules, defaultIngressRule)
 
-	if deploymentRequest.Zone == ZONE_SBS {
+	if deploymentRequest.Zone == constant.ZONE_SBS {
 		ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application, createSBSPublicHostname(deploymentRequest), deploymentRequest.Application))
 	}
 
@@ -638,7 +640,7 @@ func createIngressRules(deploymentRequest NaisDeploymentRequest, clusterSubdomai
 	return ingressRules
 }
 
-func createService(deploymentRequest NaisDeploymentRequest, teamName string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+func createService(deploymentRequest naisrequest.Deploy, teamName string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
 	existingService, err := getExistingService(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
@@ -658,7 +660,7 @@ func createConfigMapDef(name, namespace, teamName string) *k8score.ConfigMap {
 	return &k8score.ConfigMap{ObjectMeta: meta}
 }
 
-func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+func createOrUpdateDeployment(deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
 	existingDeployment, err := getExistingDeployment(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
@@ -674,7 +676,7 @@ func createOrUpdateDeployment(deploymentRequest NaisDeploymentRequest, manifest 
 	return createOrUpdateDeploymentResource(deploymentDef, deploymentRequest.Namespace, k8sClient)
 }
 
-func createOrUpdateSecret(deploymentRequest NaisDeploymentRequest, naisResources []NaisResource, k8sClient kubernetes.Interface, teamName string) (*k8score.Secret, error) {
+func createOrUpdateSecret(deploymentRequest naisrequest.Deploy, naisResources []NaisResource, k8sClient kubernetes.Interface, teamName string) (*k8score.Secret, error) {
 	existingSecret, err := getExistingSecret(deploymentRequest.Application, deploymentRequest.Namespace, k8sClient)
 
 	if err != nil {
@@ -820,7 +822,7 @@ func int32p(i int32) *int32 {
 }
 
 func createObjectMeta(applicationName, namespace, teamName string) k8smeta.ObjectMeta {
-	labels := map[string]string{"app": applicationName,}
+	labels := map[string]string{"app": applicationName}
 
 	if teamName != "" {
 		labels["team"] = teamName
@@ -829,7 +831,7 @@ func createObjectMeta(applicationName, namespace, teamName string) k8smeta.Objec
 	return k8smeta.ObjectMeta{
 		Name:      applicationName,
 		Namespace: namespace,
-		Labels: labels,
+		Labels:    labels,
 	}
 }
 

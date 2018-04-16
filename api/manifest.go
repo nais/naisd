@@ -3,13 +3,14 @@ package api
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
+	"github.com/nais/naisd/api/naisrequest"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
-	"github.com/hashicorp/go-multierror"
 )
 
 type Probe struct {
@@ -50,7 +51,7 @@ type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
-	PreStopHookPath string         `yaml:"preStopHookPath"`
+	PreStopHookPath string `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
 	Istio           IstioConfig
 	Replicas        Replicas
@@ -109,7 +110,7 @@ type Field struct {
 	Value string
 }
 
-func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
+func GenerateManifest(deploymentRequest naisrequest.Deploy) (naisManifest NaisManifest, err error) {
 
 	manifest, err := downloadManifest(deploymentRequest)
 
@@ -132,7 +133,7 @@ func GenerateManifest(deploymentRequest NaisDeploymentRequest) (naisManifest Nai
 	return manifest, nil
 }
 
-func downloadManifest(deploymentRequest NaisDeploymentRequest) (naisManifest NaisManifest, err error) {
+func downloadManifest(deploymentRequest naisrequest.Deploy) (naisManifest NaisManifest, err error) {
 
 	var urls []string
 	var errors error

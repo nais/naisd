@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	"goji.io"
 	"goji.io/pat"
@@ -105,7 +106,7 @@ func TestNoManifestGivesError(t *testing.T) {
 	api := Api{}
 
 	manifestUrl := "http://repo.com/app"
-	depReq := NaisDeploymentRequest{
+	depReq := naisrequest.Deploy{
 		Application:      "appname",
 		Version:          "",
 		FasitEnvironment: "",
@@ -153,7 +154,7 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
-	depReq := NaisDeploymentRequest{
+	depReq := naisrequest.Deploy{
 		Application:      appName,
 		Version:          version,
 		FasitEnvironment: environment,
@@ -242,7 +243,7 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
-	depReq := NaisDeploymentRequest{
+	depReq := naisrequest.Deploy{
 		Application:      appName,
 		Version:          version,
 		FasitEnvironment: environment,
@@ -349,7 +350,7 @@ func TestMissingResources(t *testing.T) {
 }
 
 func CreateDefaultDeploymentRequest() string {
-	jsn, _ := json.Marshal(NaisDeploymentRequest{
+	jsn, _ := json.Marshal(naisrequest.Deploy{
 		Application:      "appname",
 		Version:          "123",
 		FasitEnvironment: "namespace",
@@ -363,7 +364,7 @@ func CreateDefaultDeploymentRequest() string {
 
 func TestValidateDeploymentRequest(t *testing.T) {
 	t.Run("Empty fields should be marked invalid", func(t *testing.T) {
-		invalid := NaisDeploymentRequest{
+		invalid := naisrequest.Deploy{
 			Application:      "",
 			Version:          "",
 			FasitEnvironment: "",

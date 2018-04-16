@@ -852,6 +852,7 @@ func TestCreateK8sResources(t *testing.T) {
 		assert.NotEmpty(t, deploymentResult.Deployment)
 		assert.NotEmpty(t, deploymentResult.Ingress)
 		assert.NotEmpty(t, deploymentResult.Autoscaler)
+		assert.NotEmpty(t, deploymentResult.ServiceAccount)
 
 		assert.Equal(t, resourceVersion, deploymentResult.Autoscaler.ObjectMeta.ResourceVersion, "autoscaler should have same id as the preexisting")
 		assert.Equal(t, "", deploymentResult.Secret.ObjectMeta.ResourceVersion, "secret should not have any id set")

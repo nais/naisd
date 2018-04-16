@@ -3,6 +3,7 @@ package api
 import (
 	"testing"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sapps "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,7 +38,15 @@ func TestDeleteK8sResouces(t *testing.T) {
 	secretDef.ObjectMeta.ResourceVersion = resourceVersion
 	configMapDef := createConfigMapDef(AlertsConfigMapName, AlertsConfigMapNamespace, teamName)
 	configMapDef.ObjectMeta.ResourceVersion = resourceVersion
-	clientset := fake.NewSimpleClientset(serviceDef, deploymentDef, secretDef, configMapDef)
+	replicaSetDef := &k8sapps.ReplicaSet{
+		TypeMeta: k8smeta.TypeMeta{
+			Kind:       "ReplicaSet",
+			APIVersion: "v1",
+		},
+		ObjectMeta: createObjectMeta(appName, namespace, teamName),
+	}
+
+	clientset := fake.NewSimpleClientset(serviceDef, deploymentDef, secretDef, configMapDef, replicaSetDef)
 	createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
 
 	t.Run("Deleting non-existing app should return no error and not nil result", func(t *testing.T) {
@@ -58,10 +67,10 @@ func TestDeleteK8sResouces(t *testing.T) {
 		assert.Nil(t, nilValue)
 	})
 
-	t.Run("All pods should be deleted", func(t *testing.T) {
-		nilValue, err := clientset.CoreV1().Pods(namespace).Get(appName, k8smeta.GetOptions{})
-		assert.Error(t, err)
-		assert.Nil(t, nilValue)
+	t.Run("ReplicaSet should be deleted", func(t *testing.T) {
+		replicasets, err := clientset.AppsV1().ReplicaSets(namespace).List(k8smeta.ListOptions{LabelSelector:"app="+appName})
+		assert.NoError(t, err)
+		assert.Empty(t, replicasets.Items)
 	})
 
 	t.Run("Service should be deleted", func(t *testing.T) {

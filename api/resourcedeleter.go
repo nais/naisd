@@ -26,6 +26,13 @@ func deleteK8sResouces(namespace string, deployName string, k8sClient kubernetes
 		}
 	}
 
+	if res, err := deleteReplicaSet(namespace, deployName, k8sClient); res != "" {
+		result = append(result, res)
+		if err != nil {
+			return result, err
+		}
+	}
+
 	if err := deleteRedisFailover(namespace, deployName, k8sClient); err != nil {
 		result = append(result, err.Error())
 	}
@@ -73,6 +80,23 @@ func deleteDeployment(namespace string, deployName string, k8sClient kubernetes.
 	if err := k8sClient.ExtensionsV1beta1().Deployments(namespace).Delete(deployName, &k8smeta.DeleteOptions{ PropagationPolicy: &deploymentDeleteOption, }); err != nil {
 		return filterNotFound(fmt.Sprintf("could not delete deployment: %s in namespace: %s: %s", deployName, namespace, err), err)
 	}
+	return "", nil
+}
+
+// replicaset should be deleted by foreground delete policy for deployment, temporary fix
+func deleteReplicaSet(namespace string, deployName string, k8sClient kubernetes.Interface) (result string, e error) {
+	appLabel := "app=" + deployName
+	replicaSets, err := k8sClient.AppsV1().ReplicaSets(namespace).List(k8smeta.ListOptions{LabelSelector: appLabel})
+	if err != nil {
+		return filterNotFound(fmt.Sprintf("could not delete replicaset: %s in namespace: %s: %s", deployName, namespace, err), err)
+	}
+
+	for _, replicaSet := range replicaSets.Items {
+		if err := k8sClient.AppsV1().ReplicaSets(namespace).Delete(replicaSet.Name, &k8smeta.DeleteOptions{}); err != nil {
+			return filterNotFound(fmt.Sprintf("could not delete replicaset: %s in namespace: %s: %s", deployName, namespace, err), err)
+		}
+	}
+
 	return "", nil
 }
 

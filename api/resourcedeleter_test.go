@@ -1,12 +1,13 @@
 package api
 
 import (
-	"testing"
+	"github.com/nais/naisd/api/constant"
+	"github.com/nais/naisd/api/naisrequest"
+	"github.com/stretchr/testify/assert"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
-	"github.com/stretchr/testify/assert"
+	"testing"
 )
-
 
 func TestDeleteK8sResouces(t *testing.T) {
 	resourceName := "r1"
@@ -22,7 +23,7 @@ func TestDeleteK8sResouces(t *testing.T) {
 			1,
 			resourceName,
 			resourceType,
-			Scope{"u", "u1", ZONE_FSS},
+			Scope{"u", "u1", constant.ZONE_FSS},
 			map[string]string{resourceKey: resourceValue},
 			map[string]string{},
 			map[string]string{secretKey: secretValue},
@@ -31,14 +32,14 @@ func TestDeleteK8sResouces(t *testing.T) {
 		},
 	}
 
-	naisDeploymentRequest := NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}
+	naisDeploymentRequest := naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}
 	deploymentDef, _ := createDeploymentDef(naisResources, newDefaultManifest(), naisDeploymentRequest, nil, false)
 	secretDef := createSecretDef(naisResources, nil, appName, namespace, teamName)
 	secretDef.ObjectMeta.ResourceVersion = resourceVersion
 	configMapDef := createConfigMapDef(AlertsConfigMapName, AlertsConfigMapNamespace, teamName)
 	configMapDef.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(serviceDef, deploymentDef, secretDef, configMapDef)
-	createService(NaisDeploymentRequest{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
+	createService(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
 
 	t.Run("Deleting non-existing app should return no error and not nil result", func(t *testing.T) {
 		res, err := deleteK8sResouces("nonexisting", appName, clientset)
@@ -110,7 +111,7 @@ func TestDeleteIngress(t *testing.T) {
 	clientset := fake.NewSimpleClientset(ingress)
 
 	t.Run("No error when ingress not present", func(t *testing.T) {
-		res, err := deleteIngress(namespace,"nonexisting", clientset)
+		res, err := deleteIngress(namespace, "nonexisting", clientset)
 		assert.NoError(t, err)
 		assert.Empty(t, res)
 		ingress, err := getExistingIngress(appName, namespace, clientset)
@@ -149,7 +150,7 @@ func TestDeleteConfigMapRules(t *testing.T) {
 		configmap, err := getExistingConfigMap(AlertsConfigMapName, AlertsConfigMapNamespace, clientset)
 		assert.NoError(t, err)
 		assert.NotNil(t, configmap)
-		alert, _ := configmap.Data[appName + namespace + ".yml" ]
+		alert, _ := configmap.Data[appName+namespace+".yml"]
 		assert.Empty(t, alert)
 	})
 }

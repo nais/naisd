@@ -1,13 +1,15 @@
 package api
 
 import (
-	"testing"
+	"github.com/nais/naisd/api/constant"
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestRedisResource(t *testing.T) {
 	t.Run("Replicas should be 1 when not prod", func(t *testing.T) {
-		deploymentRequest := NaisDeploymentRequest{
+		deploymentRequest := naisrequest.Deploy{
 			Application:      "redisTest",
 			FasitEnvironment: "t",
 			Namespace:        "default",
@@ -17,9 +19,9 @@ func TestRedisResource(t *testing.T) {
 	})
 
 	t.Run("Replicas should be 3 when prod", func(t *testing.T) {
-		deploymentRequest := NaisDeploymentRequest{
+		deploymentRequest := naisrequest.Deploy{
 			Application:      "redisTest",
-			FasitEnvironment: ENVIRONMENT_P,
+			FasitEnvironment: constant.ENVIRONMENT_P,
 			Namespace:        "default",
 		}
 		redisFailoverDef := createRedisFailoverDef(deploymentRequest, "teamBeam")

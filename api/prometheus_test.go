@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
@@ -84,7 +85,7 @@ func TestAddRulesToConfigMap(t *testing.T) {
 		},
 	}
 
-	deploymentRequest := NaisDeploymentRequest{
+	deploymentRequest := naisrequest.Deploy{
 		Application: appName,
 		Namespace:   namespace,
 	}

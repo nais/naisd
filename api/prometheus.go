@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api/naisrequest"
 	"gopkg.in/yaml.v2"
 	k8score "k8s.io/api/core/v1"
 )
@@ -54,7 +55,7 @@ func createDeploymentPrefix(namespace string, deployName string) string {
 	return namespace + "-" + deployName
 }
 
-func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest NaisDeploymentRequest, manifest NaisManifest) (*k8score.ConfigMap, error) {
+func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest naisrequest.Deploy, manifest NaisManifest) (*k8score.ConfigMap, error) {
 	deploymentPrefix := createDeploymentPrefix(deploymentRequest.Namespace, deploymentRequest.Application)
 
 	addTeamLabel(manifest.Alerts, manifest.Team)

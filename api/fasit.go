@@ -13,6 +13,7 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api/naisrequest"
 	"github.com/prometheus/client_golang/prometheus"
 	"regexp"
 )
@@ -75,13 +76,13 @@ type FasitClient struct {
 }
 type FasitClientAdapter interface {
 	getScopedResource(resourcesRequest ResourceRequest, environment, application, zone string) (NaisResource, AppError)
-	createResource(resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error)
-	updateResource(existingResource NaisResource, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error)
+	createResource(resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest naisrequest.Deploy) (int, error)
+	updateResource(existingResource NaisResource, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest naisrequest.Deploy) (int, error)
 	GetFasitEnvironmentClass(environmentName string) (string, error)
 	GetFasitApplication(application string) error
 	GetScopedResources(resourcesRequests []ResourceRequest, environment string, application string, zone string) (resources []NaisResource, err error)
 	getLoadBalancerConfig(application string, environment string) (*NaisResource, error)
-	createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error
+	createApplicationInstance(deploymentRequest naisrequest.Deploy, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error
 }
 
 type FasitResource struct {
@@ -169,7 +170,7 @@ func (fasit FasitClient) GetScopedResources(resourcesRequests []ResourceRequest,
 	return resources, nil
 }
 
-func (fasit FasitClient) createApplicationInstance(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error {
+func (fasit FasitClient) createApplicationInstance(deploymentRequest naisrequest.Deploy, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) error {
 	fasitPath := fasit.FasitUrl + "/api/v2/applicationinstances/"
 
 	payload, err := json.Marshal(buildApplicationInstancePayload(deploymentRequest, fasitEnvironment, subDomain, exposedResourceIds, usedResourceIds))
@@ -226,7 +227,7 @@ func (fasit FasitClient) getLoadBalancerConfig(application string, environment s
 
 }
 
-func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedResource, hostname, fasitEnvironmentClass, fasitEnvironment string, deploymentRequest NaisDeploymentRequest) ([]int, error) {
+func CreateOrUpdateFasitResources(fasit FasitClientAdapter, resources []ExposedResource, hostname, fasitEnvironmentClass, fasitEnvironment string, deploymentRequest naisrequest.Deploy) ([]int, error) {
 	var exposedResourceIds []int
 
 	for _, resource := range resources {
@@ -300,7 +301,7 @@ func arrayToString(a []int) string {
 }
 
 // Updates Fasit with information
-func updateFasit(fasit FasitClientAdapter, deploymentRequest NaisDeploymentRequest, usedResources []NaisResource, manifest NaisManifest, hostname, fasitEnvironmentClass, fasitEnvironment, domain string) error {
+func updateFasit(fasit FasitClientAdapter, deploymentRequest naisrequest.Deploy, usedResources []NaisResource, manifest NaisManifest, hostname, fasitEnvironmentClass, fasitEnvironment, domain string) error {
 
 	usedResourceIds := getResourceIds(usedResources)
 	var exposedResourceIds []int
@@ -399,7 +400,7 @@ func SafeMarshal(v interface{}) ([]byte, error) {
 	b = bytes.Replace(b, []byte("\\u0026"), []byte("&"), -1)
 	return b, err
 }
-func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
+func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest naisrequest.Deploy) (int, error) {
 	payload, err := SafeMarshal(buildResourcePayload(resource, NaisResource{}, fasitEnvironmentClass, environment, deploymentRequest.Zone, hostname))
 	if err != nil {
 		errorCounter.WithLabelValues("create_request").Inc()
@@ -443,7 +444,7 @@ func (fasit FasitClient) createResource(resource ExposedResource, fasitEnvironme
 
 	return id, nil
 }
-func (fasit FasitClient) updateResource(existingResource NaisResource, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest NaisDeploymentRequest) (int, error) {
+func (fasit FasitClient) updateResource(existingResource NaisResource, resource ExposedResource, fasitEnvironmentClass, environment, hostname string, deploymentRequest naisrequest.Deploy) (int, error) {
 	requestCounter.With(nil).Inc()
 
 	payload, err := SafeMarshal(buildResourcePayload(resource, existingResource, fasitEnvironmentClass, environment, deploymentRequest.Zone, hostname))
@@ -559,7 +560,7 @@ func (fasit FasitClient) mapToNaisResource(fasitResource FasitResource, property
 			if lineFilter.MatchString(line) {
 				parts := strings.SplitN(line, "=", 2)
 				resource.properties[parts[0]] = parts[1]
-			} else if (len(line) > 0) {
+			} else if len(line) > 0 {
 				glog.Infof("the following string did not match our regex: %s", line)
 			}
 		}
@@ -722,7 +723,7 @@ func generateScope(resource ExposedResource, existingResource NaisResource, fasi
 	}
 }
 
-func buildApplicationInstancePayload(deploymentRequest NaisDeploymentRequest, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) ApplicationInstancePayload {
+func buildApplicationInstancePayload(deploymentRequest naisrequest.Deploy, fasitEnvironment, subDomain string, exposedResourceIds, usedResourceIds []int) ApplicationInstancePayload {
 	// Need to make an empty array of Resources in order for json.Marshall to return [] and not null
 	// see https://danott.co/posts/json-marshalling-empty-slices-to-empty-arrays-in-go.html for details
 	emptyResources := make([]Resource, 0)

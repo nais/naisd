@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
@@ -16,13 +15,6 @@ func createRedisFailoverDef(deploymentRequest naisrequest.Deploy, team string) *
 	resources := redisapi.RedisFailoverResources{
 		Limits:   redisapi.CPUAndMem{Memory: "100Mi"},
 		Requests: redisapi.CPUAndMem{CPU: "100m"},
-	}
-	if deploymentRequest.FasitEnvironment != constant.ENVIRONMENT_P {
-		replicas = int32(1)
-		resources = redisapi.RedisFailoverResources{
-			Limits:   redisapi.CPUAndMem{Memory: "50Mi"},
-			Requests: redisapi.CPUAndMem{CPU: "50m"},
-		}
 	}
 
 	spec := redisapi.RedisFailoverSpec{

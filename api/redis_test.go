@@ -8,17 +8,7 @@ import (
 )
 
 func TestRedisResource(t *testing.T) {
-	t.Run("Replicas should be 1 when not prod", func(t *testing.T) {
-		deploymentRequest := naisrequest.Deploy{
-			Application:      "redisTest",
-			FasitEnvironment: "t",
-			Namespace:        "default",
-		}
-		redisFailoverDef := createRedisFailoverDef(deploymentRequest, "teamBeam")
-		assert.Equal(t, int32(1), redisFailoverDef.Spec.Redis.Replicas, "")
-	})
-
-	t.Run("Replicas should be 3 when prod", func(t *testing.T) {
+	t.Run("Replicas should always be 3", func(t *testing.T) {
 		deploymentRequest := naisrequest.Deploy{
 			Application:      "redisTest",
 			FasitEnvironment: constant.ENVIRONMENT_P,

@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
 	"testing"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 func TestDeleteK8sResouces(t *testing.T) {
@@ -37,36 +39,38 @@ func TestDeleteK8sResouces(t *testing.T) {
 	secretDef.ObjectMeta.ResourceVersion = resourceVersion
 	configMapDef := createConfigMapDef(AlertsConfigMapName, AlertsConfigMapNamespace, teamName)
 	configMapDef.ObjectMeta.ResourceVersion = resourceVersion
-	clientset := fake.NewSimpleClientset(serviceDef, deploymentDef, secretDef, configMapDef)
-	createService(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
+	serviceAccountDef := createServiceAccountDef(appName, namespace, teamName)
+	clientset := fake.NewSimpleClientset(serviceDef, deploymentDef, secretDef, configMapDef, serviceAccountDef)
 
 	t.Run("Deleting non-existing app should return no error", func(t *testing.T) {
 		_, err := deleteK8sResouces("nonexisting", appName, clientset)
 		assert.NoError(t, err)
 	})
 
-	t.Run("Deleting existing app should return no error", func(t *testing.T) {
-		_, err := deleteK8sResouces(namespace, appName, clientset)
+	t.Run("Deleting existing app should delete all created resources", func(t *testing.T) {
+		result, err := deleteK8sResouces(namespace, appName, clientset)
 		assert.NoError(t, err)
+		assert.NotEmpty(t, result)
+
+		deployment, err := getExistingDeployment(appName, namespace, clientset)
+		assert.NoError(t, err)
+		assert.Nil(t, deployment)
+
+		svc, err := getExistingService(namespace, appName, clientset)
+		assert.NoError(t, err)
+		assert.Nil(t, svc)
+
+		secret, err := getExistingSecret(AlertsConfigMapNamespace, appName, clientset)
+		assert.NoError(t, err)
+		assert.Nil(t, secret)
+
+		account, e := clientset.CoreV1().ServiceAccounts(namespace).Get(appName, v1.GetOptions{})
+		assert.Error(t, e)
+		assert.True(t, errors.IsNotFound(e))
+		assert.Nil(t, account)
+
 	})
 
-	t.Run("Deployment should be deleted", func(t *testing.T) {
-		nilValue, err := getExistingDeployment(appName, namespace, clientset)
-		assert.NoError(t, err)
-		assert.Nil(t, nilValue)
-	})
-
-	t.Run("Service should be deleted", func(t *testing.T) {
-		nilValue, err := getExistingService(namespace, appName, clientset)
-		assert.NoError(t, err)
-		assert.Nil(t, nilValue)
-	})
-
-	t.Run("Secret should be deleted", func(t *testing.T) {
-		nilValue, err := getExistingSecret(AlertsConfigMapNamespace, appName, clientset)
-		assert.NoError(t, err)
-		assert.Nil(t, nilValue)
-	})
 }
 
 func TestDeleteAutoscaler(t *testing.T) {

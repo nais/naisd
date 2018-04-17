@@ -61,6 +61,8 @@ type NaisManifest struct {
 	LeaderElection  bool           `yaml:"leaderElection"`
 	Redis           bool           `yaml:"redis"`
 	Alerts          []PrometheusAlertRule
+	Logformat       string
+	Logtransform    string
 }
 
 type Ingress struct {

@@ -360,7 +360,6 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("Prometheus annotations are updated on an existing deployment", func(t *testing.T) {
-
 		manifest := newDefaultManifest()
 		manifest.Prometheus.Path = "/newPath"
 		manifest.Prometheus.Enabled = false
@@ -373,6 +372,22 @@ func TestDeployment(t *testing.T) {
 			"prometheus.io/path":   "/newPath",
 			"prometheus.io/port":   "http",
 		}, updatedDeployment.Spec.Template.Annotations)
+	})
+
+	t.Run("when logformat and logtransform is set, annotations exists", func(t *testing.T) {
+		manifest := newDefaultManifest()
+		manifest.Logformat = "accesslog"
+		manifest.Logtransform = "dns_loglevel"
+
+		updateDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]string{
+			"prometheus.io/scrape": "true",
+			"prometheus.io/path":   "/path",
+			"prometheus.io/port":   "http",
+			"nais.io/logformat":    "accesslog",
+			"nais.io/logtransform": "dns_loglevel",
+		}, updateDeployment.Spec.Template.Annotations)
 	})
 
 	t.Run("Container lifecycle is set correctly", func(t *testing.T) {
@@ -389,7 +404,6 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("File secrets are mounted correctly for an updated deployment", func(t *testing.T) {
-
 		updatedCertKey := "updatedkey"
 		updatedCertValue := []byte("updatedCertValue")
 

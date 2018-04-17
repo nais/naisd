@@ -75,24 +75,6 @@ var deployCmd = &cobra.Command{
 			FasitPassword: os.Getenv("FASIT_PASSWORD"),
 		}
 
-		if deployRequest.FasitUsername == "" {
-			deployRequest.FasitUsername = os.Getenv("NAIS_USERNAME")
-
-			if deployRequest.FasitUsername != "" {
-				fmt.Fprintf(os.Stderr, "Deprecation warning: NAIS_USERNAME is replaced by FASIT_USERNAME.\n"+
-					"It will be removed in future versions.\n")
-			}
-		}
-
-		if deployRequest.FasitPassword == "" {
-			deployRequest.FasitPassword = os.Getenv("NAIS_PASSWORD")
-
-			if deployRequest.FasitPassword != "" {
-				fmt.Fprintf(os.Stderr, "Deprecation warning: NAIS_PASSWORD is replaced by FASIT_PASSWORD.\n"+
-					"It will be removed in future versions.\n")
-			}
-		}
-
 		var cluster string
 		strings := map[string]*string{
 			"app":               &deployRequest.Application,

@@ -134,7 +134,6 @@ func GenerateManifest(deploymentRequest naisrequest.Deploy) (naisManifest NaisMa
 }
 
 func downloadManifest(deploymentRequest naisrequest.Deploy) (naisManifest NaisManifest, err error) {
-
 	var urls []string
 	var errors error
 

@@ -10,51 +10,49 @@ import (
 )
 
 func deleteK8sResouces(namespace string, deployName string, k8sClient kubernetes.Interface) (results []string, e error) {
-	var result []string
-
 	res, err := deleteService(namespace, deployName, k8sClient)
-	result = append(result, res)
+	results = append(results, res)
 	if err != nil {
-		return result, err
+		return results, err
 	}
 
 	res, err = deleteDeployment(namespace, deployName, k8sClient)
-	result = append(result, res)
+	results = append(results, res)
 	if err != nil {
-		return result, err
+		return results, err
 	}
 
 	res, err = deleteRedisFailover(namespace, deployName, k8sClient)
-	result = append(result, res)
+	results = append(results, res)
 	if err != nil {
-		result = append(result, err.Error())
+		results = append(results, err.Error())
 	}
 
 	res, err = deleteSecret(namespace, deployName, k8sClient)
-	result = append(result, res)
+	results = append(results, res)
 	if err != nil {
-		return result, err
+		return results, err
 	}
 
 	res, err = deleteIngress(namespace, deployName, k8sClient)
-	result = append(result, res)
+	results = append(results, res)
 	if err != nil {
-		return result, err
+		return results, err
 	}
 
 	res, err = deleteAutoscaler(namespace, deployName, k8sClient)
-	result = append(result, res)
+	results = append(results, res)
 	if err != nil {
-		return result, err
+		return results, err
 	}
 
 	res, err = deleteConfigMapRules(namespace, deployName, k8sClient)
-	result = append(result, res)
+	results = append(results, res)
 	if err != nil {
-		return result, err
+		return results, err
 	}
 
-	return result, nil
+	return results, nil
 }
 
 func deleteService(namespace string, deployName string, k8sClient kubernetes.Interface) (result string, e error) {
@@ -69,7 +67,7 @@ func deleteDeployment(namespace string, deployName string, k8sClient kubernetes.
 	if err := k8sClient.ExtensionsV1beta1().Deployments(namespace).Delete(deployName, &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
 		return filterNotFound("deployment: ", err)
 	}
-	return "deployment: ", nil
+	return "deployment: OK", nil
 }
 
 func deleteSecret(namespace string, deployName string, k8sClient kubernetes.Interface) (result string, e error) {

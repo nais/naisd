@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-type serviceAcccountClient struct {
+type clientHolder struct {
 	client kubernetes.Interface
 }
 
@@ -18,12 +18,12 @@ type ServiceAccountInterface interface {
 }
 
 func NewServiceAccountInterface(client kubernetes.Interface) ServiceAccountInterface {
-	return serviceAcccountClient{
+	return clientHolder{
 		client: client,
 	}
 }
 
-func (c serviceAcccountClient) Delete(name, namespace string) error {
+func (c clientHolder) Delete(name, namespace string) error {
 	if e := c.client.CoreV1().ServiceAccounts(namespace).Delete(name, &k8smeta.DeleteOptions{}); e != nil && !errors.IsNotFound(e) {
 		return e
 	} else {
@@ -32,7 +32,7 @@ func (c serviceAcccountClient) Delete(name, namespace string) error {
 
 }
 
-func (c serviceAcccountClient) CreateOrUpdate(name, namespace, team string) (*v1.ServiceAccount, error) {
+func (c clientHolder) CreateOrUpdate(name, namespace, team string) (*v1.ServiceAccount, error) {
 	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(namespace)
 
 	account, e := serviceAccountInterface.Get(name, k8smeta.GetOptions{})

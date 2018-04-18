@@ -274,7 +274,6 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, otherAppName, deployment.Name)
 		assert.Equal(t, "", deployment.ObjectMeta.ResourceVersion)
 		assert.Equal(t, otherAppName, deployment.Spec.Template.Name)
-		assert.Equal(t, otherAppName, deployment.Spec)
 
 		containers := deployment.Spec.Template.Spec.Containers
 

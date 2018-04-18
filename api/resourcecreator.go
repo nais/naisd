@@ -132,6 +132,14 @@ func createPodObjectMetaWithAnnotations(deploymentRequest naisrequest.Deploy, ma
 		objectMeta.Annotations["sidecar.istio.io/inject"] = "true"
 	}
 
+	if len(manifest.Logformat) > 0 {
+		objectMeta.Annotations["nais.io/logformat"] = manifest.Logformat
+	}
+
+	if len(manifest.Logtransform) > 0 {
+		objectMeta.Annotations["nais.io/logtransform"] = manifest.Logtransform
+	}
+
 	return objectMeta
 }
 

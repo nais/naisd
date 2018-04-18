@@ -60,3 +60,5 @@ alerts:
     severity: Warning
   annotations:
     action: Investigate why nais-testapp can't spawn pods. kubectl describe deployment nais-testapp, kubectl describe pod nais-testapp-*.
+logformat: accesslog # Optional. The format of the logs from the container if the logs should be handled differently than plain text or json
+logtransform: dns_loglevel # Optional. The transformation of the logs, if they should be handled differently than plain text or json

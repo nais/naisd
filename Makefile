@@ -46,7 +46,6 @@ cli-dist:
 		-e GOOS=darwin \
 		-e GOARCH=amd64 \
 		${GO_IMG} go build -o nais-darwin-amd64 -ldflags="-s -w $(LDFLAGS)" ./cli/nais.go
-	docker build -f Dockerfile_cli 
 	sudo xz nais-darwin-amd64
 
 	docker run --rm -v \

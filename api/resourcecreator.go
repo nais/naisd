@@ -181,9 +181,9 @@ func createPodSpec(deploymentRequest naisrequest.Deploy, manifest NaisManifest, 
 				Lifecycle:       createLifeCycle(manifest.PreStopHookPath),
 			},
 		},
-
-		RestartPolicy: k8score.RestartPolicyAlways,
-		DNSPolicy:     k8score.DNSClusterFirst,
+		ServiceAccountName: deploymentRequest.Application,
+		RestartPolicy:      k8score.RestartPolicyAlways,
+		DNSPolicy:          k8score.DNSClusterFirst,
 	}
 
 	if manifest.LeaderElection {

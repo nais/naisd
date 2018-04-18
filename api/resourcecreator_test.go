@@ -274,6 +274,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, otherAppName, deployment.Name)
 		assert.Equal(t, "", deployment.ObjectMeta.ResourceVersion)
 		assert.Equal(t, otherAppName, deployment.Spec.Template.Name)
+		assert.Equal(t, otherAppName, deployment.Spec)
 
 		containers := deployment.Spec.Template.Spec.Containers
 
@@ -293,6 +294,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, int32(3), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.TimeoutSeconds)
 		assert.Equal(t, int32(2), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.TimeoutSeconds)
 		assert.Equal(t, k8score.Lifecycle{}, *deployment.Spec.Template.Spec.Containers[0].Lifecycle)
+
 
 		ptr := func(p resource.Quantity) *resource.Quantity {
 			return &p

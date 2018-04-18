@@ -18,8 +18,11 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 
 		assert.NoError(t, e)
 		assert.NotNil(t, serviceAccount)
-		assert.Equal(t, serviceAccount.Name, name)
-		assert.Equal(t, serviceAccount.Namespace, namespace)
+
+		sa, err := clientset.CoreV1().ServiceAccounts(namespace).Get(name, v1.GetOptions{})
+		assert.NotNil(t, sa)
+		assert.NoError(t, err)
+		assert.Equal(t, name, sa.Name)
 
 	})
 
@@ -28,11 +31,12 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 		existingServiceAccount.SetUID("uuid")
 		clientset := fake.NewSimpleClientset(existingServiceAccount)
 
-		serviceAccount, e := NewServiceAccountInterface(clientset).CreateOrUpdate(name, namespace, team)
+		_, e := NewServiceAccountInterface(clientset).CreateOrUpdate(name, namespace, team)
 		assert.NoError(t, e)
-		assert.NotNil(t, serviceAccount)
-		assert.Equal(t, serviceAccount.Name, "name")
-		assert.NotEqual(t, existingServiceAccount, serviceAccount)
+
+		updatedServiceAccount, _ := clientset.CoreV1().ServiceAccounts(namespace).Get(name, v1.GetOptions{})
+		assert.NotNil(t, updatedServiceAccount)
+		assert.NotEqual(t, existingServiceAccount, updatedServiceAccount)
 
 	})
 }

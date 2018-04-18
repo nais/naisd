@@ -38,7 +38,7 @@ cli-dist:
 		-e GOOS=linux \
 		-e GOARCH=amd64 \
 		${GO_IMG} go build -o nais-linux-amd64 -ldflags="-s -w $(LDFLAGS)" ./cli/nais.go
-	sudo xz -k nais-linux-amd64
+	sudo xz nais-linux-amd64
 
 	docker run --rm -v \
 		${PWD}\:/go/src/github.com/nais/naisd \
@@ -79,6 +79,7 @@ docker-build:
 push-dockerhub:
 	docker image push ${NAME}:$(shell /bin/cat ./version)
 	docker image push navikt/nais:$(shell /bin/cat ./version)
+	docker image push navikt/nais:latest
 
 helm-upgrade:
 	helm delete naisd; helm upgrade -i naisd helm/naisd --set image.version=$(shell /bin/cat ./version)

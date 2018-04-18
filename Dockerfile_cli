@@ -1,12 +1,20 @@
-FROM alpine:3.5
-MAINTAINER Johnny Horvi <johnny.horvi@nav.no>
+# build stage
+FROM golang:1.10.1-alpine3.7 AS build-env
+
+WORKDIR /go/src/github.com/nais/naisd
+COPY cli  cli/
+COPY vendor vendor/
+COPY api api/
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o nais /go/src/github.com/nais/naisd/cli/nais.go
+
+# Image to build 
+FROM alpine:3.7
 
 COPY webproxy.nav.no.cer /usr/local/share/ca-certificates/
 RUN  apk add --no-cache ca-certificates
 RUN  update-ca-certificates
 
 WORKDIR /app
-
-COPY nais-linux-amd64 ./nais
-
-CMD /app/nais
+COPY --from=build-env /go/src/github.com/nais/naisd/nais . 
+CMD ["--help"]
+ENTRYPOINT ["./nais"]

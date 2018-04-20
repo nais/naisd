@@ -31,6 +31,7 @@ type DeploymentResult struct {
 	Service         *k8score.Service
 	Redis           *redisapi.RedisFailover
 	AlertsConfigMap *k8score.ConfigMap
+	ServiceAccount  *k8score.ServiceAccount
 }
 
 // Creates a Kubernetes Service object
@@ -188,9 +189,9 @@ func createPodSpec(deploymentRequest naisrequest.Deploy, manifest NaisManifest, 
 				Lifecycle:       createLifeCycle(manifest.PreStopHookPath),
 			},
 		},
-
-		RestartPolicy: k8score.RestartPolicyAlways,
-		DNSPolicy:     k8score.DNSClusterFirst,
+		ServiceAccountName: deploymentRequest.Application,
+		RestartPolicy:      k8score.RestartPolicyAlways,
+		DNSPolicy:          k8score.DNSClusterFirst,
 	}
 
 	if manifest.LeaderElection {
@@ -525,6 +526,12 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string)
 
 func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
+
+	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateOrUpdate(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("failed while creating service account: %s", err)
+	}
+	deploymentResult.ServiceAccount = serviceAccount
 
 	service, err := createService(deploymentRequest, manifest.Team, k8sClient)
 	if err != nil {

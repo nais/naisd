@@ -52,6 +52,11 @@ func deleteK8sResouces(namespace string, deployName string, k8sClient kubernetes
 		return results, err
 	}
 
+	if err := NewServiceAccountInterface(k8sClient).Delete(deployName, namespace); err != nil {
+		return results, err
+	} else {
+		results = append(results, "service account: OK")
+	}
 	return results, nil
 }
 

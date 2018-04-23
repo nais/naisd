@@ -28,7 +28,7 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 
 	t.Run("If a service account exists it is updated", func(t *testing.T) {
 		existingServiceAccount := createServiceAccountDef(name, namespace, team)
-		existingServiceAccount.SetUID("uuid")
+		existingServiceAccount.SetResourceVersion("001")
 		clientset := fake.NewSimpleClientset(existingServiceAccount)
 
 		_, e := NewServiceAccountInterface(clientset).CreateOrUpdate(name, namespace, team)

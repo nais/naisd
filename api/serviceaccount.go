@@ -42,7 +42,7 @@ func (c clientHolder) CreateOrUpdate(name, namespace, team string) (*v1.ServiceA
 
 	serviceAccountDef := createServiceAccountDef(name, namespace, team)
 
-	if account != nil {
+	if account != nil && account.ResourceVersion != "" {
 		return serviceAccountInterface.Update(serviceAccountDef)
 	} else {
 		return serviceAccountInterface.Create(serviceAccountDef)

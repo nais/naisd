@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
 	"github.com/nais/naisd/api/naisrequest"
+	k8sapi "k8s.io/apimachinery/pkg/api/resource"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
@@ -51,7 +52,7 @@ type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
-	PreStopHookPath string `yaml:"preStopHookPath"`
+	PreStopHookPath string         `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
 	Istio           IstioConfig
 	Replicas        Replicas
@@ -204,6 +205,8 @@ func ValidateManifest(manifest NaisManifest) ValidationErrors {
 		validateReplicasMin,
 		validateMinIsSmallerThanMax,
 		validateCpuThreshold,
+		validateRequestMemoryNotation,
+		validateLimitsMemoryNotation,
 		validateResources,
 		validateAlertRules,
 	}
@@ -237,12 +240,37 @@ func validateResources(manifest NaisManifest) *ValidationError {
 	}
 	return nil
 }
+
 func validateImage(manifest NaisManifest) *ValidationError {
 	if strings.LastIndex(manifest.Image, ":") > strings.LastIndex(manifest.Image, "/") {
 		return &ValidationError{
 			"Image cannot contain tag",
 			map[string]string{"Image": manifest.Image},
 		}
+	}
+	return nil
+}
+
+func createMemoryValidationError(key string, value string, err error) *ValidationError {
+	validationError := new(ValidationError)
+	validationError.ErrorMessage = "not a valid memory quantity. " + err.Error()
+	validationError.Fields = make(map[string]string)
+	validationError.Fields[key] = value
+	return validationError
+}
+
+func validateRequestMemoryNotation(manifest NaisManifest) *ValidationError {
+	_, err := k8sapi.ParseQuantity(manifest.Resources.Requests.Memory)
+	if err != nil {
+		return createMemoryValidationError("Resources.Requests.Memory", manifest.Resources.Requests.Memory, err)
+	}
+	return nil
+}
+
+func validateLimitsMemoryNotation(manifest NaisManifest) *ValidationError {
+	_, err := k8sapi.ParseQuantity(manifest.Resources.Limits.Memory)
+	if err != nil {
+		return createMemoryValidationError("Resources.Limits.Memory", manifest.Resources.Limits.Memory, err)
 	}
 	return nil
 }
@@ -259,6 +287,7 @@ func validateCpuThreshold(manifest NaisManifest) *ValidationError {
 	return nil
 
 }
+
 func validateMinIsSmallerThanMax(manifest NaisManifest) *ValidationError {
 	if manifest.Replicas.Min > manifest.Replicas.Max {
 		validationError := new(ValidationError)
@@ -283,6 +312,7 @@ func validateReplicasMin(manifest NaisManifest) *ValidationError {
 	return nil
 
 }
+
 func validateReplicasMax(manifest NaisManifest) *ValidationError {
 	if manifest.Replicas.Max == 0 {
 		validationError := new(ValidationError)

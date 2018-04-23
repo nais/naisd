@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"regexp"
 )
 
 type Probe struct {
@@ -51,7 +52,7 @@ type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
-	PreStopHookPath string `yaml:"preStopHookPath"`
+	PreStopHookPath string         `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
 	Istio           IstioConfig
 	Replicas        Replicas
@@ -204,6 +205,8 @@ func ValidateManifest(manifest NaisManifest) ValidationErrors {
 		validateReplicasMin,
 		validateMinIsSmallerThanMax,
 		validateCpuThreshold,
+		validateRequestMemoryNotation,
+		validateLimitsMemoryNotation,
 		validateResources,
 		validateAlertRules,
 	}
@@ -237,6 +240,7 @@ func validateResources(manifest NaisManifest) *ValidationError {
 	}
 	return nil
 }
+
 func validateImage(manifest NaisManifest) *ValidationError {
 	if strings.LastIndex(manifest.Image, ":") > strings.LastIndex(manifest.Image, "/") {
 		return &ValidationError{
@@ -245,6 +249,32 @@ func validateImage(manifest NaisManifest) *ValidationError {
 		}
 	}
 	return nil
+}
+
+func validateMemoryNotation(key string, value string) *ValidationError {
+	matched, err := regexp.MatchString("\\d+([EPTGMK]i?)?$", value)
+	if err != nil {
+		glog.Errorf("error while trying to match %s with regex: %s", value, err)
+		matched = false
+	}
+
+	if !matched {
+		err := new(ValidationError)
+		err.ErrorMessage = "Not a valid memory value. Are you using correct notation?"
+		err.Fields = make(map[string]string)
+		err.Fields[key] = value
+		return err
+	}
+
+	return nil
+}
+
+func validateRequestMemoryNotation(manifest NaisManifest) *ValidationError {
+	return validateMemoryNotation("Resources.Requests.Memory", manifest.Resources.Requests.Memory)
+}
+
+func validateLimitsMemoryNotation(manifest NaisManifest) *ValidationError {
+	return validateMemoryNotation("Resources.Limits.Memory", manifest.Resources.Limits.Memory)
 }
 
 func validateCpuThreshold(manifest NaisManifest) *ValidationError {
@@ -259,6 +289,7 @@ func validateCpuThreshold(manifest NaisManifest) *ValidationError {
 	return nil
 
 }
+
 func validateMinIsSmallerThanMax(manifest NaisManifest) *ValidationError {
 	if manifest.Replicas.Min > manifest.Replicas.Max {
 		validationError := new(ValidationError)
@@ -283,6 +314,7 @@ func validateReplicasMin(manifest NaisManifest) *ValidationError {
 	return nil
 
 }
+
 func validateReplicasMax(manifest NaisManifest) *ValidationError {
 	if manifest.Replicas.Max == 0 {
 		validationError := new(ValidationError)

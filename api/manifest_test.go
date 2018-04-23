@@ -211,40 +211,86 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 		Image: "myapp:1",
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max: 4,
-			Min: 5,
+			Max:                    4,
+			Min:                    5,
 		},
 	}
 	errors := ValidateManifest(invalidConfig)
 
-	assert.Equal(t, 3, len(errors.Errors))
+	assert.Equal(t, 5, len(errors.Errors))
 	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
 	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[1].ErrorMessage)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[2].ErrorMessage)
+	assert.Equal(t, "Not a valid memory value. Are you using correct notation?", errors.Errors[3].ErrorMessage)
+	assert.Equal(t, "Not a valid memory value. Are you using correct notation?", errors.Errors[4].ErrorMessage)
 }
 
 func TestInvalidCpuThreshold(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max: 4,
-			Min: 5,
+			Max:                    4,
+			Min:                    5,
 		},
 	}
 	errors := validateCpuThreshold(invalidManifest)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.ErrorMessage)
 }
+
 func TestMinCannotBeZero(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
-			Max: 4,
-			Min: 0,
+			Max:                    4,
+			Min:                    0,
 		},
 	}
 	errors := validateReplicasMin(invalidManifest)
 
 	assert.Equal(t, "Replicas.Min is not set", errors.ErrorMessage)
+}
+
+func TestMemoryNotation(t *testing.T) {
+	newDefaultManifest()
+	manifest := NaisManifest{
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
+				Memory: "200Mi",
+			},
+			Limits: ResourceList{
+				Memory: "400Mi",
+			},
+		},
+	}
+
+	errors := validateRequestMemoryNotation(manifest)
+	assert.Nil(t, errors)
+	errors = validateLimitsMemoryNotation(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Memory = "200"
+	errors = validateLimitsMemoryNotation(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Memory = "200"
+	errors = validateRequestMemoryNotation(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Memory = "200M"
+	errors = validateLimitsMemoryNotation(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Memory = "200M"
+	errors = validateRequestMemoryNotation(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Memory = "200i"
+	errors = validateLimitsMemoryNotation(manifest)
+	assert.Equal(t, "Not a valid memory value. Are you using correct notation?", errors.ErrorMessage)
+
+	manifest.Resources.Requests.Memory = "200i"
+	errors = validateRequestMemoryNotation(manifest)
+	assert.Equal(t, "Not a valid memory value. Are you using correct notation?", errors.ErrorMessage)
 }
 
 func TestValidateImage(t *testing.T) {

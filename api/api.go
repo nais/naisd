@@ -258,7 +258,7 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 		response += "- created autoscaler\n"
 	}
 	if deploymentResult.AlertsConfigMap != nil {
-		response += "- updated app-alerts configmap\n"
+		response += "- updated alerts configmap (app-rules)\n"
 	}
 	if deploymentResult.Redis != nil {
 		response += "- created redis\n"

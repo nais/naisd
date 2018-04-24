@@ -20,7 +20,7 @@ import (
 const (
 	RootMountPoint           = "/var/run/secrets/naisd.io/"
 	AlertsConfigMapNamespace = "nais"
-	AlertsConfigMapName      = "app-alerts"
+	AlertsConfigMapName      = "app-rules"
 )
 
 type DeploymentResult struct {
@@ -576,7 +576,7 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 
 	alertsConfigMap, err := createOrUpdateAlertRules(deploymentRequest, manifest, k8sClient)
 	if err != nil {
-		return deploymentResult, fmt.Errorf("failed while creating or updating app-alerts configmap %s", err)
+		return deploymentResult, fmt.Errorf("failed while creating or updating alerts configmap (app-rules) %s", err)
 	}
 	deploymentResult.AlertsConfigMap = alertsConfigMap
 

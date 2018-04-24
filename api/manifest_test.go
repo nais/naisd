@@ -263,33 +263,33 @@ func TestMemoryNotation(t *testing.T) {
 		},
 	}
 
-	errors := validateRequestMemoryNotation(manifest)
+	errors := validateRequestMemoryQuantity(manifest)
 	assert.Nil(t, errors)
-	errors = validateLimitsMemoryNotation(manifest)
+	errors = validateLimitsMemoryQuantity(manifest)
 	assert.Nil(t, errors)
 
 	manifest.Resources.Limits.Memory = "200"
-	errors = validateLimitsMemoryNotation(manifest)
+	errors = validateLimitsMemoryQuantity(manifest)
 	assert.Nil(t, errors)
 
 	manifest.Resources.Requests.Memory = "200"
-	errors = validateRequestMemoryNotation(manifest)
+	errors = validateRequestMemoryQuantity(manifest)
 	assert.Nil(t, errors)
 
 	manifest.Resources.Limits.Memory = "200M"
-	errors = validateLimitsMemoryNotation(manifest)
+	errors = validateLimitsMemoryQuantity(manifest)
 	assert.Nil(t, errors)
 
 	manifest.Resources.Requests.Memory = "200M"
-	errors = validateRequestMemoryNotation(manifest)
+	errors = validateRequestMemoryQuantity(manifest)
 	assert.Nil(t, errors)
 
 	manifest.Resources.Limits.Memory = "200i"
-	errors = validateLimitsMemoryNotation(manifest)
+	errors = validateLimitsMemoryQuantity(manifest)
 	assert.Equal(t, "not a valid memory quantity. unable to parse quantity's suffix", errors.ErrorMessage)
 
 	manifest.Resources.Requests.Memory = "200i"
-	errors = validateRequestMemoryNotation(manifest)
+	errors = validateRequestMemoryQuantity(manifest)
 	assert.Equal(t, "not a valid memory quantity. unable to parse quantity's suffix", errors.ErrorMessage)
 }
 

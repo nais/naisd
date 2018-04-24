@@ -217,12 +217,14 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 	}
 	errors := ValidateManifest(invalidConfig)
 
-	assert.Equal(t, 5, len(errors.Errors))
+	assert.Equal(t, 7, len(errors.Errors))
 	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
 	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[1].ErrorMessage)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[2].ErrorMessage)
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[3].ErrorMessage)
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[4].ErrorMessage)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[5].ErrorMessage)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[6].ErrorMessage)
 }
 
 func TestInvalidCpuThreshold(t *testing.T) {
@@ -291,6 +293,41 @@ func TestMemoryQuantity(t *testing.T) {
 	manifest.Resources.Requests.Memory = "200i"
 	errors = validateRequestMemoryQuantity(manifest)
 	assert.Equal(t, "not a valid quantity. unable to parse quantity's suffix", errors.ErrorMessage)
+}
+
+func TestCpuQuantity(t *testing.T) {
+	newDefaultManifest()
+	manifest := NaisManifest{
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
+				Cpu: "10m",
+			},
+			Limits: ResourceList{
+				Cpu: "10m",
+			},
+		},
+	}
+
+	errors := validateRequestCpuQuantity(manifest)
+	assert.Nil(t, errors)
+	errors = validateLimitsCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Cpu = "200"
+	errors = validateLimitsCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Cpu = "200"
+	errors = validateRequestCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Cpu = "210M"
+	errors = validateLimitsCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Cpu = "210M"
+	errors = validateRequestCpuQuantity(manifest)
+	assert.Nil(t, errors)
 }
 
 func TestValidateImage(t *testing.T) {

@@ -207,6 +207,8 @@ func ValidateManifest(manifest NaisManifest) ValidationErrors {
 		validateCpuThreshold,
 		validateRequestMemoryQuantity,
 		validateLimitsMemoryQuantity,
+		validateRequestCpuQuantity,
+		validateLimitsCpuQuantity,
 		validateResources,
 		validateAlertRules,
 	}
@@ -271,6 +273,22 @@ func validateLimitsMemoryQuantity(manifest NaisManifest) *ValidationError {
 	_, err := k8sapi.ParseQuantity(manifest.Resources.Limits.Memory)
 	if err != nil {
 		return createQuanitityValidationError("Resources.Limits.Memory", manifest.Resources.Limits.Memory, err)
+	}
+	return nil
+}
+
+func validateRequestCpuQuantity(manifest NaisManifest) *ValidationError {
+	_, err := k8sapi.ParseQuantity(manifest.Resources.Requests.Cpu)
+	if err != nil {
+		return createQuanitityValidationError("Resources.Request.Memory", manifest.Resources.Requests.Cpu, err)
+	}
+	return nil
+}
+
+func validateLimitsCpuQuantity(manifest NaisManifest) *ValidationError {
+	_, err := k8sapi.ParseQuantity(manifest.Resources.Requests.Cpu)
+	if err != nil {
+		return createQuanitityValidationError("Resources.Request.Memory", manifest.Resources.Requests.Cpu, err)
 	}
 	return nil
 }

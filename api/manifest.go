@@ -251,9 +251,9 @@ func validateImage(manifest NaisManifest) *ValidationError {
 	return nil
 }
 
-func createMemoryValidationError(key string, value string, err error) *ValidationError {
+func createQuanitityValidationError(key string, value string, err error) *ValidationError {
 	validationError := new(ValidationError)
-	validationError.ErrorMessage = "not a valid memory quantity. " + err.Error()
+	validationError.ErrorMessage = "not a valid quantity. " + err.Error()
 	validationError.Fields = make(map[string]string)
 	validationError.Fields[key] = value
 	return validationError
@@ -262,7 +262,7 @@ func createMemoryValidationError(key string, value string, err error) *Validatio
 func validateRequestMemoryQuantity(manifest NaisManifest) *ValidationError {
 	_, err := k8sapi.ParseQuantity(manifest.Resources.Requests.Memory)
 	if err != nil {
-		return createMemoryValidationError("Resources.Requests.Memory", manifest.Resources.Requests.Memory, err)
+		return createQuanitityValidationError("Resources.Requests.Memory", manifest.Resources.Requests.Memory, err)
 	}
 	return nil
 }
@@ -270,7 +270,7 @@ func validateRequestMemoryQuantity(manifest NaisManifest) *ValidationError {
 func validateLimitsMemoryQuantity(manifest NaisManifest) *ValidationError {
 	_, err := k8sapi.ParseQuantity(manifest.Resources.Limits.Memory)
 	if err != nil {
-		return createMemoryValidationError("Resources.Limits.Memory", manifest.Resources.Limits.Memory, err)
+		return createQuanitityValidationError("Resources.Limits.Memory", manifest.Resources.Limits.Memory, err)
 	}
 	return nil
 }

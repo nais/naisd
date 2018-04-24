@@ -221,8 +221,8 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
 	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[1].ErrorMessage)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[2].ErrorMessage)
-	assert.Equal(t, "not a valid memory quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[3].ErrorMessage)
-	assert.Equal(t, "not a valid memory quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[4].ErrorMessage)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[3].ErrorMessage)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[4].ErrorMessage)
 }
 
 func TestInvalidCpuThreshold(t *testing.T) {
@@ -250,7 +250,7 @@ func TestMinCannotBeZero(t *testing.T) {
 	assert.Equal(t, "Replicas.Min is not set", errors.ErrorMessage)
 }
 
-func TestMemoryNotation(t *testing.T) {
+func TestMemoryQuantity(t *testing.T) {
 	newDefaultManifest()
 	manifest := NaisManifest{
 		Resources: ResourceRequirements{
@@ -286,11 +286,11 @@ func TestMemoryNotation(t *testing.T) {
 
 	manifest.Resources.Limits.Memory = "200i"
 	errors = validateLimitsMemoryQuantity(manifest)
-	assert.Equal(t, "not a valid memory quantity. unable to parse quantity's suffix", errors.ErrorMessage)
+	assert.Equal(t, "not a valid quantity. unable to parse quantity's suffix", errors.ErrorMessage)
 
 	manifest.Resources.Requests.Memory = "200i"
 	errors = validateRequestMemoryQuantity(manifest)
-	assert.Equal(t, "not a valid memory quantity. unable to parse quantity's suffix", errors.ErrorMessage)
+	assert.Equal(t, "not a valid quantity. unable to parse quantity's suffix", errors.ErrorMessage)
 }
 
 func TestValidateImage(t *testing.T) {

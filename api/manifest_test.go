@@ -332,6 +332,10 @@ func TestCpuQuantity(t *testing.T) {
 	manifest.Resources.Requests.Cpu = "210Ms"
 	errors = validateRequestCpuQuantity(manifest)
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.ErrorMessage)
+
+	manifest.Resources.Limits.Cpu = "210Ms"
+	errors = validateLimitsCpuQuantity(manifest)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.ErrorMessage)
 }
 
 func TestValidateImage(t *testing.T) {

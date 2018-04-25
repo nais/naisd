@@ -211,40 +211,131 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 		Image: "myapp:1",
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max: 4,
-			Min: 5,
+			Max:                    4,
+			Min:                    5,
 		},
 	}
 	errors := ValidateManifest(invalidConfig)
 
-	assert.Equal(t, 3, len(errors.Errors))
+	assert.Equal(t, 7, len(errors.Errors))
 	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
 	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[1].ErrorMessage)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[2].ErrorMessage)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[3].ErrorMessage)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[4].ErrorMessage)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[5].ErrorMessage)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[6].ErrorMessage)
 }
 
 func TestInvalidCpuThreshold(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max: 4,
-			Min: 5,
+			Max:                    4,
+			Min:                    5,
 		},
 	}
 	errors := validateCpuThreshold(invalidManifest)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.ErrorMessage)
 }
+
 func TestMinCannotBeZero(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
-			Max: 4,
-			Min: 0,
+			Max:                    4,
+			Min:                    0,
 		},
 	}
 	errors := validateReplicasMin(invalidManifest)
 
 	assert.Equal(t, "Replicas.Min is not set", errors.ErrorMessage)
+}
+
+func TestMemoryQuantity(t *testing.T) {
+	newDefaultManifest()
+	manifest := NaisManifest{
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
+				Memory: "200Mi",
+			},
+			Limits: ResourceList{
+				Memory: "400Mi",
+			},
+		},
+	}
+
+	errors := validateRequestMemoryQuantity(manifest)
+	assert.Nil(t, errors)
+	errors = validateLimitsMemoryQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Memory = "200"
+	errors = validateLimitsMemoryQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Memory = "200"
+	errors = validateRequestMemoryQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Memory = "200M"
+	errors = validateLimitsMemoryQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Memory = "200M"
+	errors = validateRequestMemoryQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Memory = "200i"
+	errors = validateLimitsMemoryQuantity(manifest)
+	assert.Equal(t, "not a valid quantity. unable to parse quantity's suffix", errors.ErrorMessage)
+
+	manifest.Resources.Requests.Memory = "200i"
+	errors = validateRequestMemoryQuantity(manifest)
+	assert.Equal(t, "not a valid quantity. unable to parse quantity's suffix", errors.ErrorMessage)
+}
+
+func TestCpuQuantity(t *testing.T) {
+	newDefaultManifest()
+	manifest := NaisManifest{
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
+				Cpu: "10m",
+			},
+			Limits: ResourceList{
+				Cpu: "10m",
+			},
+		},
+	}
+
+	errors := validateRequestCpuQuantity(manifest)
+	assert.Nil(t, errors)
+	errors = validateLimitsCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Cpu = "200"
+	errors = validateLimitsCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Cpu = "200"
+	errors = validateRequestCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Limits.Cpu = "210M"
+	errors = validateLimitsCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Cpu = "210M"
+	errors = validateRequestCpuQuantity(manifest)
+	assert.Nil(t, errors)
+
+	manifest.Resources.Requests.Cpu = "210Ms"
+	errors = validateRequestCpuQuantity(manifest)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.ErrorMessage)
+
+	manifest.Resources.Limits.Cpu = "210Ms"
+	errors = validateLimitsCpuQuantity(manifest)
+	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.ErrorMessage)
 }
 
 func TestValidateImage(t *testing.T) {

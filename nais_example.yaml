@@ -33,7 +33,7 @@ resources: # Optional. See: http://kubernetes.io/docs/user-guide/compute-resourc
   limits:
     cpu: 500m # app will have its cpu usage throttled if exceeding this limit
     memory: 512Mi  # app will be killed if exceeding these limits
-  requests: # app will be scheduled on nodes with at least this amount resources available
+  requests: # App is guaranteed the requested resources and  will be scheduled on nodes with at least this amount of resources available
     cpu: 200m
     memory: 256Mi
 ingress:

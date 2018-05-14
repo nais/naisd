@@ -2,6 +2,9 @@ package api
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
@@ -13,8 +16,6 @@ import (
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -375,10 +376,11 @@ func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, naisResour
 }
 
 func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.EnvVar {
-	return []k8score.EnvVar{{
-		Name:  "APP_NAME",
-		Value: request.Application,
-	},
+	return []k8score.EnvVar{
+		{
+			Name:  "APP_NAME",
+			Value: request.Application,
+		},
 		{
 			Name:  "APP_VERSION",
 			Value: request.Version,
@@ -386,7 +388,8 @@ func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.En
 		{
 			Name:  "FASIT_ENVIRONMENT_NAME",
 			Value: request.FasitEnvironment,
-		}}
+		},
+	}
 }
 
 func createResourceLimits(requestsCpu string, requestsMemory string, limitsCpu string, limitsMemory string) k8score.ResourceRequirements {

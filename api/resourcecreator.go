@@ -374,8 +374,14 @@ func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, manifest N
 		}
 	}
 
-	// If the deployment specifies webproxy=true in the nais manifest, the pods will inherit naisd's proxy settings.
-	// This is useful for automatic proxy configuration so that apps don't need to be aware of infrastructure quirks.
+	// If the deployment specifies webproxy=true in the nais manifest, the pods
+	// will inherit naisd's proxy settings.  This is useful for automatic proxy
+	// configuration so that apps don't need to be aware of infrastructure quirks.
+	//
+	// Additionally, proxy settings on Linux is in a messy state. Some
+	// applications and libraries read the upper-case variables, while some read
+	// the lower-case versions. We handle this by trying to read both versions
+	// from the naisd environment, and propagating both versions to the pod.
 	if manifest.WebProxy {
 		for _, key := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
 			value := getenvDualCase(key)

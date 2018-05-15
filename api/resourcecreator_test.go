@@ -1003,7 +1003,7 @@ func TestInjectProxySettings(t *testing.T) {
 		}
 
 		os.Setenv("HTTP_PROXY", "foo")
-		os.Setenv("HTTPS_PROXY", "bar")
+		os.Setenv("https_proxy", "bar")
 		os.Setenv("NO_PROXY", "baz")
 
 		env, err := createEnvironmentVariables(deploymentRequest, manifest, []NaisResource{})
@@ -1012,6 +1012,9 @@ func TestInjectProxySettings(t *testing.T) {
 		assert.Contains(t, env, k8score.EnvVar{Name: "HTTP_PROXY", Value: "foo"})
 		assert.Contains(t, env, k8score.EnvVar{Name: "HTTPS_PROXY", Value: "bar"})
 		assert.Contains(t, env, k8score.EnvVar{Name: "NO_PROXY", Value: "baz"})
+		assert.Contains(t, env, k8score.EnvVar{Name: "http_proxy", Value: "foo"})
+		assert.Contains(t, env, k8score.EnvVar{Name: "https_proxy", Value: "bar"})
+		assert.Contains(t, env, k8score.EnvVar{Name: "no_proxy", Value: "baz"})
 	})
 }
 

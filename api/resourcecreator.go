@@ -378,15 +378,26 @@ func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, manifest N
 	// This is useful for automatic proxy configuration so that apps don't need to be aware of infrastructure quirks.
 	if manifest.WebProxy {
 		for _, key := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
-			envVar := k8score.EnvVar{
-				Name:  key,
-				Value: os.Getenv(key),
+			value := getenvDualCase(key)
+			for _, mkey := range []string{strings.ToUpper(key), strings.ToLower(key)} {
+				envVar := k8score.EnvVar{
+					Name:  mkey,
+					Value: value,
+				}
+				envVars = append(envVars, envVar)
 			}
-			envVars = append(envVars, envVar)
 		}
 	}
 
 	return envVars, nil
+}
+
+func getenvDualCase(name string) string {
+	value, found := os.LookupEnv(strings.ToUpper(name))
+	if found {
+		return value
+	}
+	return os.Getenv(strings.ToLower(name))
 }
 
 func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.EnvVar {

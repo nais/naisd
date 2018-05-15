@@ -2,16 +2,17 @@ package api
 
 import (
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/hashicorp/go-multierror"
-	"github.com/imdario/mergo"
-	"github.com/nais/naisd/api/naisrequest"
-	k8sapi "k8s.io/apimachinery/pkg/api/resource"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/golang/glog"
+	"github.com/hashicorp/go-multierror"
+	"github.com/imdario/mergo"
+	"github.com/nais/naisd/api/naisrequest"
+	"gopkg.in/yaml.v2"
+	k8sapi "k8s.io/apimachinery/pkg/api/resource"
 )
 
 type Probe struct {
@@ -52,7 +53,7 @@ type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
-	PreStopHookPath string         `yaml:"preStopHookPath"`
+	PreStopHookPath string `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
 	Istio           IstioConfig
 	Replicas        Replicas
@@ -61,6 +62,7 @@ type NaisManifest struct {
 	FasitResources  FasitResources `yaml:"fasitResources"`
 	LeaderElection  bool           `yaml:"leaderElection"`
 	Redis           bool           `yaml:"redis"`
+	WebProxy        bool
 	Alerts          []PrometheusAlertRule
 	Logformat       string
 	Logtransform    string

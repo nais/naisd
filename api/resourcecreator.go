@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -146,7 +147,7 @@ func createPodObjectMetaWithAnnotations(deploymentRequest naisrequest.Deploy, ma
 }
 
 func createPodSpec(deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) (k8score.PodSpec, error) {
-	envVars, err := createEnvironmentVariables(deploymentRequest, naisResources)
+	envVars, err := createEnvironmentVariables(deploymentRequest, manifest, naisResources)
 
 	if err != nil {
 		return k8score.PodSpec{}, err
@@ -321,7 +322,7 @@ func checkForDuplicates(envVars []k8score.EnvVar, envVar k8score.EnvVar, propert
 	return nil
 }
 
-func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, naisResources []NaisResource) ([]k8score.EnvVar, error) {
+func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) ([]k8score.EnvVar, error) {
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
 	for _, res := range naisResources {
@@ -372,6 +373,19 @@ func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, naisResour
 			}
 		}
 	}
+
+	// If the deployment specifies webproxy=true in the nais manifest, the pods will inherit naisd's proxy settings.
+	// This is useful for automatic proxy configuration so that apps don't need to be aware of infrastructure quirks.
+	if manifest.WebProxy {
+		for _, key := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
+			envVar := k8score.EnvVar{
+				Name:  key,
+				Value: os.Getenv(key),
+			}
+			envVars = append(envVars, envVar)
+		}
+	}
+
 	return envVars, nil
 }
 

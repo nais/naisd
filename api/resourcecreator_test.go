@@ -1,6 +1,9 @@
 package api
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
@@ -8,8 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
-	"strings"
-	"testing"
 )
 
 const (
@@ -293,7 +294,6 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, int32(3), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.TimeoutSeconds)
 		assert.Equal(t, int32(2), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.TimeoutSeconds)
 		assert.Equal(t, k8score.Lifecycle{}, *deployment.Spec.Template.Spec.Containers[0].Lifecycle)
-
 
 		ptr := func(p resource.Quantity) *resource.Quantity {
 			return &p
@@ -930,7 +930,7 @@ func TestCheckForDuplicates(t *testing.T) {
 			Version:     "1",
 		}
 
-		_, err := createEnvironmentVariables(deploymentRequest, []NaisResource{resource1, resource2})
+		_, err := createEnvironmentVariables(deploymentRequest, NaisManifest{}, []NaisResource{resource1, resource2})
 
 		assert.NotNil(t, err)
 		assert.Equal(t, "found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+

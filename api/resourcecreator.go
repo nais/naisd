@@ -384,7 +384,7 @@ func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, manifest N
 	// from the naisd environment, and propagating both versions to the pod.
 	if manifest.WebProxy {
 		for _, key := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
-			value := getenvDualCase(key)
+			value := getEnvDualCase(key)
 			for _, mkey := range []string{strings.ToUpper(key), strings.ToLower(key)} {
 				envVar := k8score.EnvVar{
 					Name:  mkey,
@@ -398,7 +398,7 @@ func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, manifest N
 	return envVars, nil
 }
 
-func getenvDualCase(name string) string {
+func getEnvDualCase(name string) string {
 	value, found := os.LookupEnv(strings.ToUpper(name))
 	if found {
 		return value

@@ -1,6 +1,10 @@
 package api
 
 import (
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
@@ -8,8 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
-	"strings"
-	"testing"
 )
 
 const (
@@ -293,7 +295,6 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, int32(3), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.TimeoutSeconds)
 		assert.Equal(t, int32(2), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.TimeoutSeconds)
 		assert.Equal(t, k8score.Lifecycle{}, *deployment.Spec.Template.Spec.Containers[0].Lifecycle)
-
 
 		ptr := func(p resource.Quantity) *resource.Quantity {
 			return &p
@@ -930,7 +931,7 @@ func TestCheckForDuplicates(t *testing.T) {
 			Version:     "1",
 		}
 
-		_, err := createEnvironmentVariables(deploymentRequest, []NaisResource{resource1, resource2})
+		_, err := createEnvironmentVariables(deploymentRequest, NaisManifest{}, []NaisResource{resource1, resource2})
 
 		assert.NotNil(t, err)
 		assert.Equal(t, "found duplicate environment variable SRVAPP_PASSWORD when adding password for srvapp (certificate)"+
@@ -965,6 +966,55 @@ func TestCheckForDuplicates(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Equal(t, "found duplicate secret key ref my_password between MY_PASSWORD and OTHER_PASSWORD when adding password for other (credential)"+
 			" Change the Fasit alias or use propertyMap to create unique variable names", err.Error())
+	})
+}
+
+func TestInjectProxySettings(t *testing.T) {
+	t.Run("proxy settings not be injected in the pod unless requested through manifest", func(t *testing.T) {
+		deploymentRequest := naisrequest.Deploy{
+			Application: "myapp",
+			Version:     "1",
+		}
+
+		manifest := NaisManifest{
+			WebProxy: false,
+		}
+
+		os.Setenv("HTTP_PROXY", "foo")
+		os.Setenv("HTTPS_PROXY", "bar")
+		os.Setenv("NO_PROXY", "baz")
+
+		env, err := createEnvironmentVariables(deploymentRequest, manifest, []NaisResource{})
+
+		assert.Nil(t, err)
+		assert.NotContains(t, env, k8score.EnvVar{Name: "HTTP_PROXY", Value: "foo"})
+		assert.NotContains(t, env, k8score.EnvVar{Name: "HTTPS_PROXY", Value: "bar"})
+		assert.NotContains(t, env, k8score.EnvVar{Name: "NO_PROXY", Value: "baz"})
+	})
+
+	t.Run("proxy settings should be injected in the pod if requested through manifest", func(t *testing.T) {
+		deploymentRequest := naisrequest.Deploy{
+			Application: "myapp",
+			Version:     "1",
+		}
+
+		manifest := NaisManifest{
+			WebProxy: true,
+		}
+
+		os.Setenv("HTTP_PROXY", "foo")
+		os.Setenv("https_proxy", "bar")
+		os.Setenv("NO_PROXY", "baz")
+
+		env, err := createEnvironmentVariables(deploymentRequest, manifest, []NaisResource{})
+
+		assert.Nil(t, err)
+		assert.Contains(t, env, k8score.EnvVar{Name: "HTTP_PROXY", Value: "foo"})
+		assert.Contains(t, env, k8score.EnvVar{Name: "HTTPS_PROXY", Value: "bar"})
+		assert.Contains(t, env, k8score.EnvVar{Name: "NO_PROXY", Value: "baz"})
+		assert.Contains(t, env, k8score.EnvVar{Name: "http_proxy", Value: "foo"})
+		assert.Contains(t, env, k8score.EnvVar{Name: "https_proxy", Value: "bar"})
+		assert.Contains(t, env, k8score.EnvVar{Name: "no_proxy", Value: "baz"})
 	})
 }
 

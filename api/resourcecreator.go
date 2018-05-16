@@ -2,6 +2,10 @@ package api
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
@@ -13,8 +17,6 @@ import (
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -145,7 +147,7 @@ func createPodObjectMetaWithAnnotations(deploymentRequest naisrequest.Deploy, ma
 }
 
 func createPodSpec(deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) (k8score.PodSpec, error) {
-	envVars, err := createEnvironmentVariables(deploymentRequest, naisResources)
+	envVars, err := createEnvironmentVariables(deploymentRequest, manifest, naisResources)
 
 	if err != nil {
 		return k8score.PodSpec{}, err
@@ -320,7 +322,7 @@ func checkForDuplicates(envVars []k8score.EnvVar, envVar k8score.EnvVar, propert
 	return nil
 }
 
-func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, naisResources []NaisResource) ([]k8score.EnvVar, error) {
+func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) ([]k8score.EnvVar, error) {
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
 	for _, res := range naisResources {
@@ -371,14 +373,45 @@ func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, naisResour
 			}
 		}
 	}
+
+	// If the deployment specifies webproxy=true in the nais manifest, the pods
+	// will inherit naisd's proxy settings.  This is useful for automatic proxy
+	// configuration so that apps don't need to be aware of infrastructure quirks.
+	//
+	// Additionally, proxy settings on Linux is in a messy state. Some
+	// applications and libraries read the upper-case variables, while some read
+	// the lower-case versions. We handle this by trying to read both versions
+	// from the naisd environment, and propagating both versions to the pod.
+	if manifest.WebProxy {
+		for _, key := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
+			value := getEnvDualCase(key)
+			for _, mkey := range []string{strings.ToUpper(key), strings.ToLower(key)} {
+				envVar := k8score.EnvVar{
+					Name:  mkey,
+					Value: value,
+				}
+				envVars = append(envVars, envVar)
+			}
+		}
+	}
+
 	return envVars, nil
 }
 
+func getEnvDualCase(name string) string {
+	value, found := os.LookupEnv(strings.ToUpper(name))
+	if found {
+		return value
+	}
+	return os.Getenv(strings.ToLower(name))
+}
+
 func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.EnvVar {
-	return []k8score.EnvVar{{
-		Name:  "APP_NAME",
-		Value: request.Application,
-	},
+	return []k8score.EnvVar{
+		{
+			Name:  "APP_NAME",
+			Value: request.Application,
+		},
 		{
 			Name:  "APP_VERSION",
 			Value: request.Version,
@@ -386,7 +419,8 @@ func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.En
 		{
 			Name:  "FASIT_ENVIRONMENT_NAME",
 			Value: request.FasitEnvironment,
-		}}
+		},
+	}
 }
 
 func createResourceLimits(requestsCpu string, requestsMemory string, limitsCpu string, limitsMemory string) k8score.ResourceRequirements {

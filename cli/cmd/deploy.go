@@ -97,24 +97,28 @@ var deployCmd = &cobra.Command{
 			}
 		}
 
-		if deployRequest.FasitUsername == "" {
-			currentUser, err := user.Current()
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Unable resolve a username, please specify FASIT_USERNAME")
-				os.Exit(1)
-			}
-			deployRequest.FasitUsername = currentUser.Username
-		}
+		deployRequest.SkipFasit, _ = cmd.Flags().GetBool("skip-fasit")
 
-		if deployRequest.FasitPassword == "" {
-			fmt.Fprintf(os.Stderr, "Enter password for %s: ", deployRequest.FasitUsername)
-			passwordBytes, err := terminal.ReadPassword(int(syscall.Stdin))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error occurred while trying to read password from stdin\n")
-				os.Exit(1)
+		if !deployRequest.SkipFasit {
+			if deployRequest.FasitUsername == "" {
+				currentUser, err := user.Current()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Unable resolve a username, please specify FASIT_USERNAME")
+					os.Exit(1)
+				}
+				deployRequest.FasitUsername = currentUser.Username
 			}
-			deployRequest.FasitPassword = string(passwordBytes)
-			fmt.Fprintln(os.Stderr)
+
+			if deployRequest.FasitPassword == "" {
+				fmt.Fprintf(os.Stderr, "Enter password for %s: ", deployRequest.FasitUsername)
+				passwordBytes, err := terminal.ReadPassword(int(syscall.Stdin))
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error occurred while trying to read password from stdin\n")
+					os.Exit(1)
+				}
+				deployRequest.FasitPassword = string(passwordBytes)
+				fmt.Fprintln(os.Stderr)
+			}
 		}
 
 		if err := deployRequest.Validate(); err != nil {
@@ -180,4 +184,5 @@ func init() {
 	deployCmd.Flags().StringP("fasit-password", "p", "", "the password")
 	deployCmd.Flags().StringP("manifest-url", "m", "", "alternative URL to the nais manifest")
 	deployCmd.Flags().Bool("wait", false, "whether to wait until the deploy has succeeded (or failed)")
+	deployCmd.Flags().Bool("skip-fasit", false, "whether to skip interaction with fasit")
 }

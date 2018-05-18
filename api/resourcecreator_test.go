@@ -335,6 +335,29 @@ func TestDeployment(t *testing.T) {
 		assert.False(t, manifest.Redis, "Redis should default to false")
 	})
 
+	t.Run("when fasit is skipped, FAIST_ENVIRONMENT_NAME is not set", func(t *testing.T) {
+		manifest := newDefaultManifest()
+		manifest.Istio.Enabled = true
+		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{
+			Namespace: namespace,
+			Application: appName,
+			Version: version,
+			SkipFasit: true,
+		}, manifest, []NaisResource{}, false, clientset)
+
+		containers := deployment.Spec.Template.Spec.Containers
+		container := containers[0]
+
+		env := container.Env
+		assert.Equal(t, 2, len(env))
+		assert.Equal(t, "APP_NAME", env[0].Name)
+		assert.Equal(t, appName, env[0].Value)
+		assert.Equal(t, "APP_VERSION", env[1].Name)
+		assert.Equal(t, version, env[1].Value)
+		assert.False(t, manifest.LeaderElection, "LeaderElection should default to false")
+		assert.False(t, manifest.Redis, "Redis should default to false")
+	})
+
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
 		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, false, clientset)
 		assert.NoError(t, err)

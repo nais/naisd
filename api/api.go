@@ -112,22 +112,29 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	var fasitEnvironmentClass string
+	var naisResources []NaisResource
 
-	if hasResources(manifest) {
-		if deploymentRequest.FasitEnvironment == "" {
-			return &appError{err, "no fasit environment provided, but contains resources to be consumed or exposed", http.StatusInternalServerError}
-		}
-		if err := validateFasitRequirements(fasit, deploymentRequest.Application, deploymentRequest.FasitEnvironment); err != nil {
-			return &appError{err, "validating requirements for deployment failed", http.StatusInternalServerError}
-		}
-		fasitEnvironmentClass, err = fasit.GetFasitEnvironmentClass(deploymentRequest.FasitEnvironment)
+	if !deploymentRequest.SkipFasit {
+		glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.FasitEnvironment)
+	} else {
+		glog.Infof("Starting deployment. Deploying %s:%s. Fasit will be skipped\n", deploymentRequest.Application, deploymentRequest.Version)
 	}
 
-	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.FasitEnvironment)
+	if !deploymentRequest.SkipFasit {
+		if hasResources(manifest) {
+			if deploymentRequest.FasitEnvironment == "" {
+				return &appError{err, "no fasit environment provided, but contains resources to be consumed or exposed", http.StatusInternalServerError}
+			}
+			if err := validateFasitRequirements(fasit, deploymentRequest.Application, deploymentRequest.FasitEnvironment); err != nil {
+				return &appError{err, "validating requirements for deployment failed", http.StatusInternalServerError}
+			}
+			fasitEnvironmentClass, err = fasit.GetFasitEnvironmentClass(deploymentRequest.FasitEnvironment)
+		}
 
-	naisResources, err := FetchFasitResources(fasit, deploymentRequest.Application, deploymentRequest.FasitEnvironment, deploymentRequest.Zone, manifest.FasitResources.Used)
-	if err != nil {
-		return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
+		naisResources, err = FetchFasitResources(fasit, deploymentRequest.Application, deploymentRequest.FasitEnvironment, deploymentRequest.Zone, manifest.FasitResources.Used)
+		if err != nil {
+			return &appError{err, "unable to fetch fasit resources", http.StatusBadRequest}
+		}
 	}
 
 	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.IstioEnabled, api.Clientset)
@@ -137,7 +144,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
-	if hasResources(manifest) {
+	if !deploymentRequest.SkipFasit && hasResources(manifest) {
 		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Namespace, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
 			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}

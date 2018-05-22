@@ -407,7 +407,7 @@ func getEnvDualCase(name string) string {
 }
 
 func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.EnvVar {
-	return []k8score.EnvVar{
+	envVars := []k8score.EnvVar{
 		{
 			Name:  "APP_NAME",
 			Value: request.Application,
@@ -416,11 +416,16 @@ func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.En
 			Name:  "APP_VERSION",
 			Value: request.Version,
 		},
-		{
+	}
+
+	if !request.SkipFasit {
+		envVars = append(envVars, k8score.EnvVar{
 			Name:  "FASIT_ENVIRONMENT_NAME",
 			Value: request.FasitEnvironment,
-		},
+		})
 	}
+
+	return envVars
 }
 
 func createResourceLimits(requestsCpu string, requestsMemory string, limitsCpu string, limitsMemory string) k8score.ResourceRequirements {

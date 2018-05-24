@@ -38,12 +38,14 @@ spec:
             value: "{{ .Values.clusterName }}"
           - name: istio_enabled
             value: "{{ .Values.istioEnabled }}"
+{{ if .skipProxy }}
           - name: https_proxy
             value: "{{ .Values.httpsProxy }}"
           - name: http_proxy
             value: "{{ .Values.httpProxy }}"
           - name: no_proxy
             value: "{{ .Values.noProxy }}"
+{{ end }}
         ports:
         - containerPort: 8081
           protocol: TCP

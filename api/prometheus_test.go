@@ -27,7 +27,6 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 		Alerts: []PrometheusAlertRule{
 			{
 				Alert: "Name",
-				For:   "For",
 				Expr:  "Expression",
 				Annotations: map[string]string{
 					"action": "action",

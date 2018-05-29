@@ -104,12 +104,6 @@ func validateAlertRules(manifest NaisManifest) *ValidationError {
 				map[string]string{"Expr": alertRule.Expr},
 			}
 		}
-		if alertRule.For == "" {
-			return &ValidationError{
-				"For must be specified",
-				map[string]string{"For": alertRule.For},
-			}
-		}
 		if action, exists := alertRule.Annotations["action"]; !exists {
 			return &ValidationError{
 				"An annotation named action must be specified",

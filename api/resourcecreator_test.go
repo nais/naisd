@@ -1155,6 +1155,13 @@ func TestTeamNamespaceMultipleDeploys(t *testing.T) {
 		assert.Equal(t, response1.Service.ObjectMeta.Labels["environment"], "t0")
 		assert.Equal(t, response1.ServiceAccount.ObjectMeta.Labels["environment"], "t0")
 
+		assert.Equal(t, response1.Autoscaler.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response1.Deployment.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response1.Ingress.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response1.Secret.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response1.Service.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response1.ServiceAccount.ObjectMeta.Namespace, "team")
+
 		assert.NoError(t, err2)
 		assert.Equal(t, response2.Autoscaler.ObjectMeta.Name, createObjectName("application", "t1"))
 		assert.Equal(t, response2.Deployment.ObjectMeta.Name, createObjectName("application", "t1"))
@@ -1169,6 +1176,13 @@ func TestTeamNamespaceMultipleDeploys(t *testing.T) {
 		assert.Equal(t, response2.Secret.ObjectMeta.Labels["environment"], "t1")
 		assert.Equal(t, response2.Service.ObjectMeta.Labels["environment"], "t1")
 		assert.Equal(t, response2.ServiceAccount.ObjectMeta.Labels["environment"], "t1")
+
+		assert.Equal(t, response2.Autoscaler.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response2.Deployment.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response2.Ingress.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response2.Secret.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response2.Service.ObjectMeta.Namespace, "team")
+		assert.Equal(t, response2.ServiceAccount.ObjectMeta.Namespace, "team")
 	})
 }
 

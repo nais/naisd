@@ -51,12 +51,12 @@ func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 	return
 }
 
-func createDeploymentPrefix(namespace string, deployName string) string {
-	return namespace + "-" + deployName
+func createDeploymentPrefix(application, environment, team string) string {
+	return team + "-" + application + "-" + environment
 }
 
 func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest naisrequest.Deploy, manifest NaisManifest) (*k8score.ConfigMap, error) {
-	deploymentPrefix := createDeploymentPrefix(deploymentRequest.Namespace, deploymentRequest.Application)
+	deploymentPrefix := createDeploymentPrefix(deploymentRequest.Application, deploymentRequest.Environment, manifest.Team)
 
 	addTeamLabel(manifest.Alerts, manifest.Team)
 	prefixAlertNames(manifest.Alerts, deploymentPrefix)
@@ -79,12 +79,12 @@ func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest naisreq
 	return configMap, nil
 }
 
-func removeRulesFromConfigMap(configMap *k8score.ConfigMap, deployName string, namespace string) *k8score.ConfigMap {
+func removeRulesFromConfigMap(configMap *k8score.ConfigMap, application, environment, team string) *k8score.ConfigMap {
 	if configMap.Data == nil {
 		return configMap
 	}
 
-	ruleGroupName := createDeploymentPrefix(namespace, deployName)
+	ruleGroupName := createDeploymentPrefix(application, environment, team)
 	delete(configMap.Data, ruleGroupName+".yml")
 
 	return configMap

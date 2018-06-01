@@ -15,23 +15,23 @@ import (
 )
 
 const (
-	appName         = "appname"
-	otherAppName    = "otherappname"
-	teamName        = "teamName"
-	otherTeamName   = "otherTeamName"
-	environment     = "testenv"
-	namespace       = "namespace"
-	image           = "docker.hub/app"
-	port            = 6900
-	resourceVersion = "12369"
-	version         = "13"
-	livenessPath    = "isAlive"
-	readinessPath   = "isReady"
-	cpuRequest      = "100m"
-	cpuLimit        = "200m"
-	memoryRequest   = "200Mi"
-	memoryLimit     = "400Mi"
-	clusterIP       = "1.2.3.4"
+	appName          = "appname"
+	otherAppName     = "otherappname"
+	teamName         = "aura"
+	otherTeamName    = "bris"
+	fasitEnvironment = "testenv"
+	environment      = "environment"
+	image            = "docker.hub/app"
+	port             = 6900
+	resourceVersion  = "12369"
+	version          = "13"
+	livenessPath     = "isAlive"
+	readinessPath    = "isReady"
+	cpuRequest       = "100m"
+	cpuLimit         = "200m"
+	memoryRequest    = "200Mi"
+	memoryLimit      = "400Mi"
+	clusterIP        = "1.2.3.4"
 )
 
 func newDefaultManifest() NaisManifest {
@@ -70,6 +70,7 @@ func newDefaultManifest() NaisManifest {
 		},
 		LeaderElection: false,
 		Redis:          false,
+		Team:           teamName,
 	}
 
 	return manifest
@@ -77,34 +78,34 @@ func newDefaultManifest() NaisManifest {
 }
 
 func TestService(t *testing.T) {
-	service := createServiceDef(appName, namespace, teamName)
+	service := createServiceDef(appName, environment, teamName)
 	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)
 
 	t.Run("Fetching nonexistant service yields nil and no error", func(t *testing.T) {
-		nonExistantService, err := getExistingService("nonexisting", namespace, clientset)
+		nonExistantService, err := getExistingService("nonexisting", teamName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nonExistantService)
 	})
 
 	t.Run("Fetching an existing service yields service and no error", func(t *testing.T) {
-		existingService, err := getExistingService(appName, namespace, clientset)
+		existingService, err := getExistingService(createObjectName(appName, environment), teamName, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, service, existingService)
 	})
 
 	t.Run("when no service exists, a new one is created", func(t *testing.T) {
-		service, err := createService(naisrequest.Deploy{Namespace: namespace, Application: otherAppName, Version: version}, otherTeamName, clientset)
+		service, err := createService(naisrequest.Deploy{Environment: environment, Application: otherAppName, Version: version}, otherTeamName, clientset)
 
 		assert.NoError(t, err)
-		assert.Equal(t, otherAppName, service.ObjectMeta.Name)
+		assert.Equal(t, createObjectName(otherAppName, environment), service.ObjectMeta.Name)
 		assert.Equal(t, otherTeamName, service.ObjectMeta.Labels["team"])
 		assert.Equal(t, DefaultPortName, service.Spec.Ports[0].TargetPort.StrVal)
 		assert.Equal(t, "http", service.Spec.Ports[0].Name)
-		assert.Equal(t, map[string]string{"app": otherAppName}, service.Spec.Selector)
+		assert.Equal(t, map[string]string{"app": otherAppName, "environment": environment}, service.Spec.Selector)
 	})
 	t.Run("when service exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createService(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, teamName, clientset)
+		nilValue, err := createService(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, teamName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})
@@ -247,7 +248,7 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	deployment, err := createDeploymentDef(naisResources, newDefaultManifest(), naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, nil, false)
+	deployment, err := createDeploymentDef(naisResources, newDefaultManifest(), naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, nil, false)
 
 	assert.Nil(t, err)
 
@@ -256,13 +257,13 @@ func TestDeployment(t *testing.T) {
 	clientset := fake.NewSimpleClientset(deployment)
 
 	t.Run("Nonexistant deployment yields empty string and no error", func(t *testing.T) {
-		nilValue, err := getExistingDeployment("nonexisting", namespace, clientset)
+		nilValue, err := getExistingDeployment("nonexisting", teamName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})
 
 	t.Run("Existing deployment yields def and no error", func(t *testing.T) {
-		id, err := getExistingDeployment(appName, namespace, clientset)
+		id, err := getExistingDeployment(createObjectName(appName, environment), teamName, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, id.ObjectMeta.ResourceVersion)
 	})
@@ -270,12 +271,13 @@ func TestDeployment(t *testing.T) {
 	t.Run("when no deployment exists, it's created", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Istio.Enabled = true
-		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: otherAppName, Version: version, FasitEnvironment: environment}, manifest, naisResources, true, clientset)
+		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: otherAppName, Version: version, FasitEnvironment: fasitEnvironment}, manifest, naisResources, true, clientset)
+		otherObjectName := createObjectName(otherAppName, environment)
 
 		assert.NoError(t, err)
-		assert.Equal(t, otherAppName, deployment.Name)
+		assert.Equal(t, otherObjectName, deployment.Name)
 		assert.Equal(t, "", deployment.ObjectMeta.ResourceVersion)
-		assert.Equal(t, otherAppName, deployment.Spec.Template.Name)
+		assert.Equal(t, otherObjectName, deployment.Spec.Template.Name)
 
 		containers := deployment.Spec.Template.Spec.Containers
 
@@ -312,25 +314,26 @@ func TestDeployment(t *testing.T) {
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
-		assert.Equal(t, 13, len(env))
+		assert.Equal(t, 14, len(env))
 		assert.Equal(t, "APP_NAME", env[0].Name)
 		assert.Equal(t, otherAppName, env[0].Value)
 		assert.Equal(t, "APP_VERSION", env[1].Name)
 		assert.Equal(t, version, env[1].Value)
-		assert.Equal(t, "FASIT_ENVIRONMENT_NAME", env[2].Name)
 		assert.Equal(t, environment, env[2].Value)
-		assert.Equal(t, resource2KeyMapping, env[5].Name)
-		assert.Equal(t, "value2", env[5].Value)
+		assert.Equal(t, "FASIT_ENVIRONMENT_NAME", env[3].Name)
+		assert.Equal(t, fasitEnvironment, env[3].Value)
+		assert.Equal(t, resource2KeyMapping, env[6].Name)
+		assert.Equal(t, "value2", env[6].Value)
 
-		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[6].Name)
-		assert.Equal(t, createSecretRef(otherAppName, secret2Key, resource2Name), env[6].ValueFrom)
+		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[7].Name)
+		assert.Equal(t, createSecretRef(createObjectName(otherAppName, environment), secret2Key, resource2Name), env[7].ValueFrom)
 
-		assert.Equal(t, "KEY1", env[7].Name)
-		assert.Equal(t, "KEY2_PROPERTY", env[8].Name)
-		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[9].Name)
-		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[10].Name)
-		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[11].Name)
-		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[12].Name)
+		assert.Equal(t, "KEY1", env[8].Name)
+		assert.Equal(t, "KEY2_PROPERTY", env[9].Name)
+		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[10].Name)
+		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[11].Name)
+		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[12].Name)
+		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[13].Name)
 		assert.False(t, manifest.LeaderElection, "LeaderElection should default to false")
 		assert.False(t, manifest.Redis, "Redis should default to false")
 	})
@@ -339,17 +342,17 @@ func TestDeployment(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Istio.Enabled = true
 		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{
-			Namespace: namespace,
+			Environment: environment,
 			Application: appName,
-			Version: version,
-			SkipFasit: true,
+			Version:     version,
+			SkipFasit:   true,
 		}, manifest, []NaisResource{}, false, clientset)
 
 		containers := deployment.Spec.Template.Spec.Containers
 		container := containers[0]
 
 		env := container.Env
-		assert.Equal(t, 2, len(env))
+		assert.Equal(t, 3, len(env))
 		assert.Equal(t, "APP_NAME", env[0].Name)
 		assert.Equal(t, appName, env[0].Value)
 		assert.Equal(t, "APP_VERSION", env[1].Name)
@@ -359,12 +362,12 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {
-		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: newVersion}, newDefaultManifest(), naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resourceVersion, deployment.ObjectMeta.ResourceVersion)
-		assert.Equal(t, appName, updatedDeployment.Name)
-		assert.Equal(t, appName, updatedDeployment.Spec.Template.Name)
+		assert.Equal(t, createObjectName(appName, environment), updatedDeployment.Name)
+		assert.Equal(t, createObjectName(appName, environment), updatedDeployment.Spec.Template.Name)
 		assert.Equal(t, appName, updatedDeployment.Spec.Template.Spec.Containers[0].Name)
 		assert.Equal(t, image+":"+newVersion, updatedDeployment.Spec.Template.Spec.Containers[0].Image)
 		assert.Equal(t, int32(port), updatedDeployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
@@ -374,7 +377,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("when leaderElection is true, extra container exists", func(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.LeaderElection = true
-		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		containers := deployment.Spec.Template.Spec.Containers
@@ -389,7 +392,7 @@ func TestDeployment(t *testing.T) {
 		manifest.Prometheus.Path = "/newPath"
 		manifest.Prometheus.Enabled = false
 
-		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, map[string]string{
@@ -404,7 +407,7 @@ func TestDeployment(t *testing.T) {
 		manifest.Logformat = "accesslog"
 		manifest.Logtransform = "dns_loglevel"
 
-		updateDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		updateDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, map[string]string{
 			"prometheus.io/scrape": "true",
@@ -421,7 +424,7 @@ func TestDeployment(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.PreStopHookPath = path
 
-		d, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		d, err := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, manifest, naisResources, false, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, path, d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Path)
 		assert.Equal(t, intstr.FromString(DefaultPortName), d.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.HTTPGet.Port)
@@ -446,7 +449,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), updatedResource, false, clientset)
+		updatedDeployment, err := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, newDefaultManifest(), updatedResource, false, clientset)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
@@ -460,7 +463,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
+		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
 		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
@@ -477,15 +480,15 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("Env variable is created for file secrets ", func(t *testing.T) {
-		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
+		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
 
-		assert.Equal(t, 9, len(envVars))
-		assert.Equal(t, "R1_CERT1KEY", envVars[5].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/r1_cert1key", envVars[5].Value)
-		assert.Equal(t, "R2_CERT2KEY", envVars[8].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/r2_cert2key", envVars[8].Value)
+		assert.Equal(t, 10, len(envVars))
+		assert.Equal(t, "R1_CERT1KEY", envVars[6].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/r1_cert1key", envVars[6].Value)
+		assert.Equal(t, "R2_CERT2KEY", envVars[9].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/r2_cert2key", envVars[9].Value)
 
 	})
 
@@ -504,7 +507,7 @@ func TestDeployment(t *testing.T) {
 			},
 		}
 
-		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, newDefaultManifest(), resources, false, clientset)
+		deployment, err := createOrUpdateDeployment(naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, newDefaultManifest(), resources, false, clientset)
 
 		assert.NoError(t, err)
 
@@ -533,7 +536,7 @@ func TestDeployment(t *testing.T) {
 		}
 
 		deploymentRequest := naisrequest.Deploy{
-			Namespace:   "default",
+			Environment: "default",
 			Application: "myapp",
 			Version:     "1",
 		}
@@ -546,7 +549,7 @@ func TestDeployment(t *testing.T) {
 	})
 	t.Run("Injects envoy sidecar based on settings", func(t *testing.T) {
 		deploymentRequest := naisrequest.Deploy{
-			Namespace:   "default",
+			Environment: "default",
 			Application: "myapp",
 			Version:     "1",
 		}
@@ -563,27 +566,27 @@ func TestDeployment(t *testing.T) {
 
 func TestIngress(t *testing.T) {
 	appName := "appname"
-	namespace := "default"
+	environment := "default"
 	subDomain := "example.no"
 	istioCertSecretName := "istio-ingress-certs"
-	ingress := createIngressDef(appName, namespace, teamName)
+	ingress := createIngressDef(appName, environment, teamName)
 	ingress.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(ingress)
 
 	t.Run("Nonexistant ingress yields nil and no error", func(t *testing.T) {
-		ingress, err := getExistingIngress("nonexisting", namespace, clientset)
+		ingress, err := getExistingIngress("nonexisting", teamName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, ingress)
 	})
 
 	t.Run("Existing ingress yields def and no error", func(t *testing.T) {
-		existingIngress, err := getExistingIngress(appName, namespace, clientset)
+		existingIngress, err := getExistingIngress(createObjectName(appName, environment), teamName, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, existingIngress.ObjectMeta.ResourceVersion)
 	})
 
 	t.Run("when no ingress exists, a default ingress is created", func(t *testing.T) {
-		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, otherTeamName, subDomain, []NaisResource{}, clientset)
+		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Environment: environment, Application: otherAppName}, otherTeamName, subDomain, []NaisResource{}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName, ingress.ObjectMeta.Name)
@@ -595,11 +598,11 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, istioCertSecretName, ingress.Spec.TLS[0].SecretName)
 	})
 
-	t.Run("when ingress is created in non-default namespace, hostname is postfixed with namespace", func(t *testing.T) {
-		namespace := "nondefault"
-		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, teamName, subDomain, []NaisResource{}, clientset)
+	t.Run("when ingress is created in non-default environment, hostname is postfixed with environment", func(t *testing.T) {
+		environment := "nondefault"
+		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Environment: environment, Application: otherAppName}, teamName, subDomain, []NaisResource{}, clientset)
 		assert.NoError(t, err)
-		assert.Equal(t, otherAppName+"-"+namespace+"."+subDomain, ingress.Spec.Rules[0].Host)
+		assert.Equal(t, otherAppName+"-"+environment+"."+subDomain, ingress.Spec.Rules[0].Host)
 	})
 
 	t.Run("Nais ingress resources are added", func(t *testing.T) {
@@ -618,7 +621,7 @@ func TestIngress(t *testing.T) {
 				},
 			},
 		}
-		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, teamName, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Environment: environment, Application: otherAppName}, teamName, subDomain, naisResources, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 3, len(ingress.Spec.Rules))
@@ -637,7 +640,7 @@ func TestIngress(t *testing.T) {
 		clientset := fake.NewSimpleClientset(ingress) //Avoid interfering with other tests in suite.
 		var naisResources []NaisResource
 
-		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Namespace: namespace, Application: "testapp", Zone: constant.ZONE_SBS, FasitEnvironment: "testenv"}, teamName, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(naisrequest.Deploy{Environment: environment, Application: "testapp", Zone: constant.ZONE_SBS, FasitEnvironment: "testenv"}, teamName, subDomain, naisResources, clientset)
 		rules := ingress.Spec.Rules
 
 		assert.NoError(t, err)
@@ -658,7 +661,7 @@ func TestIngress(t *testing.T) {
 
 func TestCreateOrUpdateSecret(t *testing.T) {
 	appName := "appname"
-	namespace := "namespace"
+	environment := "environment"
 	resource1Name := "r1.alias"
 	resource1Type := "db"
 	resource1Key := "key1"
@@ -702,27 +705,27 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		},
 	}
 
-	secret := createSecretDef(naisResources, nil, appName, namespace, teamName)
+	secret := createSecretDef(naisResources, nil, appName, environment, teamName)
 	secret.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(secret)
 
 	t.Run("Nonexistant secret yields nil and no error", func(t *testing.T) {
-		nilValue, err := getExistingSecret("nonexisting", namespace, clientset)
+		nilValue, err := getExistingSecret("nonexisting", teamName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})
 
 	t.Run("Existing secret yields def and no error", func(t *testing.T) {
-		existingSecret, err := getExistingSecret(appName, namespace, clientset)
+		existingSecret, err := getExistingSecret(createObjectName(appName, environment), teamName, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, existingSecret.ObjectMeta.ResourceVersion)
 	})
 
 	t.Run("when no secret exists, a new one is created", func(t *testing.T) {
-		secret, err := createOrUpdateSecret(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, naisResources, clientset, otherTeamName)
+		secret, err := createOrUpdateSecret(naisrequest.Deploy{Environment: environment, Application: otherAppName}, naisResources, clientset, otherTeamName)
 		assert.NoError(t, err)
 		assert.Equal(t, "", secret.ObjectMeta.ResourceVersion)
-		assert.Equal(t, otherAppName, secret.ObjectMeta.Name)
+		assert.Equal(t, createObjectName(otherAppName, environment), secret.ObjectMeta.Name)
 		assert.Equal(t, otherTeamName, secret.ObjectMeta.Labels["team"])
 		assert.Equal(t, 4, len(secret.Data))
 		assert.Equal(t, []byte(secret1Value), secret.Data[naisResources[0].ToResourceVariable(secret1Key)])
@@ -734,7 +737,7 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	t.Run("when a secret exists, it's updated", func(t *testing.T) {
 		updatedSecretValue := "newsecret"
 		updatedFileValue := []byte("newfile")
-		secret, err := createOrUpdateSecret(naisrequest.Deploy{Namespace: namespace, Application: appName}, []NaisResource{
+		secret, err := createOrUpdateSecret(naisrequest.Deploy{Environment: environment, Application: appName}, []NaisResource{
 			{
 				1,
 				resource1Name,
@@ -749,42 +752,44 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 		}, clientset, teamName)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, secret.ObjectMeta.ResourceVersion)
-		assert.Equal(t, namespace, secret.ObjectMeta.Namespace)
-		assert.Equal(t, appName, secret.ObjectMeta.Name)
+		assert.Equal(t, teamName, secret.ObjectMeta.Namespace)
+		assert.Equal(t, createObjectName(appName, environment), secret.ObjectMeta.Name)
 		assert.Equal(t, teamName, secret.ObjectMeta.Labels["team"])
+		assert.Equal(t, environment, secret.ObjectMeta.Labels["environment"])
 		assert.Equal(t, []byte(updatedSecretValue), secret.Data["r1_alias_password"])
 		assert.Equal(t, updatedFileValue, secret.Data["r1_alias_filekey1"])
 	})
 }
 
 func TestCreateOrUpdateAutoscaler(t *testing.T) {
-	autoscaler := createOrUpdateAutoscalerDef(1, 2, 3, nil, appName, namespace, teamName)
+	autoscaler := createOrUpdateAutoscalerDef(1, 2, 3, nil, appName, environment, teamName)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(autoscaler)
 
 	t.Run("nonexistant autoscaler yields empty string and no error", func(t *testing.T) {
-		nonExistingAutoscaler, err := getExistingAutoscaler("nonexisting", namespace, clientset)
+		nonExistingAutoscaler, err := getExistingAutoscaler("nonexisting", teamName, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nonExistingAutoscaler)
 	})
 
 	t.Run("existing autoscaler yields id and no error", func(t *testing.T) {
-		existingAutoscaler, err := getExistingAutoscaler(appName, namespace, clientset)
+		existingAutoscaler, err := getExistingAutoscaler(createObjectName(appName, environment), teamName, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, existingAutoscaler.ObjectMeta.ResourceVersion)
 	})
 
 	t.Run("when no autoscaler exists, a new one is created", func(t *testing.T) {
-		autoscaler, err := createOrUpdateAutoscaler(naisrequest.Deploy{Namespace: namespace, Application: otherAppName}, NaisManifest{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}, Team: otherTeamName}, clientset)
+		autoscaler, err := createOrUpdateAutoscaler(naisrequest.Deploy{Environment: environment, Application: otherAppName}, NaisManifest{Replicas: Replicas{Max: 1, Min: 2, CpuThresholdPercentage: 69}, Team: otherTeamName}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, "", autoscaler.ObjectMeta.ResourceVersion)
 		assert.Equal(t, int32(1), autoscaler.Spec.MaxReplicas)
 		assert.Equal(t, int32p(2), autoscaler.Spec.MinReplicas)
 		assert.Equal(t, int32p(69), autoscaler.Spec.TargetCPUUtilizationPercentage)
-		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
-		assert.Equal(t, otherAppName, autoscaler.ObjectMeta.Name)
+		assert.Equal(t, otherTeamName, autoscaler.ObjectMeta.Namespace)
+		assert.Equal(t, createObjectName(otherAppName, environment), autoscaler.ObjectMeta.Name)
 		assert.Equal(t, otherTeamName, autoscaler.ObjectMeta.Labels["team"])
-		assert.Equal(t, otherAppName, autoscaler.Spec.ScaleTargetRef.Name)
+		assert.Equal(t, environment, autoscaler.ObjectMeta.Labels["environment"])
+		assert.Equal(t, createObjectName(otherAppName, environment), autoscaler.Spec.ScaleTargetRef.Name)
 		assert.Equal(t, "Deployment", autoscaler.Spec.ScaleTargetRef.Kind)
 	})
 
@@ -792,16 +797,18 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 		cpuThreshold := 69
 		minReplicas := 6
 		maxReplicas := 9
-		autoscaler, err := createOrUpdateAutoscaler(naisrequest.Deploy{Namespace: namespace, Application: appName}, NaisManifest{Replicas: Replicas{CpuThresholdPercentage: cpuThreshold, Min: minReplicas, Max: maxReplicas}}, clientset)
+		autoscaler, err := createOrUpdateAutoscaler(naisrequest.Deploy{Environment: environment, Application: appName}, NaisManifest{Replicas: Replicas{CpuThresholdPercentage: cpuThreshold, Min: minReplicas, Max: maxReplicas}, Team: teamName}, clientset)
 		assert.NoError(t, err)
+		assert.NotNil(t, autoscaler)
 		assert.Equal(t, resourceVersion, autoscaler.ObjectMeta.ResourceVersion)
-		assert.Equal(t, namespace, autoscaler.ObjectMeta.Namespace)
-		assert.Equal(t, appName, autoscaler.ObjectMeta.Name)
+		assert.Equal(t, teamName, autoscaler.ObjectMeta.Namespace)
+		assert.Equal(t, createObjectName(appName, environment), autoscaler.ObjectMeta.Name)
 		assert.Equal(t, teamName, autoscaler.ObjectMeta.Labels["team"])
+		assert.Equal(t, environment, autoscaler.ObjectMeta.Labels["environment"])
 		assert.Equal(t, int32p(int32(cpuThreshold)), autoscaler.Spec.TargetCPUUtilizationPercentage)
 		assert.Equal(t, int32p(int32(minReplicas)), autoscaler.Spec.MinReplicas)
 		assert.Equal(t, int32(maxReplicas), autoscaler.Spec.MaxReplicas)
-		assert.Equal(t, appName, autoscaler.Spec.ScaleTargetRef.Name)
+		assert.Equal(t, createObjectName(appName, environment), autoscaler.Spec.ScaleTargetRef.Name)
 		assert.Equal(t, "Deployment", autoscaler.Spec.ScaleTargetRef.Kind)
 	})
 }
@@ -823,13 +830,13 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 	}
 
 	t.Run("Generate valid volume mount name", func(t *testing.T) {
-		volumeMount := createCertificateVolumeMount(naisrequest.Deploy{Namespace: namespace, Application: name}, naisResource)
+		volumeMount := createCertificateVolumeMount(naisrequest.Deploy{Environment: environment, Application: name}, naisResource)
 		assert.Equal(t, "key-underscore-upper", volumeMount.Name)
 
 	})
 
 	t.Run("Generate valid volume name", func(t *testing.T) {
-		volume := createCertificateVolume(naisrequest.Deploy{Namespace: namespace, Application: name}, naisResource)
+		volume := createCertificateVolume(naisrequest.Deploy{Environment: environment, Application: name}, naisResource)
 		assert.Equal(t, "key-underscore-upper", volume.Name)
 
 	})
@@ -840,15 +847,16 @@ func TestCreateK8sResources(t *testing.T) {
 	deploymentRequest := naisrequest.Deploy{
 		Application:      appName,
 		Version:          version,
-		FasitEnvironment: namespace,
+		FasitEnvironment: environment,
 		ManifestUrl:      "http://repo.com/app",
 		Zone:             "zone",
-		Namespace:        namespace,
+		Environment:      environment,
 	}
 
 	manifest := NaisManifest{
 		Image:   image,
 		Port:    port,
+		Team:    teamName,
 		Ingress: Ingress{Disabled: false},
 		Resources: ResourceRequirements{
 			Requests: ResourceList{
@@ -876,9 +884,9 @@ func TestCreateK8sResources(t *testing.T) {
 		},
 	}
 
-	service := createServiceDef(appName, namespace, teamName)
+	service := createServiceDef(appName, environment, teamName)
 
-	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, namespace, teamName)
+	autoscaler := createOrUpdateAutoscalerDef(6, 9, 6, nil, appName, environment, teamName)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(autoscaler, service)
 
@@ -931,7 +939,7 @@ func TestCreateK8sResources(t *testing.T) {
 }
 
 func TestCheckForDuplicates(t *testing.T) {
-	t.Run("duplicate environment variables should error", func(t *testing.T) {
+	t.Run("duplicate fasitEnvironment variables should error", func(t *testing.T) {
 		resource1 := NaisResource{
 			name:         "srvapp",
 			resourceType: "credential",
@@ -1052,16 +1060,16 @@ func TestCreateSBSPublicHostname(t *testing.T) {
 
 func TestCreateObjectMeta(t *testing.T) {
 	t.Run("Test required metadata field values", func(t *testing.T) {
-		objectMeta := createObjectMeta(appName, namespace, teamName)
+		objectMeta := generateObjectMeta(appName, environment, teamName)
 
 		assert.Equal(t, teamName, objectMeta.Labels["team"], "Team label should be equal to team name.")
 		assert.Equal(t, appName, objectMeta.Labels["app"], "App label should be equal to app name.")
-		assert.Equal(t, appName, objectMeta.Name, "Resource name should equal app name.")
-		assert.Equal(t, namespace, objectMeta.Namespace, "Resource namespace should equal namespace.")
+		assert.Equal(t, createObjectName(appName, environment), objectMeta.Name, "Resource name should equal app name.")
+		assert.Equal(t, teamName, objectMeta.Namespace, "Resource environment should equal environment.")
 	})
 
 	t.Run("Test creating objectmeta without team name", func(t *testing.T) {
-		objectMetaWithoutTeamName := createObjectMeta(appName, namespace, "")
+		objectMetaWithoutTeamName := generateObjectMeta(appName, environment, "")
 		_, ok := objectMetaWithoutTeamName.Labels["team"]
 		assert.False(t, ok, "Team label should not be set when team name is empty.")
 	})
@@ -1069,18 +1077,98 @@ func TestCreateObjectMeta(t *testing.T) {
 
 func TestMergeObjectMeta(t *testing.T) {
 	t.Run("Test merging objectmeta", func(t *testing.T) {
-		existingObjectMeta := createObjectMeta(appName, namespace, teamName)
+		existingObjectMeta := generateObjectMeta(appName, environment, teamName)
 		existingObjectMeta.ResourceVersion = "asd"
 
-		newObjectMeta := createObjectMeta(otherAppName, namespace, otherTeamName)
+		newObjectMeta := generateObjectMeta(otherAppName, environment, otherTeamName)
 
 		mergedObjectMeta := mergeObjectMeta(existingObjectMeta, newObjectMeta)
 
 		assert.Equal(t, otherTeamName, mergedObjectMeta.Labels["team"], "Team label should be equal to team name.")
 		assert.Equal(t, otherAppName, mergedObjectMeta.Labels["app"], "App label should be equal to app name.")
-		assert.Equal(t, otherAppName, mergedObjectMeta.Name, "Resource name should equal app name.")
-		assert.Equal(t, namespace, mergedObjectMeta.Namespace, "Resource namespace should equal namespace.")
+		assert.Equal(t, createObjectName(otherAppName, environment), mergedObjectMeta.Name, "Resource name should equal app name.")
+		assert.Equal(t, otherTeamName, mergedObjectMeta.Namespace, "Resource environment should equal environment.")
 		assert.Equal(t, "asd", mergedObjectMeta.ResourceVersion, "Resource version should be preserved when merging")
+	})
+}
+
+func TestTeamNamespaceMultipleDeploys(t *testing.T) {
+	naisResources := []NaisResource{
+		{
+			1,
+			"resourceName",
+			"resourceType",
+			Scope{"u", "u1", constant.ZONE_FSS},
+			map[string]string{"resourceKey": "resource1Value"},
+			nil,
+			map[string]string{"secretKey": "secretValue"},
+			nil,
+			nil,
+		},
+	}
+	manifest := NaisManifest{
+		Team:  "team",
+		Image: "image",
+		Resources: ResourceRequirements{
+			Requests: ResourceList{
+				Memory: memoryRequest,
+				Cpu:    cpuRequest,
+			},
+			Limits: ResourceList{
+				Memory: memoryLimit,
+				Cpu:    cpuLimit,
+			},
+		},
+	}
+
+	clientset := fake.NewSimpleClientset()
+
+	t.Run("Test deploying same application to different environments", func(t *testing.T) {
+		deploymentRequest1 := naisrequest.Deploy{
+			Environment: "t0",
+			Application: "application",
+			Version:     "1",
+		}
+
+		response1, err1 := createOrUpdateK8sResources(deploymentRequest1, manifest, naisResources, "nais.unittest.no", false, clientset)
+
+		deploymentRequest2 := naisrequest.Deploy{
+			Environment: "t1",
+			Application: "application",
+			Version:     "1",
+		}
+
+		response2, err2 := createOrUpdateK8sResources(deploymentRequest2, manifest, naisResources, "nais.unittest.no", false, clientset)
+
+		assert.NoError(t, err1)
+		assert.Equal(t, response1.Autoscaler.ObjectMeta.Name, createObjectName("application", "t0"))
+		assert.Equal(t, response1.Deployment.ObjectMeta.Name, createObjectName("application", "t0"))
+		assert.Equal(t, response1.Ingress.ObjectMeta.Name, createObjectName("application", "t0"))
+		assert.Equal(t, response1.Secret.ObjectMeta.Name, createObjectName("application", "t0"))
+		assert.Equal(t, response1.Service.ObjectMeta.Name, createObjectName("application", "t0"))
+		assert.Equal(t, response1.ServiceAccount.ObjectMeta.Name, createObjectName("application", "t0"))
+
+		assert.Equal(t, response1.Autoscaler.ObjectMeta.Labels["environment"], "t0")
+		assert.Equal(t, response1.Deployment.ObjectMeta.Labels["environment"], "t0")
+		assert.Equal(t, response1.Ingress.ObjectMeta.Labels["environment"], "t0")
+		assert.Equal(t, response1.Secret.ObjectMeta.Labels["environment"], "t0")
+		assert.Equal(t, response1.Service.ObjectMeta.Labels["environment"], "t0")
+		assert.Equal(t, response1.ServiceAccount.ObjectMeta.Labels["environment"], "t0")
+
+		assert.NoError(t, err2)
+		assert.Equal(t, response2.Autoscaler.ObjectMeta.Name, createObjectName("application", "t1"))
+		assert.Equal(t, response2.Deployment.ObjectMeta.Name, createObjectName("application", "t1"))
+		assert.Equal(t, response2.Ingress.ObjectMeta.Name, createObjectName("application", "t1"))
+		assert.Equal(t, response2.Secret.ObjectMeta.Name, createObjectName("application", "t1"))
+		assert.Equal(t, response2.Service.ObjectMeta.Name, createObjectName("application", "t1"))
+		assert.Equal(t, response2.ServiceAccount.ObjectMeta.Name, createObjectName("application", "t1"))
+
+		assert.Equal(t, response2.Autoscaler.ObjectMeta.Labels["environment"], "t1")
+		assert.Equal(t, response2.Deployment.ObjectMeta.Labels["environment"], "t1")
+		assert.Equal(t, response2.Ingress.ObjectMeta.Labels["environment"], "t1")
+		assert.Equal(t, response2.Secret.ObjectMeta.Labels["environment"], "t1")
+		assert.Equal(t, response2.Service.ObjectMeta.Labels["environment"], "t1")
+		assert.Equal(t, response2.ServiceAccount.ObjectMeta.Labels["environment"], "t1")
 	})
 }
 

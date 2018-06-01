@@ -65,7 +65,7 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 }
 
 func TestAddRulesToConfigMap(t *testing.T) {
-	deploymentPrefix := createDeploymentPrefix(namespace, appName)
+	deploymentPrefix := createDeploymentPrefix(appName, environment, teamName)
 	rulesGroupFilename := deploymentPrefix + ".yml"
 
 	alertRule := PrometheusAlertRule{
@@ -78,15 +78,15 @@ func TestAddRulesToConfigMap(t *testing.T) {
 	}
 
 	configMap := &v1.ConfigMap{
-		ObjectMeta: createObjectMeta(appName, namespace, teamName),
+		ObjectMeta: generateObjectMeta(appName, environment, teamName),
 		Data: map[string]string{
-			"asd-namespace-otherAppName.yml": "not touched",
+			"asd-environment-otherAppName.yml": "not touched",
 		},
 	}
 
 	deploymentRequest := naisrequest.Deploy{
 		Application: appName,
-		Namespace:   namespace,
+		Environment: environment,
 	}
 
 	manifest := NaisManifest{
@@ -112,7 +112,7 @@ func TestAddRulesToConfigMap(t *testing.T) {
 	assert.Len(t, resultingAlertGroup.Rules, 1)
 	assert.Len(t, resultingAlertGroups.Groups, 1)
 
-	assert.Equal(t, "not touched", resultingConfigMap.Data["asd-namespace-otherAppName.yml"])
+	assert.Equal(t, "not touched", resultingConfigMap.Data["asd-environment-otherAppName.yml"])
 	assert.Len(t, resultingConfigMap.Data, 2)
 }
 

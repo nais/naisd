@@ -77,8 +77,8 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 	mux.Handle(pat.Get("/version"), appHandler(api.version))
-	mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
-	mux.Handle(pat.Delete("/app/:namespace/:deployName"), appHandler(api.deleteApplication))
+	mux.Handle(pat.Get("/deploystatus/:team/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
+	mux.Handle(pat.Delete("/app/:team/:deployName/:environment"), appHandler(api.deleteApplication))
 	return mux
 }
 
@@ -145,7 +145,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
 	if !deploymentRequest.SkipFasit && hasResources(manifest) {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Namespace, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Environment, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
 			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}
@@ -157,10 +157,11 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	return nil
 }
 func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
-	namespace := pat.Param(r, "namespace")
+	team := pat.Param(r, "team")
+	environment := pat.Param(r, "environment")
 	deployName := pat.Param(r, "deployName")
 
-	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(namespace, deployName)
+	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(environment, deployName, team)
 
 	if err != nil {
 		return &appError{err, "deployment not found ", http.StatusNotFound}
@@ -201,10 +202,11 @@ func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
 }
 
 func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appError {
-	namespace := pat.Param(r, "namespace")
-	deployName := pat.Param(r, "deployName")
+	team := pat.Param(r, "team")
+	environment := pat.Param(r, "environment")
+	application := pat.Param(r, "deployName")
 
-	result, err := deleteK8sResouces(namespace, deployName, api.Clientset)
+	result, err := deleteK8sResouces(application, environment, team, api.Clientset)
 
 	response := ""
 	if len(result) > 0 {
@@ -218,7 +220,7 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 		return &appError{err, fmt.Sprintf("there were errors when trying to delete app: %+v", response), http.StatusInternalServerError}
 	}
 
-	glog.Infof("Deleted application %s in %s\n", deployName, namespace)
+	glog.Infof("Deleted application %s-%s in %s\n", application, environment, team)
 
 	w.Write([]byte(response))
 	w.WriteHeader(http.StatusOK)

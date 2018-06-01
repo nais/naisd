@@ -617,7 +617,7 @@ func TestGenerateScope(t *testing.T) {
 }
 
 func TestGetFasitEnvironment(t *testing.T) {
-	namespace := "namespace"
+	namespace := "environment"
 
 	defer gock.Off()
 	gock.New("https://fasit.local").

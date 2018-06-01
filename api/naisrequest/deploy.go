@@ -16,15 +16,16 @@ type Deploy struct {
 	FasitUsername    string `json:"fasitUsername,omitempty"`
 	FasitPassword    string `json:"fasitPassword,omitempty"`
 	OnBehalfOf       string `json:"onbehalfof,omitempty"`
-	Namespace        string `json:"namespace"`
+	Namespace        string `json:"namespace,omitempty"`
+	Environment      string `json:"environment"`
 }
 
 func (r Deploy) Validate() []error {
 	required := map[string]*string{
-		"application":      &r.Application,
-		"version":          &r.Version,
-		"zone":             &r.Zone,
-		"namespace":        &r.Namespace,
+		"application": &r.Application,
+		"version":     &r.Version,
+		"zone":        &r.Zone,
+		"environment": &r.Environment,
 	}
 
 	if !r.SkipFasit {

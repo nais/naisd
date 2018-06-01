@@ -23,7 +23,7 @@ type FakeDeployStatusViewer struct {
 	errToReturn          error
 }
 
-func (d FakeDeployStatusViewer) DeploymentStatusView(namespace string, deployName string) (DeployStatus, DeploymentStatusView, error) {
+func (d FakeDeployStatusViewer) DeploymentStatusView(namespace, deployName, team string) (DeployStatus, DeploymentStatusView, error) {
 	return d.deployStatusToReturn, d.viewToReturn, d.errToReturn
 }
 
@@ -47,7 +47,7 @@ func TestAnIncorrectPayloadGivesError(t *testing.T) {
 }
 
 func TestDeployStatusHandler(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/deploystatus/namespace/deployName", strings.NewReader("whatever"))
+	req, _ := http.NewRequest("GET", "/deploystatus/team/deployName/environment", strings.NewReader("whatever"))
 
 	t.Run("Return 404 if deploy status is not found", func(t *testing.T) {
 		mux := goji.NewMux()
@@ -56,7 +56,7 @@ func TestDeployStatusHandler(t *testing.T) {
 			errToReturn: fmt.Errorf("not Found"),
 		}}
 
-		mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
+		mux.Handle(pat.Get("/deploystatus/:team/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
 
 		rr := httptest.NewRecorder()
 
@@ -92,7 +92,7 @@ func TestDeployStatusHandler(t *testing.T) {
 					deployStatusToReturn: test.deployStatus,
 				},
 			}
-			mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
+			mux.Handle(pat.Get("/deploystatus/:team/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
 
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)
@@ -112,7 +112,7 @@ func TestNoManifestGivesError(t *testing.T) {
 		FasitEnvironment: "",
 		ManifestUrl:      manifestUrl,
 		Zone:             "zone",
-		Namespace:        "namespace",
+		Environment:      "environment",
 	}
 
 	defer gock.Off()
@@ -142,7 +142,7 @@ func TestNoManifestGivesError(t *testing.T) {
 
 func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	appName := "appname"
-	namespace := "namespace"
+	namespace := "environment"
 	environment := "environmentName"
 	image := "name/Container"
 	version := "123"
@@ -160,12 +160,13 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 		FasitEnvironment: environment,
 		ManifestUrl:      "http://repo.com/app",
 		Zone:             "zone",
-		Namespace:        namespace,
+		Environment:      namespace,
 	}
 
 	manifest := NaisManifest{
 		Image: image,
 		Port:  321,
+		Team:  teamName,
 		FasitResources: FasitResources{
 			Used: []UsedResource{{resourceAlias, resourceType, nil}},
 		},
@@ -232,7 +233,7 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 
 func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 	appName := "appname"
-	namespace := "namespace"
+	namespace := "environment"
 	environment := "environmentName"
 	image := "name/Container"
 	version := "123"
@@ -249,12 +250,13 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 		FasitEnvironment: environment,
 		ManifestUrl:      "http://repo.com/app",
 		Zone:             "zone",
-		Namespace:        namespace,
+		Environment:      namespace,
 	}
 
 	manifest := NaisManifest{
 		Image: image,
 		Port:  321,
+		Team:  teamName,
 		Alerts: []PrometheusAlertRule{
 			{
 				Alert: alertName,
@@ -303,7 +305,7 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 
 func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 	appName := "appname"
-	namespace := "namespace"
+	namespace := "environment"
 	image := "name/Container"
 	version := "123"
 	alertName := "alias1"
@@ -314,17 +316,18 @@ func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
 	depReq := naisrequest.Deploy{
-		Application:      appName,
-		Version:          version,
-		ManifestUrl:      "http://repo.com/app",
-		SkipFasit:        true,
-		Zone:             "zone",
-		Namespace:        namespace,
+		Application: appName,
+		Version:     version,
+		ManifestUrl: "http://repo.com/app",
+		SkipFasit:   true,
+		Zone:        "zone",
+		Environment: namespace,
 	}
 
 	manifest := NaisManifest{
 		Image: image,
 		Port:  321,
+		Team:  teamName,
 		Alerts: []PrometheusAlertRule{
 			{
 				Alert: alertName,
@@ -368,6 +371,7 @@ func TestMissingResources(t *testing.T) {
 	manifest := NaisManifest{
 		Image: "name/Container",
 		Port:  321,
+		Team:  teamName,
 		FasitResources: FasitResources{
 			Used: []UsedResource{{resourceAlias, resourceType, nil}},
 		},
@@ -384,7 +388,7 @@ func TestMissingResources(t *testing.T) {
 		Reply(200).
 		BodyString(string(data))
 	gock.New("https://fasit.local").
-		Get("/api/v2/environments/namespace").
+		Get("/api/v2/environments/environment").
 		Reply(200).
 		JSON(map[string]string{"environmentclass": "u"})
 	gock.New("https://fasit.local").
@@ -413,10 +417,10 @@ func CreateDefaultDeploymentRequest() string {
 	jsn, _ := json.Marshal(naisrequest.Deploy{
 		Application:      "appname",
 		Version:          "123",
-		FasitEnvironment: "namespace",
+		FasitEnvironment: "environment",
 		ManifestUrl:      "http://repo.com/app",
 		Zone:             "zone",
-		Namespace:        "namespace",
+		Environment:      "environment",
 	})
 
 	return string(jsn)
@@ -429,7 +433,7 @@ func TestValidateDeploymentRequest(t *testing.T) {
 			Version:          "",
 			FasitEnvironment: "",
 			Zone:             "",
-			Namespace:        "",
+			Environment:      "",
 			FasitUsername:    "",
 			FasitPassword:    "",
 		}
@@ -442,18 +446,18 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.Contains(t, err, errors.New("fasitEnvironment is required and is empty"))
 		assert.Contains(t, err, errors.New("zone is required and is empty"))
 		assert.Contains(t, err, errors.New("zone can only be fss, sbs or iapp"))
-		assert.Contains(t, err, errors.New("namespace is required and is empty"))
+		assert.Contains(t, err, errors.New("environment is required and is empty"))
 		assert.Contains(t, err, errors.New("fasitUsername is required and is empty"))
 		assert.Contains(t, err, errors.New("fasitPassword is required and is empty"))
 	})
 
 	t.Run("Fasit properties are not required when Fasit is skipped", func(t *testing.T) {
 		invalid := naisrequest.Deploy{
-			Application:      "",
-			Version:          "",
-			Zone:             "",
-			Namespace:        "",
-			SkipFasit:        true,
+			Application: "",
+			Version:     "",
+			Zone:        "",
+			Environment: "",
+			SkipFasit:   true,
 		}
 
 		err := invalid.Validate()
@@ -464,6 +468,6 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.Contains(t, err, errors.New("version is required and is empty"))
 		assert.Contains(t, err, errors.New("zone is required and is empty"))
 		assert.Contains(t, err, errors.New("zone can only be fss, sbs or iapp"))
-		assert.Contains(t, err, errors.New("namespace is required and is empty"))
+		assert.Contains(t, err, errors.New("environment is required and is empty"))
 	})
 }

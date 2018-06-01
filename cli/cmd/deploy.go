@@ -80,7 +80,7 @@ var deployCmd = &cobra.Command{
 			"app":               &deployRequest.Application,
 			"version":           &deployRequest.Version,
 			"zone":              &deployRequest.Zone,
-			"namespace":         &deployRequest.Namespace,
+			"environment":       &deployRequest.Environment,
 			"fasit-environment": &deployRequest.FasitEnvironment,
 			"fasit-username":    &deployRequest.FasitUsername,
 			"fasit-password":    &deployRequest.FasitPassword,
@@ -161,7 +161,7 @@ var deployCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 		} else if wait {
 			start := time.Now()
-			if err := waitForDeploy(clusterUrl + StatusEndpoint + "/" + deployRequest.Namespace + "/" + deployRequest.Application); err != nil {
+			if err := waitForDeploy(clusterUrl + StatusEndpoint + "/" + deployRequest.Environment + "/" + deployRequest.Application); err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}

@@ -12,7 +12,7 @@ func TestRedisResource(t *testing.T) {
 		deploymentRequest := naisrequest.Deploy{
 			Application:      "redisTest",
 			FasitEnvironment: constant.ENVIRONMENT_P,
-			Namespace:        "default",
+			Environment:      "default",
 		}
 		redisFailoverDef := createRedisFailoverDef(deploymentRequest, "teamBeam")
 		assert.Equal(t, int32(3), redisFailoverDef.Spec.Redis.Replicas, "")

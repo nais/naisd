@@ -142,8 +142,8 @@ func TestNoManifestGivesError(t *testing.T) {
 
 func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	appName := "appname"
-	namespace := "environment"
-	environment := "environmentName"
+	environment := "environment"
+	fasitEnvronment := "environmentName"
 	image := "name/Container"
 	version := "123"
 	resourceAlias := "alias1"
@@ -157,10 +157,10 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	depReq := naisrequest.Deploy{
 		Application:      appName,
 		Version:          version,
-		FasitEnvironment: environment,
+		FasitEnvironment: fasitEnvronment,
 		ManifestUrl:      "http://repo.com/app",
 		Zone:             "zone",
-		Environment:      namespace,
+		Environment:      environment,
 	}
 
 	manifest := NaisManifest{
@@ -195,13 +195,13 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", resourceAlias).
 		MatchParam("type", resourceType).
-		MatchParam("environment", environment).
+		MatchParam("environment", fasitEnvronment).
 		MatchParam("application", appName).
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
 	gock.New("https://fasit.local").
-		Get(fmt.Sprintf("/api/v2/environments/%s", environment)).
+		Get(fmt.Sprintf("/api/v2/environments/%s", fasitEnvronment)).
 		Reply(200).
 		JSON(map[string]string{"environmentclass": "u"})
 
@@ -233,8 +233,8 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 
 func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 	appName := "appname"
-	namespace := "environment"
-	environment := "environmentName"
+	environment := "environment"
+	fasitEnvironment := "environmentName"
 	image := "name/Container"
 	version := "123"
 	alertName := "alias1"
@@ -247,10 +247,10 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 	depReq := naisrequest.Deploy{
 		Application:      appName,
 		Version:          version,
-		FasitEnvironment: environment,
+		FasitEnvironment: fasitEnvironment,
 		ManifestUrl:      "http://repo.com/app",
 		Zone:             "zone",
-		Environment:      namespace,
+		Environment:      environment,
 	}
 
 	manifest := NaisManifest{
@@ -305,7 +305,7 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 
 func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 	appName := "appname"
-	namespace := "environment"
+	environment := "environment"
 	image := "name/Container"
 	version := "123"
 	alertName := "alias1"
@@ -321,7 +321,7 @@ func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 		ManifestUrl: "http://repo.com/app",
 		SkipFasit:   true,
 		Zone:        "zone",
-		Environment: namespace,
+		Environment: environment,
 	}
 
 	manifest := NaisManifest{

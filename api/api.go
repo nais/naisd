@@ -272,6 +272,9 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 	if deploymentResult.Redis != nil {
 		response += "- created redis\n"
 	}
+	if deploymentResult.Namespace != nil {
+		response += "- created namespace\n"
+	}
 
 	return []byte(response)
 }

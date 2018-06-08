@@ -228,7 +228,7 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n", string(rr.Body.Bytes()))
+	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n- created namespace\n", string(rr.Body.Bytes()))
 }
 
 func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
@@ -300,7 +300,7 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n- updated alerts configmap (app-rules)\n", string(rr.Body.Bytes()))
+	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n- updated alerts configmap (app-rules)\n- created namespace\n", string(rr.Body.Bytes()))
 }
 
 func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
@@ -361,7 +361,7 @@ func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n- updated alerts configmap (app-rules)\n", string(rr.Body.Bytes()))
+	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n- updated alerts configmap (app-rules)\n- created namespace\n", string(rr.Body.Bytes()))
 }
 
 func TestMissingResources(t *testing.T) {

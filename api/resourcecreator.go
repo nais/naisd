@@ -34,6 +34,7 @@ type DeploymentResult struct {
 	Redis           *redisapi.RedisFailover
 	AlertsConfigMap *k8score.ConfigMap
 	ServiceAccount  *k8score.ServiceAccount
+	Namespace       *k8score.Namespace
 }
 
 // Creates a Kubernetes Service object
@@ -573,6 +574,13 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, objectName string) 
 
 func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
+	client := clientHolder{k8sClient}
+
+	namespace, err := client.createNamespace(manifest.Team)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("failed while creating namespace: %s", err)
+	}
+	deploymentResult.Namespace = namespace
 
 	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateOrUpdate(deploymentRequest.Application, deploymentRequest.Environment, manifest.Team)
 	if err != nil {

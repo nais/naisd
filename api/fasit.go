@@ -11,11 +11,12 @@ import (
 	"strconv"
 	"strings"
 
+	"regexp"
+
 	"github.com/Jeffail/gabs"
 	"github.com/golang/glog"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/prometheus/client_golang/prometheus"
-	"regexp"
 )
 
 func init() {
@@ -110,7 +111,7 @@ type NaisResource struct {
 	propertyMap  map[string]string
 	secret       map[string]string
 	certificates map[string][]byte
-	ingresses    map[string]string
+	ingresses    []Ingress
 }
 
 func (nr NaisResource) Properties() map[string]string {
@@ -595,14 +596,14 @@ func resolveCertificates(files map[string]interface{}) (map[string][]byte, error
 
 }
 
-func parseLoadBalancerConfig(config []byte) (map[string]string, error) {
+func parseLoadBalancerConfig(config []byte) ([]Ingress, error) {
 	jsn, err := gabs.ParseJSON(config)
 	if err != nil {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return nil, fmt.Errorf("error parsing load balancer config: %s ", config)
 	}
 
-	ingresses := make(map[string]string)
+	ingresses := make([]Ingress, 0)
 	lbConfigs, _ := jsn.Children()
 	if len(lbConfigs) == 0 {
 		return nil, nil
@@ -615,7 +616,7 @@ func parseLoadBalancerConfig(config []byte) (map[string]string, error) {
 			continue
 		}
 		path, _ := lbConfig.Path("properties.contextRoots").Data().(string)
-		ingresses[host] = path
+		ingresses = append(ingresses, Ingress{Host: host, Path: path})
 	}
 
 	if len(ingresses) == 0 {

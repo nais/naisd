@@ -842,8 +842,8 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(result))
-		assert.Equal(t, "ctxroot", result["subdomainwithctxroot.host.tld"])
-		assert.Equal(t, "", result["subdomain.host.tld"])
+		assert.Equal(t, Ingress{Path: "ctxroot", Host: "subdomainwithctxroot.host.tld"}, result[0])
+		assert.Equal(t, Ingress{Path: "", Host: "subdomain.host.tld"}, result[1])
 	})
 
 	t.Run("Err if no loadbalancer config is found", func(t *testing.T) {

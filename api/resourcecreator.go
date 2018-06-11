@@ -686,8 +686,8 @@ func createIngressRules(deploymentRequest naisrequest.Deploy, clusterSubdomain s
 
 	for _, naisResource := range naisResources {
 		if naisResource.resourceType == "LoadBalancerConfig" && len(naisResource.ingresses) > 0 {
-			for host, path := range naisResource.ingresses {
-				ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application, host, path))
+			for _, ingress := range naisResource.ingresses {
+				ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application, ingress.Host, ingress.Path))
 			}
 		}
 	}

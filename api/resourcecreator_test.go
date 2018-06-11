@@ -339,10 +339,10 @@ func TestDeployment(t *testing.T) {
 		manifest := newDefaultManifest()
 		manifest.Istio.Enabled = true
 		deployment, _ := createOrUpdateDeployment(naisrequest.Deploy{
-			Namespace: namespace,
+			Namespace:   namespace,
 			Application: appName,
-			Version: version,
-			SkipFasit: true,
+			Version:     version,
+			SkipFasit:   true,
 		}, manifest, []NaisResource{}, false, clientset)
 
 		containers := deployment.Spec.Template.Spec.Containers
@@ -607,14 +607,14 @@ func TestIngress(t *testing.T) {
 		naisResources := []NaisResource{
 			{
 				resourceType: "LoadBalancerConfig",
-				ingresses: map[string]string{
-					"app.adeo.no": "context",
+				ingresses: []Ingress{
+					{Host: "app.adeo.no", Path: "context"},
 				},
 			},
 			{
 				resourceType: "LoadBalancerConfig",
-				ingresses: map[string]string{
-					"app2.adeo.no": "context2",
+				ingresses: []Ingress{
+					{Host: "app2.adeo.no", Path: "context2"},
 				},
 			},
 		}

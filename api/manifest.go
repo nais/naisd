@@ -70,6 +70,8 @@ type NaisManifest struct {
 
 type Ingress struct {
 	Disabled bool
+	Host     string
+	Path     string
 }
 
 type Replicas struct {

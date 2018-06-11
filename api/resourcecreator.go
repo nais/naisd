@@ -233,7 +233,7 @@ func createLeaderElectionContainer(appName string) k8score.Container {
 		Ports: []k8score.ContainerPort{
 			{ContainerPort: 4040, Protocol: k8score.ProtocolTCP},
 		},
-		Args: []string{"--election=" + appName, "--http=localhost:4040", "--election-environment=election"},
+		Args: []string{"--election=" + appName, "--http=localhost:4040", "--election-namespace=election"},
 	}
 }
 

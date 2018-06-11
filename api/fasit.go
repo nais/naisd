@@ -620,8 +620,11 @@ func parseLoadBalancerConfig(config []byte) ([]FasitIngress, error) {
 			glog.Warning("no host found for loadbalancer config: %s", lbConfig)
 			continue
 		}
-		path, _ := lbConfig.Path("properties.contextRoots").Data().(string)
-		ingresses = append(ingresses, Ingress{Host: host, Path: path})
+		pathList, _ := lbConfig.Path("properties.contextRoots").Data().(string)
+		paths := strings.Split(pathList, ",")
+		for _, path := range paths {
+			ingresses = append(ingresses, Ingress{Host: host, Path: path})
+		}
 	}
 
 	if len(ingresses) == 0 {

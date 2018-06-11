@@ -285,7 +285,10 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) 
 		return naisrequest.Deploy{}, fmt.Errorf("could not read deployment request body %s", err)
 	}
 
-	var deploymentRequest naisrequest.Deploy
+	deploymentRequest := naisrequest.Deploy{
+		Environment: "default",
+	}
+
 	if err = json.Unmarshal(requestBody, &deploymentRequest); err != nil {
 		return naisrequest.Deploy{}, fmt.Errorf("could not unmarshal body %s", err)
 	}

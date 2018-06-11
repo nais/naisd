@@ -73,6 +73,7 @@ var deployCmd = &cobra.Command{
 		deployRequest := naisrequest.Deploy{
 			FasitUsername: os.Getenv("FASIT_USERNAME"),
 			FasitPassword: os.Getenv("FASIT_PASSWORD"),
+			Environment:   "default",
 		}
 
 		var cluster string

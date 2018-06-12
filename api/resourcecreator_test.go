@@ -607,13 +607,13 @@ func TestIngress(t *testing.T) {
 		naisResources := []NaisResource{
 			{
 				resourceType: "LoadBalancerConfig",
-				ingresses: []Ingress{
+				ingresses: []FasitIngress{
 					{Host: "app.adeo.no", Path: "context"},
 				},
 			},
 			{
 				resourceType: "LoadBalancerConfig",
-				ingresses: []Ingress{
+				ingresses: []FasitIngress{
 					{Host: "app2.adeo.no", Path: "context2"},
 				},
 			},

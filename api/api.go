@@ -102,9 +102,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
 	}
 
-	// Warn about deprecated fields in deploymentRequest
-	warnings := ensurePropertyCompatibility(&deploymentRequest)
-
 	fasit := FasitClient{api.FasitUrl, deploymentRequest.FasitUsername, deploymentRequest.FasitPassword}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.FasitEnvironment)
@@ -113,6 +110,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	if err != nil {
 		return &appError{err, "unable to generate manifest/nais.yaml", http.StatusInternalServerError}
 	}
+
+	// Warn about deprecated fields in deploymentRequest
+	warnings := ensurePropertyCompatibility(&deploymentRequest, &manifest)
 
 	var fasitEnvironmentClass string
 	var naisResources []NaisResource
@@ -307,15 +307,21 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) 
 	return deploymentRequest, nil
 }
 
-func ensurePropertyCompatibility(deploy *naisrequest.Deploy) []string {
+func ensurePropertyCompatibility(deploy *naisrequest.Deploy, manifest *NaisManifest) []string {
+	var warnings []string
+
 	if deploy.Namespace != "" {
 		if deploy.Environment == "" {
 			deploy.Environment = deploy.Namespace
-			return []string{fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment)}
+			warnings = append(warnings, fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment))
 		} else {
-			return []string{"Specifying namespace is deprecated and won't make any difference for this deploy. Please adapt your pipelines to only use the field 'Environment'."}
+			warnings = append(warnings, "Specifying namespace is deprecated and won't make any difference for this deploy. Please adapt your pipelines to only use the field 'Environment'.")
 		}
 	}
 
-	return []string{}
+	if manifest.Team == "" {
+		warnings = append(warnings, "Starting July 1. (01/07) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after July 1.")
+	}
+
+	return warnings
 }

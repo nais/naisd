@@ -473,13 +473,14 @@ func TestValidateDeploymentRequest(t *testing.T) {
 }
 
 func TestEnsurePropertyCompatibility(t *testing.T) {
+	teamManifest := NaisManifest{Team: teamName}
 	t.Run("Should warn when specifying only namespace", func(t *testing.T) {
 		deploy := naisrequest.Deploy{
 			Application: "application",
 			Namespace:   "t1",
 		}
 
-		warnings := ensurePropertyCompatibility(&deploy)
+		warnings := ensurePropertyCompatibility(&deploy, &teamManifest)
 		response := createResponse(DeploymentResult{}, warnings)
 
 		assert.Contains(t, string(response), fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment))
@@ -492,7 +493,7 @@ func TestEnsurePropertyCompatibility(t *testing.T) {
 			Environment: "t1",
 		}
 
-		warnings := ensurePropertyCompatibility(&deploy)
+		warnings := ensurePropertyCompatibility(&deploy, &teamManifest)
 		response := createResponse(DeploymentResult{}, warnings)
 
 		assert.Contains(t, string(response), "Specifying namespace is deprecated and won't make any difference for this deploy. Please adapt your pipelines to only use the field 'Environment'.\n")
@@ -504,9 +505,31 @@ func TestEnsurePropertyCompatibility(t *testing.T) {
 			Environment: "t1",
 		}
 
-		warnings := ensurePropertyCompatibility(&deploy)
+		warnings := ensurePropertyCompatibility(&deploy, &teamManifest)
 		response := createResponse(DeploymentResult{}, warnings)
 
-		assert.NotContains(t, response, "Specifying namespace")
+		assert.NotContains(t, string(response), "Specifying namespace")
+	})
+
+	t.Run("Should not warn when specifying team", func(t *testing.T) {
+		deploy := naisrequest.Deploy{
+		}
+
+		warnings := ensurePropertyCompatibility(&deploy, &teamManifest)
+		response := createResponse(DeploymentResult{}, warnings)
+
+		assert.NotContains(t, string(response), "Starting July 1. (01/07) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after July 1.")
+	})
+
+	t.Run("Should warn when not specifying team", func(t *testing.T) {
+		noTeamManifest := NaisManifest{}
+
+		deploy := naisrequest.Deploy{
+		}
+
+		warnings := ensurePropertyCompatibility(&deploy, &noTeamManifest)
+		response := createResponse(DeploymentResult{}, warnings)
+
+		assert.Contains(t, string(response), "Starting July 1. (01/07) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after July 1.")
 	})
 }

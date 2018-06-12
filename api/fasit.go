@@ -96,6 +96,11 @@ type FasitResource struct {
 	Certificates map[string]interface{} `json:"files"`
 }
 
+type FasitIngress struct {
+	Host string
+	Path string
+}
+
 type ResourceRequest struct {
 	Alias        string
 	ResourceType string
@@ -111,7 +116,7 @@ type NaisResource struct {
 	propertyMap  map[string]string
 	secret       map[string]string
 	certificates map[string][]byte
-	ingresses    []Ingress
+	ingresses    []FasitIngress
 }
 
 func (nr NaisResource) Properties() map[string]string {
@@ -596,14 +601,14 @@ func resolveCertificates(files map[string]interface{}) (map[string][]byte, error
 
 }
 
-func parseLoadBalancerConfig(config []byte) ([]Ingress, error) {
+func parseLoadBalancerConfig(config []byte) ([]FasitIngress, error) {
 	jsn, err := gabs.ParseJSON(config)
 	if err != nil {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		return nil, fmt.Errorf("error parsing load balancer config: %s ", config)
 	}
 
-	ingresses := make([]Ingress, 0)
+	ingresses := make([]FasitIngress, 0)
 	lbConfigs, _ := jsn.Children()
 	if len(lbConfigs) == 0 {
 		return nil, nil

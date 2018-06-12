@@ -102,6 +102,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
 	}
 
+	// Warn about deprecated fields in deploymentRequest
+	warnings := ensurePropertyCompatibility(&deploymentRequest)
+
 	fasit := FasitClient{api.FasitUrl, deploymentRequest.FasitUsername, deploymentRequest.FasitPassword}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.FasitEnvironment)
@@ -153,9 +156,10 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	NotifySensuAboutDeploy(&deploymentRequest, &api.ClusterName)
 
 	w.WriteHeader(200)
-	w.Write(createResponse(deploymentResult))
+	w.Write(createResponse(deploymentResult, warnings))
 	return nil
 }
+
 func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
 	team := pat.Param(r, "team")
 	environment := pat.Param(r, "environment")
@@ -247,7 +251,7 @@ func hasResources(manifest NaisManifest) bool {
 	return true
 }
 
-func createResponse(deploymentResult DeploymentResult) []byte {
+func createResponse(deploymentResult DeploymentResult, warnings []string) []byte {
 
 	response := "result: \n"
 
@@ -276,6 +280,13 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 		response += "- created namespace\n"
 	}
 
+	if len(warnings) > 0 {
+		response += "\nWarnings:\n"
+		for _, warning := range warnings {
+			response += fmt.Sprintf("- %s\n", warning)
+		}
+	}
+
 	return []byte(response)
 }
 
@@ -294,4 +305,17 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) 
 	}
 
 	return deploymentRequest, nil
+}
+
+func ensurePropertyCompatibility(deploy *naisrequest.Deploy) []string {
+	if deploy.Namespace != "" {
+		if deploy.Environment == "" {
+			deploy.Environment = deploy.Namespace
+			return []string{fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment)}
+		} else {
+			return []string{"Specifying namespace is deprecated and won't make any difference for this deploy. Please adapt your pipelines to only use the field 'Environment'."}
+		}
+	}
+
+	return []string{}
 }

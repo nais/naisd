@@ -471,3 +471,42 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.Contains(t, err, errors.New("environment is required and is empty"))
 	})
 }
+
+func TestEnsurePropertyCompatibility(t *testing.T) {
+	t.Run("Should warn when specifying only namespace", func(t *testing.T) {
+		deploy := naisrequest.Deploy{
+			Application: "application",
+			Namespace:   "t1",
+		}
+
+		warnings := ensurePropertyCompatibility(&deploy)
+		response := createResponse(DeploymentResult{}, warnings)
+
+		assert.Contains(t, string(response), fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment))
+	})
+
+	t.Run("Should warn when specifying namespace and environment", func(t *testing.T) {
+		deploy := naisrequest.Deploy{
+			Application: "application",
+			Namespace:   "t1",
+			Environment: "t1",
+		}
+
+		warnings := ensurePropertyCompatibility(&deploy)
+		response := createResponse(DeploymentResult{}, warnings)
+
+		assert.Contains(t, string(response), "Specifying namespace is deprecated and won't make any difference for this deploy. Please adapt your pipelines to only use the field 'Environment'.\n")
+	})
+
+	t.Run("Should not warn when not specifying namespace", func(t *testing.T) {
+		deploy := naisrequest.Deploy{
+			Application: "application",
+			Environment: "t1",
+		}
+
+		warnings := ensurePropertyCompatibility(&deploy)
+		response := createResponse(DeploymentResult{}, warnings)
+
+		assert.NotContains(t, response, "Specifying namespace")
+	})
+}

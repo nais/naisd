@@ -623,7 +623,7 @@ func parseLoadBalancerConfig(config []byte) ([]FasitIngress, error) {
 		pathList, _ := lbConfig.Path("properties.contextRoots").Data().(string)
 		paths := strings.Split(pathList, ",")
 		for _, path := range paths {
-			ingresses = append(ingresses, Ingress{Host: host, Path: path})
+			ingresses = append(ingresses, FasitIngress{Host: host, Path: path})
 		}
 	}
 

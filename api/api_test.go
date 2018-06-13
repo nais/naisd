@@ -509,23 +509,23 @@ func TestEnsurePropertyCompatibility(t *testing.T) {
 		response := createResponse(DeploymentResult{}, warnings)
 
 		assert.NotContains(t, string(response), "Specifying namespace")
+		assert.Len(t, warnings, 0)
 	})
 
 	t.Run("Should not warn when specifying team", func(t *testing.T) {
-		deploy := naisrequest.Deploy{
-		}
+		deploy := naisrequest.Deploy{}
 
 		warnings := ensurePropertyCompatibility(&deploy, &teamManifest)
 		response := createResponse(DeploymentResult{}, warnings)
 
 		assert.NotContains(t, string(response), "Starting July 1. (01/07) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after July 1.")
+		assert.Len(t, warnings, 0)
 	})
 
 	t.Run("Should warn when not specifying team", func(t *testing.T) {
 		noTeamManifest := NaisManifest{}
 
-		deploy := naisrequest.Deploy{
-		}
+		deploy := naisrequest.Deploy{}
 
 		warnings := ensurePropertyCompatibility(&deploy, &noTeamManifest)
 		response := createResponse(DeploymentResult{}, warnings)

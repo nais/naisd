@@ -566,10 +566,11 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, application string)
 func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 
-	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateOrUpdate(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
+	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateIfNotExist(deploymentRequest.Application, deploymentRequest.Namespace, manifest.Team)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating service account: %s", err)
 	}
+
 	deploymentResult.ServiceAccount = serviceAccount
 
 	service, err := createService(deploymentRequest, manifest.Team, k8sClient)

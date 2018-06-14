@@ -3,9 +3,9 @@ package api
 import (
 	"k8s.io/client-go/kubernetes"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"fmt"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/golang/glog"
 )
 
 type clientHolder struct {
@@ -13,7 +13,7 @@ type clientHolder struct {
 }
 
 type ServiceAccountInterface interface {
-	CreateOrUpdate(name, namespace, team string) (*v1.ServiceAccount, error)
+	CreateIfNotExist(name, namespace, team string) (*v1.ServiceAccount, error)
 	Delete(name, namespace string) error
 }
 
@@ -32,21 +32,15 @@ func (c clientHolder) Delete(name, namespace string) error {
 
 }
 
-func (c clientHolder) CreateOrUpdate(name, namespace, team string) (*v1.ServiceAccount, error) {
+func (c clientHolder) CreateIfNotExist(name, namespace, team string) (*v1.ServiceAccount, error) {
 	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(namespace)
 
-	account, e := serviceAccountInterface.Get(name, k8smeta.GetOptions{})
-	if e != nil && !errors.IsNotFound(e) {
-		return nil, fmt.Errorf("unexpected error: %s", e)
-	}
+	if account, _ := serviceAccountInterface.Get(name, k8smeta.GetOptions{}); account != nil {
+		glog.Infof("Skipping service account creation. All ready exist for application: %s in namespace: %s", name, namespace)
+		return nil, nil
 
-	serviceAccountDef := createServiceAccountDef(name, namespace, team)
-
-	if account != nil && account.ResourceVersion != "" {
-		return serviceAccountInterface.Update(serviceAccountDef)
-	} else {
-		return serviceAccountInterface.Create(serviceAccountDef)
 	}
+	return serviceAccountInterface.Create(createServiceAccountDef(name, namespace, team))
 }
 
 func createServiceAccountDef(applicationName string, namespace string, team string) *v1.ServiceAccount {

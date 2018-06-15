@@ -842,11 +842,11 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, 5, len(result))
-		assert.Equal(t, Ingress{Path: "ctxroot", Host: "subdomainwithctxroot.host.tld"}, result[0])
-		assert.Equal(t, Ingress{Path: "", Host: "subdomain.host.tld"}, result[1])
-		assert.Equal(t, Ingress{Path: "multiple", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[2])
-		assert.Equal(t, Ingress{Path: "context", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[3])
-		assert.Equal(t, Ingress{Path: "roots", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[4])
+		assert.Equal(t, FasitIngress{Path: "ctxroot", Host: "subdomainwithctxroot.host.tld"}, result[0])
+		assert.Equal(t, FasitIngress{Path: "", Host: "subdomain.host.tld"}, result[1])
+		assert.Equal(t, FasitIngress{Path: "multiple", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[2])
+		assert.Equal(t, FasitIngress{Path: "context", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[3])
+		assert.Equal(t, FasitIngress{Path: "roots", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[4])
 	})
 
 	t.Run("Err if no loadbalancer config is found", func(t *testing.T) {

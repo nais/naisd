@@ -32,11 +32,9 @@ func TestCreateServiceAccount(t *testing.T) {
 
 		newServiceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(name, namespace, team)
 		assert.NoError(t, e)
-		assert.Nil(t, newServiceAccount)
+		assert.NotNil(t, newServiceAccount)
 
-		notUpdatedServiceAccount, _ := clientset.CoreV1().ServiceAccounts(namespace).Get(name, v1.GetOptions{})
-		assert.NotNil(t, notUpdatedServiceAccount)
-		assert.Equal(t, existingServiceAccount, notUpdatedServiceAccount)
+		assert.Equal(t, existingServiceAccount, newServiceAccount)
 
 	})
 }

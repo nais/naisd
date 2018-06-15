@@ -35,9 +35,9 @@ func (c clientHolder) Delete(name, namespace string) error {
 func (c clientHolder) CreateIfNotExist(name, namespace, team string) (*v1.ServiceAccount, error) {
 	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(namespace)
 
-	if account, _ := serviceAccountInterface.Get(name, k8smeta.GetOptions{}); account != nil {
+	if account, err := serviceAccountInterface.Get(name, k8smeta.GetOptions{}); err ==  nil {
 		glog.Infof("Skipping service account creation. All ready exist for application: %s in namespace: %s", name, namespace)
-		return nil, nil
+		return account, nil
 
 	}
 	return serviceAccountInterface.Create(createServiceAccountDef(name, namespace, team))

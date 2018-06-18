@@ -669,7 +669,6 @@ func createOrUpdateIngress(deploymentRequest naisrequest.Deploy, teamName, clust
 		ingress = createIngressDef(deploymentRequest.Application, deploymentRequest.Namespace, teamName)
 	}
 
-	ingress.Spec.TLS = []k8sextensions.IngressTLS{{SecretName: "istio-ingress-certs"}}
 	ingress.Spec.Rules = createIngressRules(deploymentRequest, clusterSubdomain, naisResources)
 	return createOrUpdateIngressResource(ingress, deploymentRequest.Namespace, k8sClient)
 }

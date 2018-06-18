@@ -586,7 +586,7 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	}
 	deploymentResult.Namespace = namespace
 
-	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateOrUpdate(deploymentRequest.Application, deploymentRequest.Environment, manifest.Team)
+	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateIfNotExist(deploymentRequest.Application, deploymentRequest.Environment, manifest.Team)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating service account: %s", err)
 	}
@@ -688,7 +688,6 @@ func createOrUpdateIngress(deploymentRequest naisrequest.Deploy, teamName, clust
 		ingress = createIngressDef(deploymentRequest.Application, deploymentRequest.Environment, teamName)
 	}
 
-	ingress.Spec.TLS = []k8sextensions.IngressTLS{{SecretName: "istio-ingress-certs"}}
 	ingress.Spec.Rules = createIngressRules(deploymentRequest, clusterSubdomain, naisResources)
 	return createOrUpdateIngressResource(ingress, teamName, k8sClient)
 }
@@ -705,8 +704,8 @@ func createIngressRules(deploymentRequest naisrequest.Deploy, clusterSubdomain s
 
 	for _, naisResource := range naisResources {
 		if naisResource.resourceType == "LoadBalancerConfig" && len(naisResource.ingresses) > 0 {
-			for host, path := range naisResource.ingresses {
-				ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application, host, path))
+			for _, ingress := range naisResource.ingresses {
+				ingressRules = append(ingressRules, createIngressRule(deploymentRequest.Application, ingress.Host, ingress.Path))
 			}
 		}
 	}

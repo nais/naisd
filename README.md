@@ -7,7 +7,6 @@ Naisd
 
 k8s in-cluster daemon with API for performing NAIS-operations
 
-
 ## Basic outline
 
 1. HTTP POST to API with name of application, version and environment

@@ -39,6 +39,7 @@ spec:
           - name: istio_enabled
             value: "{{ .Values.istioEnabled }}"
 {{ if .skipProxy }}
+{{ else }}
           - name: https_proxy
             value: "{{ .Values.httpsProxy }}"
           - name: http_proxy

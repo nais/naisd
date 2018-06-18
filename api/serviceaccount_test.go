@@ -14,7 +14,7 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 	t.Run("If no service account exists one is created", func(t *testing.T) {
 		clientset := fake.NewSimpleClientset()
 
-		serviceAccount, e := NewServiceAccountInterface(clientset).CreateOrUpdate(name, environment, team)
+		serviceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(name, environment, team)
 
 		assert.NoError(t, e)
 		assert.NotNil(t, serviceAccount)
@@ -25,17 +25,15 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 		assert.Equal(t, createObjectName(name, environment), sa.Name)
 	})
 
-	t.Run("If a service account exists it is updated", func(t *testing.T) {
+	t.Run("If a service account exists do nothing ", func(t *testing.T) {
 		existingServiceAccount := createServiceAccountDef(name, environment, team)
-		existingServiceAccount.SetResourceVersion("001")
 		clientset := fake.NewSimpleClientset(existingServiceAccount)
 
-		_, e := NewServiceAccountInterface(clientset).CreateOrUpdate(name, environment, team)
+		newServiceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(name, environment, team)
 		assert.NoError(t, e)
+		assert.NotNil(t, newServiceAccount)
 
-		updatedServiceAccount, _ := clientset.CoreV1().ServiceAccounts(team).Get(createObjectName(name, environment), v1.GetOptions{})
-		assert.NotNil(t, updatedServiceAccount)
-		assert.NotEqual(t, existingServiceAccount, updatedServiceAccount)
+		assert.Equal(t, existingServiceAccount, newServiceAccount)
 
 	})
 }

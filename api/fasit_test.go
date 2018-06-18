@@ -279,7 +279,7 @@ func TestGetLoadBalancerConfig(t *testing.T) {
 		resource, err := fasit.getLoadBalancerConfig("application", "environment")
 
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(resource.ingresses))
+		assert.Equal(t, 5, len(resource.ingresses))
 		assert.Equal(t, "LoadBalancerConfig", resource.resourceType)
 	})
 
@@ -841,9 +841,12 @@ func TestParseLoadBalancerConfig(t *testing.T) {
 		result, err := parseLoadBalancerConfig(b)
 
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(result))
-		assert.Equal(t, "ctxroot", result["subdomainwithctxroot.host.tld"])
-		assert.Equal(t, "", result["subdomain.host.tld"])
+		assert.Equal(t, 5, len(result))
+		assert.Equal(t, FasitIngress{Path: "ctxroot", Host: "subdomainwithctxroot.host.tld"}, result[0])
+		assert.Equal(t, FasitIngress{Path: "", Host: "subdomain.host.tld"}, result[1])
+		assert.Equal(t, FasitIngress{Path: "multiple", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[2])
+		assert.Equal(t, FasitIngress{Path: "context", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[3])
+		assert.Equal(t, FasitIngress{Path: "roots", Host: "subdomainwithmultiplecontextroots.host.tld"}, result[4])
 	})
 
 	t.Run("Err if no loadbalancer config is found", func(t *testing.T) {

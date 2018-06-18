@@ -568,7 +568,6 @@ func TestIngress(t *testing.T) {
 	appName := "appname"
 	environment := "default"
 	subDomain := "example.no"
-	istioCertSecretName := "istio-ingress-certs"
 	ingress := createIngressDef(appName, environment, teamName)
 	ingress.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(ingress)
@@ -595,7 +594,6 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
 		assert.Equal(t, otherAppName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
-		assert.Equal(t, istioCertSecretName, ingress.Spec.TLS[0].SecretName)
 	})
 
 	t.Run("when ingress is created in non-default environment, hostname is postfixed with environment", func(t *testing.T) {
@@ -610,14 +608,14 @@ func TestIngress(t *testing.T) {
 		naisResources := []NaisResource{
 			{
 				resourceType: "LoadBalancerConfig",
-				ingresses: map[string]string{
-					"app.adeo.no": "context",
+				ingresses: []FasitIngress{
+					{Host: "app.adeo.no", Path: "context"},
 				},
 			},
 			{
 				resourceType: "LoadBalancerConfig",
-				ingresses: map[string]string{
-					"app2.adeo.no": "context2",
+				ingresses: []FasitIngress{
+					{Host: "app2.adeo.no", Path: "context2"},
 				},
 			},
 		}

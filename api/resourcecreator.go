@@ -580,6 +580,10 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating namespace: %s", err)
 	}
+	err = client.waitForNamespaceReady(namespace)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("failed while waiting for namespace to become ready: %s", err)
+	}
 	deploymentResult.Namespace = namespace
 
 	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateOrUpdate(deploymentRequest.Application, deploymentRequest.Environment, manifest.Team)

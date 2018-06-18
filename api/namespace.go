@@ -6,7 +6,21 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 )
+
+// TODO TEST
+func (c clientHolder) waitForNamespaceReady(namespace *corev1.Namespace) error {
+	namespaceInterface := c.client.CoreV1().Namespaces()
+	var err error
+	for _, err := namespaceInterface.Get(namespace.Name, k8smeta.GetOptions{});
+	 errors.IsNotFound(err) ; _, err = namespaceInterface.Get(namespace.Name, k8smeta.GetOptions{}) {
+		glog.Info(fmt.Sprintf("Waiting for namespace '%s' to become ready. Sleeping for 1 second.", namespace.Name))
+		time.Sleep(time.Second)
+	}
+
+	return err
+}
 
 func (c clientHolder) createNamespace(name string) (*corev1.Namespace, error) {
 	namespaceInterface := c.client.CoreV1().Namespaces()

@@ -77,8 +77,8 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 	mux.Handle(pat.Get("/version"), appHandler(api.version))
-	mux.Handle(pat.Get("/deploystatus/:team/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
-	mux.Handle(pat.Delete("/app/:team/:deployName/:environment"), appHandler(api.deleteApplication))
+	mux.Handle(pat.Get("/deploystatus/:team/:environment/:deployName"), appHandler(api.deploymentStatusHandler))
+	mux.Handle(pat.Delete("/app/:team/:environment/:deployName"), appHandler(api.deleteApplication))
 	return mux
 }
 

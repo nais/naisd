@@ -2,20 +2,25 @@ package api
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 )
 
-// TODO TEST
 func (c clientHolder) waitForNamespaceReady(namespace *corev1.Namespace) error {
-	namespaceInterface := c.client.CoreV1().Namespaces()
 	var err error
-	for _, err := namespaceInterface.Get(namespace.Name, k8smeta.GetOptions{});
-	 errors.IsNotFound(err) ; _, err = namespaceInterface.Get(namespace.Name, k8smeta.GetOptions{}) {
-		glog.Info(fmt.Sprintf("Waiting for namespace '%s' to become ready. Sleeping for 1 second.", namespace.Name))
+	namespaceInterface := c.client.CoreV1().Namespaces()
+	glog.Info(fmt.Sprintf("Waiting for namespace '%s' to become ready.", namespace.Name))
+
+	for {
+		_, err := namespaceInterface.Get(namespace.Name, k8smeta.GetOptions{})
+		if !errors.IsNotFound(err) {
+			break
+		}
+		glog.Info(fmt.Sprintf("Namespace '%s' still not ready, sleeping for 1 second.", namespace.Name))
 		time.Sleep(time.Second)
 	}
 

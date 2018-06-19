@@ -143,7 +143,7 @@ func TestNoManifestGivesError(t *testing.T) {
 func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	appName := "appname"
 	environment := "environment"
-	fasitEnvronment := "environmentName"
+	fasitEnvironment := "environmentName"
 	image := "name/Container"
 	version := "123"
 	resourceAlias := "alias1"
@@ -157,7 +157,7 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	depReq := naisrequest.Deploy{
 		Application:      appName,
 		Version:          version,
-		FasitEnvironment: fasitEnvronment,
+		FasitEnvironment: fasitEnvironment,
 		ManifestUrl:      "http://repo.com/app",
 		Zone:             "zone",
 		Environment:      environment,
@@ -195,13 +195,13 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 		Get("/api/v2/scopedresource").
 		MatchParam("alias", resourceAlias).
 		MatchParam("type", resourceType).
-		MatchParam("environment", fasitEnvronment).
+		MatchParam("environment", fasitEnvironment).
 		MatchParam("application", appName).
 		MatchParam("zone", zone).
 		Reply(200).File("testdata/fasitResponse.json")
 
 	gock.New("https://fasit.local").
-		Get(fmt.Sprintf("/api/v2/environments/%s", fasitEnvronment)).
+		Get(fmt.Sprintf("/api/v2/environments/%s", fasitEnvironment)).
 		Reply(200).
 		JSON(map[string]string{"environmentclass": "u"})
 

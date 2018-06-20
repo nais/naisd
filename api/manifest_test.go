@@ -398,15 +398,6 @@ func TestValidateResource(t *testing.T) {
 }
 
 func TestValidateTeamName(t *testing.T) {
-	t.Run("Team names can't contain underscore", func(t *testing.T) {
-		teamUnderscoreManifest := NaisManifest{
-			Team: "team_name",
-		}
-
-		err := validateTeamName(teamUnderscoreManifest)
-		assert.Equal(t, "Team cannot contain _", err.ErrorMessage)
-	})
-
 	t.Run("Team name must be specified", func(t *testing.T) {
 		noTeamManifest := NaisManifest{}
 

@@ -352,10 +352,6 @@ func validateTeamName(manifest NaisManifest) *ValidationError {
 		return &ValidationError{"Team must be specified", map[string]string{"team": manifest.Team}}
 	}
 
-	if strings.Contains(manifest.Team, "_") {
-		return &ValidationError{"Team cannot contain _", map[string]string{"team": manifest.Team}}
-	}
-
 	return nil
 }
 

@@ -463,8 +463,9 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		err := invalid.Validate()
 
 		assert.NotNil(t, err)
-		assert.Len(t, err, 5)
+		assert.Len(t, err, 6)
 		assert.Contains(t, err, errors.New("application is required and is empty"))
+		assert.Contains(t, err, errors.New("invalid application name: a DNS-1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')"))
 		assert.Contains(t, err, errors.New("version is required and is empty"))
 		assert.Contains(t, err, errors.New("zone is required and is empty"))
 		assert.Contains(t, err, errors.New("zone can only be fss, sbs or iapp"))

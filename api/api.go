@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
 	ver "github.com/nais/naisd/api/version"
 	"github.com/prometheus/client_golang/prometheus"
@@ -210,7 +211,8 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 	environment := pat.Param(r, "environment")
 	application := pat.Param(r, "deployName")
 
-	result, err := deleteK8sResouces(application, environment, team, api.Clientset)
+	spec := app.Spec{Application: application, Environment: environment, Team: team}
+	result, err := deleteK8sResouces(spec, api.Clientset)
 
 	response := ""
 	if len(result) > 0 {

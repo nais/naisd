@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api/app"
 	k8score "k8s.io/api/core/v1"
 	k8sextensions "k8s.io/api/extensions/v1beta1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,7 +46,8 @@ func NewDeploymentStatusViewer(clientset kubernetes.Interface) DeploymentStatusV
 }
 
 func (d deploymentStatusViewerImpl) DeploymentStatusView(environment, deployName, team string) (DeployStatus, DeploymentStatusView, error) {
-	dep, err := d.client.ExtensionsV1beta1().Deployments(team).Get(createObjectName(deployName, environment), k8smeta.GetOptions{})
+	spec := app.Spec{Application: deployName, Environment: environment, Team: team}
+	dep, err := d.client.ExtensionsV1beta1().Deployments(team).Get(spec.ResourceName(), k8smeta.GetOptions{})
 	if err != nil {
 		errMess := fmt.Sprintf("did not find deployment: %s in environment: %s in namespace %s", deployName, environment, team)
 		glog.Error(errMess)

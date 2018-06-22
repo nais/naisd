@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/nais/naisd/api/app"
 	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -9,50 +10,50 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func deleteK8sResouces(application, environment, team string, k8sClient kubernetes.Interface) (results []string, e error) {
-	res, err := deleteService(application, environment, team, k8sClient)
+func deleteK8sResouces(spec app.Spec, k8sClient kubernetes.Interface) (results []string, e error) {
+	res, err := deleteService(spec, k8sClient)
 	results = append(results, res)
 	if err != nil {
 		return results, err
 	}
 
-	res, err = deleteDeployment(application, environment, team, k8sClient)
+	res, err = deleteDeployment(spec, k8sClient)
 	results = append(results, res)
 	if err != nil {
 		return results, err
 	}
 
-	res, err = deleteRedisFailover(application, environment, team, k8sClient)
+	res, err = deleteRedisFailover(spec, k8sClient)
 	results = append(results, res)
 	if err != nil {
 		results = append(results, err.Error())
 	}
 
-	res, err = deleteSecret(application, environment, team, k8sClient)
+	res, err = deleteSecret(spec, k8sClient)
 	results = append(results, res)
 	if err != nil {
 		return results, err
 	}
 
-	res, err = deleteIngress(application, environment, team, k8sClient)
+	res, err = deleteIngress(spec, k8sClient)
 	results = append(results, res)
 	if err != nil {
 		return results, err
 	}
 
-	res, err = deleteAutoscaler(application, environment, team, k8sClient)
+	res, err = deleteAutoscaler(spec, k8sClient)
 	results = append(results, res)
 	if err != nil {
 		return results, err
 	}
 
-	res, err = deleteConfigMapRules(application, environment, team, k8sClient)
+	res, err = deleteConfigMapRules(spec, k8sClient)
 	results = append(results, res)
 	if err != nil {
 		return results, err
 	}
 
-	if err := NewServiceAccountInterface(k8sClient).Delete(application, environment, team); err != nil {
+	if err := NewServiceAccountInterface(k8sClient).Delete(spec); err != nil {
 		return results, err
 	} else {
 		results = append(results, "service account: OK")
@@ -60,35 +61,35 @@ func deleteK8sResouces(application, environment, team string, k8sClient kubernet
 	return results, nil
 }
 
-func deleteService(application, environment, team string, k8sClient kubernetes.Interface) (result string, e error) {
-	if err := k8sClient.CoreV1().Services(team).Delete(createObjectName(application, environment), &k8smeta.DeleteOptions{}); err != nil {
+func deleteService(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
+	if err := k8sClient.CoreV1().Services(spec.Application).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{}); err != nil {
 		return filterNotFound(fmt.Sprintf("service: "), err)
 	}
 	return "service: OK", nil
 }
 
-func deleteDeployment(application, environment, team string, k8sClient kubernetes.Interface) (result string, e error) {
+func deleteDeployment(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	deploymentDeleteOption := k8smeta.DeletePropagationForeground
-	if err := k8sClient.ExtensionsV1beta1().Deployments(team).Delete(createObjectName(application, environment), &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
+	if err := k8sClient.ExtensionsV1beta1().Deployments(spec.Application).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
 		return filterNotFound("deployment: ", err)
 	}
 	return "deployment: OK", nil
 }
 
-func deleteSecret(application, environment, team string, k8sClient kubernetes.Interface) (result string, e error) {
-	if err := k8sClient.CoreV1().Secrets(team).Delete(createObjectName(application, environment), &k8smeta.DeleteOptions{}); err != nil {
+func deleteSecret(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
+	if err := k8sClient.CoreV1().Secrets(spec.Application).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{}); err != nil {
 		return filterNotFound("secret: ", err)
 	}
 	return "secret: OK", nil
 }
 
-func deleteConfigMapRules(application, environment, team string, k8sClient kubernetes.Interface) (result string, e error) {
+func deleteConfigMapRules(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	configMap, err := getExistingConfigMap(AlertsConfigMapName, AlertsConfigMapNamespace, k8sClient)
 	if err != nil {
 		return "app alerts: FAIL", fmt.Errorf("unable to get existing configmap: %s", err)
 	}
 
-	configMap = removeRulesFromConfigMap(configMap, application, environment, team)
+	configMap = removeRulesFromConfigMap(configMap, spec)
 	configMap, err = createOrUpdateConfigMapResource(configMap, AlertsConfigMapNamespace, k8sClient)
 
 	if err != nil {
@@ -97,11 +98,10 @@ func deleteConfigMapRules(application, environment, team string, k8sClient kuber
 	return "alert rules: OK", nil
 }
 
-func deleteAutoscaler(application, environment, team string, k8sClient kubernetes.Interface) (result string, e error) {
-	objectName := createObjectName(application, environment)
-	autoscaler, err := getExistingAutoscaler(objectName, team, k8sClient)
+func deleteAutoscaler(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
+	autoscaler, err := getExistingAutoscaler(spec, k8sClient)
 	if autoscaler != nil {
-		err = k8sClient.AutoscalingV1().HorizontalPodAutoscalers(team).Delete(objectName, &k8smeta.DeleteOptions{})
+		err = k8sClient.AutoscalingV1().HorizontalPodAutoscalers(spec.Application).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
 	}
 
 	if err != nil {
@@ -111,11 +111,10 @@ func deleteAutoscaler(application, environment, team string, k8sClient kubernete
 	return "autoscaler: OK", nil
 }
 
-func deleteIngress(application, environment, team string, k8sClient kubernetes.Interface) (result string, e error) {
-	objectName := createObjectName(application, environment)
-	ingress, err := getExistingIngress(objectName, team, k8sClient)
+func deleteIngress(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
+	ingress, err := getExistingIngress(spec, k8sClient)
 	if ingress != nil {
-		err = k8sClient.ExtensionsV1beta1().Ingresses(team).Delete(objectName, &k8smeta.DeleteOptions{})
+		err = k8sClient.ExtensionsV1beta1().Ingresses(spec.Application).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
 	}
 
 	if err != nil {
@@ -125,9 +124,11 @@ func deleteIngress(application, environment, team string, k8sClient kubernetes.I
 	return "ingress OK", nil
 }
 
-func deleteRedisFailover(application, environment, team string, k8sClient kubernetes.Interface) (result string, e error) {
-	objectName := createObjectName(application, environment)
-	svc, err := getExistingService("rfs-"+objectName, team, k8sClient)
+func deleteRedisFailover(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
+	redisFailoverspec := spec
+	redisFailoverspec.Application = "rfs-" + spec.ResourceName()
+
+	svc, err := getExistingService(redisFailoverspec, k8sClient)
 	if svc == nil {
 		return "redis: N/A", nil
 	}
@@ -142,10 +143,10 @@ func deleteRedisFailover(application, environment, team string, k8sClient kubern
 		return "redis: FAIL", fmt.Errorf("failed while deleting redis failover: can't create new Redis client for InClusterConfig: %s", err)
 	}
 
-	failoverInterface := redisclient.RedisFailoversGetter(client).RedisFailovers(team)
-	failover, err := failoverInterface.Get(objectName, k8smeta.GetOptions{})
+	failoverInterface := redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Application)
+	failover, err := failoverInterface.Get(spec.ResourceName(), k8smeta.GetOptions{})
 	if failover != nil {
-		err = failoverInterface.Delete(objectName, &k8smeta.DeleteOptions{})
+		err = failoverInterface.Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
 	}
 
 	if err != nil {

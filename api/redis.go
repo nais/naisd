@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"github.com/nais/naisd/api/naisrequest"
+	"github.com/nais/naisd/api/app"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -10,14 +10,14 @@ import (
 	k8srest "k8s.io/client-go/rest"
 )
 
-func createRedisFailoverDef(deploymentRequest naisrequest.Deploy, team string) *redisapi.RedisFailover {
+func createRedisFailoverDef(spec app.Spec) *redisapi.RedisFailover {
 	replicas := int32(3)
 	resources := redisapi.RedisFailoverResources{
 		Limits:   redisapi.CPUAndMem{Memory: "100Mi"},
 		Requests: redisapi.CPUAndMem{CPU: "100m"},
 	}
 
-	spec := redisapi.RedisFailoverSpec{
+	redisSpec := redisapi.RedisFailoverSpec{
 		HardAntiAffinity: false,
 		Sentinel: redisapi.SentinelSettings{
 			Replicas:  replicas,
@@ -30,8 +30,8 @@ func createRedisFailoverDef(deploymentRequest naisrequest.Deploy, team string) *
 		},
 	}
 
-	meta := generateObjectMeta(deploymentRequest.Application, deploymentRequest.Environment, team)
-	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
+	meta := generateObjectMeta(spec)
+	return &redisapi.RedisFailover{Spec: redisSpec, ObjectMeta: meta}
 }
 
 func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, appName string) (*redisapi.RedisFailover, error) {
@@ -47,8 +47,8 @@ func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, a
 	}
 }
 
-func updateOrCreateRedisSentinelCluster(deploymentRequest naisrequest.Deploy, team string) (*redisapi.RedisFailover, error) {
-	newFailover := createRedisFailoverDef(deploymentRequest, team)
+func updateOrCreateRedisSentinelCluster(spec app.Spec, team string) (*redisapi.RedisFailover, error) {
+	newFailover := createRedisFailoverDef(spec)
 
 	config, err := k8srest.InClusterConfig()
 	if err != nil {
@@ -60,8 +60,7 @@ func updateOrCreateRedisSentinelCluster(deploymentRequest naisrequest.Deploy, te
 		return nil, fmt.Errorf("can't create new Redis client for InClusterConfig: %s", err)
 	}
 
-	redisObjectName := createObjectName(deploymentRequest.Application, deploymentRequest.Environment)
-	existingFailover, err := getExistingFailover(redisclient.RedisFailoversGetter(client).RedisFailovers(team), redisObjectName)
+	existingFailover, err := getExistingFailover(redisclient.RedisFailoversGetter(client).RedisFailovers(team), spec.ResourceName())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing redis failover: %s", err)
 	}

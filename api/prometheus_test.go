@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/nais/naisd/api/naisrequest"
+	"github.com/nais/naisd/api/app"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
@@ -65,7 +65,8 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 }
 
 func TestAddRulesToConfigMap(t *testing.T) {
-	deploymentPrefix := createDeploymentPrefix(appName, environment, teamName)
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
+	deploymentPrefix := createDeploymentPrefix(spec)
 	rulesGroupFilename := deploymentPrefix + ".yml"
 
 	alertRule := PrometheusAlertRule{
@@ -78,15 +79,10 @@ func TestAddRulesToConfigMap(t *testing.T) {
 	}
 
 	configMap := &v1.ConfigMap{
-		ObjectMeta: generateObjectMeta(appName, environment, teamName),
+		ObjectMeta: generateObjectMeta(spec),
 		Data: map[string]string{
 			"asd-environment-otherAppName.yml": "not touched",
 		},
-	}
-
-	deploymentRequest := naisrequest.Deploy{
-		Application: appName,
-		Environment: environment,
 	}
 
 	manifest := NaisManifest{
@@ -94,7 +90,7 @@ func TestAddRulesToConfigMap(t *testing.T) {
 		Alerts: []PrometheusAlertRule{alertRule},
 	}
 
-	resultingConfigMap, err := addRulesToConfigMap(configMap, deploymentRequest, manifest)
+	resultingConfigMap, err := addRulesToConfigMap(spec, configMap, manifest)
 
 	resultingAlertGroups := PrometheusAlertGroups{}
 	err = yaml.Unmarshal([]byte(resultingConfigMap.Data[rulesGroupFilename]), &resultingAlertGroups)

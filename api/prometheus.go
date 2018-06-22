@@ -3,7 +3,7 @@ package api
 import (
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/nais/naisd/api/naisrequest"
+	"github.com/nais/naisd/api/app"
 	"gopkg.in/yaml.v2"
 	k8score "k8s.io/api/core/v1"
 )
@@ -51,12 +51,12 @@ func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 	return
 }
 
-func createDeploymentPrefix(application, environment, team string) string {
-	return team + "-" + application + "-" + environment
+func createDeploymentPrefix(spec app.Spec) string {
+	return spec.Team + "-" + spec.Application + "-" + spec.Environment
 }
 
-func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest naisrequest.Deploy, manifest NaisManifest) (*k8score.ConfigMap, error) {
-	deploymentPrefix := createDeploymentPrefix(deploymentRequest.Application, deploymentRequest.Environment, manifest.Team)
+func addRulesToConfigMap(spec app.Spec, configMap *k8score.ConfigMap, manifest NaisManifest) (*k8score.ConfigMap, error) {
+	deploymentPrefix := createDeploymentPrefix(spec)
 
 	addTeamLabel(manifest.Alerts, manifest.Team)
 	prefixAlertNames(manifest.Alerts, deploymentPrefix)
@@ -79,12 +79,12 @@ func addRulesToConfigMap(configMap *k8score.ConfigMap, deploymentRequest naisreq
 	return configMap, nil
 }
 
-func removeRulesFromConfigMap(configMap *k8score.ConfigMap, application, environment, team string) *k8score.ConfigMap {
+func removeRulesFromConfigMap(configMap *k8score.ConfigMap, spec app.Spec) *k8score.ConfigMap {
 	if configMap.Data == nil {
 		return configMap
 	}
 
-	ruleGroupName := createDeploymentPrefix(application, environment, team)
+	ruleGroupName := createDeploymentPrefix(spec)
 	delete(configMap.Data, ruleGroupName+".yml")
 
 	return configMap

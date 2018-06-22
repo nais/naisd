@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/nais/naisd/api/app"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,26 +11,27 @@ import (
 
 func TestCreateOrUpdateServiceAccount(t *testing.T) {
 	var name, environment, team = "name", "environment", "team"
+	spec := app.Spec{Application: name, Environment: environment, Team: team}
 
 	t.Run("If no service account exists one is created", func(t *testing.T) {
 		clientset := fake.NewSimpleClientset()
 
-		serviceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(name, environment, team)
+		serviceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(spec)
 
 		assert.NoError(t, e)
 		assert.NotNil(t, serviceAccount)
 
-		sa, err := clientset.CoreV1().ServiceAccounts(team).Get(createObjectName(name, environment), v1.GetOptions{})
+		sa, err := clientset.CoreV1().ServiceAccounts(spec.Namespace()).Get(spec.ResourceName(), v1.GetOptions{})
 		assert.NotNil(t, sa)
 		assert.NoError(t, err)
-		assert.Equal(t, createObjectName(name, environment), sa.Name)
+		assert.Equal(t, spec.ResourceName(), sa.Name)
 	})
 
 	t.Run("If a service account exists do nothing ", func(t *testing.T) {
-		existingServiceAccount := createServiceAccountDef(name, environment, team)
+		existingServiceAccount := createServiceAccountDef(spec)
 		clientset := fake.NewSimpleClientset(existingServiceAccount)
 
-		newServiceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(name, environment, team)
+		newServiceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(spec)
 		assert.NoError(t, e)
 		assert.NotNil(t, newServiceAccount)
 
@@ -39,24 +41,24 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 }
 
 func TestDeleteServiceAccount(t *testing.T) {
-	var application, environment, team = "application", "environment", "team"
-	objectName := createObjectName(team, environment)
+	var name, environment, team = "name", "environment", "team"
+	spec := app.Spec{Application: name, Environment: environment, Team: team}
 
-	t.Run("Delete a service account given service account application and environment ", func(t *testing.T) {
-		existingServiceAccount := createServiceAccountDef(application, environment, team)
+	t.Run("Delete a service account given service account name and environment ", func(t *testing.T) {
+		existingServiceAccount := createServiceAccountDef(spec)
 		existingServiceAccount.SetUID("uuid")
 		clientset := fake.NewSimpleClientset(existingServiceAccount)
 		serviceAccountInterface := NewServiceAccountInterface(clientset)
 
-		e2 := serviceAccountInterface.Delete(existingServiceAccount.Name, environment, team)
+		e2 := serviceAccountInterface.Delete(spec)
 		assert.NoError(t, e2)
 
-		sa, e3 := clientset.CoreV1().ServiceAccounts(team).Get(objectName, v1.GetOptions{})
+		sa, e3 := clientset.CoreV1().ServiceAccounts(team).Get(name, v1.GetOptions{})
 		assert.Nil(t, sa)
 		assert.True(t, errors.IsNotFound(e3))
 	})
 
 	t.Run("Deleting a non existant service account is a noop", func(t *testing.T) {
-		assert.Nil(t, NewServiceAccountInterface(fake.NewSimpleClientset()).Delete(application, environment, team))
+		assert.Nil(t, NewServiceAccountInterface(fake.NewSimpleClientset()).Delete(spec))
 	})
 }

@@ -1,4 +1,0 @@
-dependencies:
-  - name: election-namespace
-    version: 1.0.0
-    repository: https://nais.github.io/charts

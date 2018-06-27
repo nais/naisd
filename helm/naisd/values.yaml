@@ -1,3 +1,4 @@
+ingress: daemon.nais.example.no
 fasitUrl: https://fasit.example.no
 clusterSubdomain: nais-example.nais.example.no
 clusterName: kubernetes

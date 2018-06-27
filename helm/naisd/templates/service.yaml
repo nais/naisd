@@ -2,15 +2,20 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    name: naisd
-  name: naisd
-  namespace: nais
+    app: {{ template "naisd.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "naisd.fullname" . }}
 spec:
   ports:
   - port: 80
     protocol: TCP
     targetPort: 8081
   selector:
-    app: naisd
+    app: {{ template "naisd.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
   sessionAffinity: None
   type: {{ if .exposeService }} LoadBalancer {{ else }} ClusterIP {{ end }}

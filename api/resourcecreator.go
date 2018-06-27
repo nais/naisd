@@ -202,7 +202,7 @@ func createPodSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest
 	}
 
 	if manifest.LeaderElection {
-		podSpec.Containers = append(podSpec.Containers, createLeaderElectionContainer(spec.Application))
+		podSpec.Containers = append(podSpec.Containers, createLeaderElectionContainer(spec))
 
 		mainContainer := &podSpec.Containers[0]
 		electorPathEnv := k8score.EnvVar{
@@ -221,7 +221,7 @@ func createPodSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest
 	return podSpec, nil
 }
 
-func createLeaderElectionContainer(appName string) k8score.Container {
+func createLeaderElectionContainer(spec app.Spec) k8score.Container {
 	return k8score.Container{
 		Name:            "elector",
 		Image:           "gcr.io/google_containers/leader-elector:0.5",
@@ -234,7 +234,7 @@ func createLeaderElectionContainer(appName string) k8score.Container {
 		Ports: []k8score.ContainerPort{
 			{ContainerPort: 4040, Protocol: k8score.ProtocolTCP},
 		},
-		Args: []string{"--election=" + appName, "--http=localhost:4040", "--election-namespace=election"},
+		Args: []string{"--election=" + spec.ResourceName(), "--http=localhost:4040", fmt.Sprintf("--election-namespace=%s", spec.Namespace())},
 	}
 }
 

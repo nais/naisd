@@ -605,7 +605,7 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	deploymentResult.Service = service
 
 	if manifest.Redis {
-		redis, err := updateOrCreateRedisSentinelCluster(spec, manifest.Team)
+		redis, err := updateOrCreateRedisSentinelCluster(spec)
 		if err != nil {
 			return deploymentResult, fmt.Errorf("failed while creating Redis sentinel cluster: %s", err)
 		}

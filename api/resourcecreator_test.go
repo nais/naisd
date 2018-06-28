@@ -593,8 +593,8 @@ func TestIngress(t *testing.T) {
 		ingress, err := createOrUpdateIngress(otherSpec, naisrequest.Deploy{Environment: environment, Application: otherAppName}, subDomain, []NaisResource{}, clientset)
 
 		assert.NoError(t, err)
-		assert.Equal(t, environment, ingress.ObjectMeta.Name)
-		assert.Equal(t, otherTeamName, ingress.ObjectMeta.Labels["team"])
+		assert.Equal(t, spec.ResourceName(), ingress.Name)
+		assert.Equal(t, otherTeamName, ingress.Labels["team"])
 		assert.Equal(t, 1, len(ingress.Spec.Rules))
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
 		assert.Equal(t, otherAppName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
@@ -1080,7 +1080,6 @@ func TestCreateSBSPublicHostname(t *testing.T) {
 
 func TestCreateObjectMeta(t *testing.T) {
 	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	specNoTeam := app.Spec{Application: appName, Environment: environment}
 
 	t.Run("Test required metadata field values", func(t *testing.T) {
 		objectMeta := generateObjectMeta(spec)
@@ -1089,12 +1088,6 @@ func TestCreateObjectMeta(t *testing.T) {
 		assert.Equal(t, appName, objectMeta.Labels["app"], "App label should be equal to app name.")
 		assert.Equal(t, spec.ResourceName(), objectMeta.Name, "Resource name should equal app name.")
 		assert.Equal(t, spec.Namespace(), objectMeta.Namespace, "Resource environment should equal environment.")
-	})
-
-	t.Run("Test creating objectmeta without team name", func(t *testing.T) {
-		objectMetaWithoutTeamName := generateObjectMeta(specNoTeam)
-		_, ok := objectMetaWithoutTeamName.Labels["team"]
-		assert.False(t, ok, "Team label should not be set when team name is empty.")
 	})
 }
 

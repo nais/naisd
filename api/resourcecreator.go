@@ -900,10 +900,7 @@ func generateObjectMeta(spec app.Spec) k8smeta.ObjectMeta {
 	objectMeta.Labels = map[string]string{
 		"app":         spec.Application,
 		"environment": spec.Environment,
-	}
-
-	if spec.Team != "" {
-		objectMeta.Labels["team"] = spec.Team
+		"team":        spec.Team,
 	}
 
 	return objectMeta

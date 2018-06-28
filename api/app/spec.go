@@ -12,5 +12,9 @@ func (s Spec) Namespace() string {
 }
 
 func (s Spec) ResourceName() string {
-	return s.Environment
+	if s.Environment == "default" {
+		return "app"
+	} else {
+		return s.Environment
+	}
 }

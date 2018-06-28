@@ -23,7 +23,7 @@ type FakeDeployStatusViewer struct {
 	errToReturn          error
 }
 
-func (d FakeDeployStatusViewer) DeploymentStatusView(namespace, deployName, team string) (DeployStatus, DeploymentStatusView, error) {
+func (d FakeDeployStatusViewer) DeploymentStatusView(namespace, deployName string) (DeployStatus, DeploymentStatusView, error) {
 	return d.deployStatusToReturn, d.viewToReturn, d.errToReturn
 }
 
@@ -47,7 +47,7 @@ func TestAnIncorrectPayloadGivesError(t *testing.T) {
 }
 
 func TestDeployStatusHandler(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/deploystatus/team/deployName/environment", strings.NewReader("whatever"))
+	req, _ := http.NewRequest("GET", "/deploystatus/deployName/environment", strings.NewReader("whatever"))
 
 	t.Run("Return 404 if deploy status is not found", func(t *testing.T) {
 		mux := goji.NewMux()
@@ -56,7 +56,7 @@ func TestDeployStatusHandler(t *testing.T) {
 			errToReturn: fmt.Errorf("not Found"),
 		}}
 
-		mux.Handle(pat.Get("/deploystatus/:team/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
+		mux.Handle(pat.Get("/deploystatus/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
 
 		rr := httptest.NewRecorder()
 
@@ -92,7 +92,7 @@ func TestDeployStatusHandler(t *testing.T) {
 					deployStatusToReturn: test.deployStatus,
 				},
 			}
-			mux.Handle(pat.Get("/deploystatus/:team/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
+			mux.Handle(pat.Get("/deploystatus/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
 
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)

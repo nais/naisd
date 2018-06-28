@@ -78,8 +78,8 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 	mux.Handle(pat.Get("/version"), appHandler(api.version))
-	mux.Handle(pat.Get("/deploystatus/:team/:environment/:deployName"), appHandler(api.deploymentStatusHandler))
-	mux.Handle(pat.Delete("/app/:team/:environment/:deployName"), appHandler(api.deleteApplication))
+	mux.Handle(pat.Get("/deploystatus/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
+	mux.Handle(pat.Delete("/app/:deployName/:environment"), appHandler(api.deleteApplication))
 	return mux
 }
 
@@ -162,11 +162,10 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 }
 
 func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
-	team := pat.Param(r, "team")
 	environment := pat.Param(r, "environment")
 	deployName := pat.Param(r, "deployName")
 
-	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(environment, deployName, team)
+	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(environment, deployName)
 
 	if err != nil {
 		return &appError{err, "deployment not found ", http.StatusNotFound}
@@ -207,11 +206,10 @@ func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
 }
 
 func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appError {
-	team := pat.Param(r, "team")
 	environment := pat.Param(r, "environment")
 	application := pat.Param(r, "deployName")
 
-	spec := app.Spec{Application: application, Environment: environment, Team: team}
+	spec := app.Spec{Application: application, Environment: environment}
 	result, err := deleteK8sResouces(spec, api.Clientset)
 
 	response := ""
@@ -226,7 +224,7 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 		return &appError{err, fmt.Sprintf("there were errors when trying to delete app: %+v", response), http.StatusInternalServerError}
 	}
 
-	glog.Infof("Deleted application %s-%s in %s\n", application, environment, team)
+	glog.Infof("Deleted application %s-%s in %s\n", application, environment)
 
 	w.Write([]byte(response))
 	w.WriteHeader(http.StatusOK)

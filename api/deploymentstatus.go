@@ -32,7 +32,7 @@ const (
 )
 
 type DeploymentStatusViewer interface {
-	DeploymentStatusView(environment, deployName, team string) (DeployStatus, DeploymentStatusView, error)
+	DeploymentStatusView(environment, deployName string) (DeployStatus, DeploymentStatusView, error)
 }
 
 type deploymentStatusViewerImpl struct {
@@ -45,13 +45,13 @@ func NewDeploymentStatusViewer(clientset kubernetes.Interface) DeploymentStatusV
 	}
 }
 
-func (d deploymentStatusViewerImpl) DeploymentStatusView(environment, deployName, team string) (DeployStatus, DeploymentStatusView, error) {
-	spec := app.Spec{Application: deployName, Environment: environment, Team: team}
-	dep, err := d.client.ExtensionsV1beta1().Deployments(team).Get(spec.ResourceName(), k8smeta.GetOptions{})
+func (d deploymentStatusViewerImpl) DeploymentStatusView(environment, deployName string) (DeployStatus, DeploymentStatusView, error) {
+	spec := app.Spec{Application: deployName, Environment: environment}
+	dep, err := d.client.ExtensionsV1beta1().Deployments(deployName).Get(spec.ResourceName(), k8smeta.GetOptions{})
 	if err != nil {
-		errMess := fmt.Sprintf("did not find deployment: %s in environment: %s in namespace %s", deployName, environment, team)
+		errMess := fmt.Sprintf("did not find deployment: %s environment: %s", deployName, environment)
 		glog.Error(errMess)
-		return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s in environment: %s in namespace %s", deployName, environment, team)
+		return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s environment: %s", deployName, environment)
 	}
 
 	status, view := deploymentStatusAndView(*dep)

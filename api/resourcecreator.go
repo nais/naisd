@@ -196,7 +196,7 @@ func createPodSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest
 				Lifecycle:       createLifeCycle(manifest.PreStopHookPath),
 			},
 		},
-		ServiceAccountName: spec.Application,
+		ServiceAccountName: spec.ResourceName(),
 		RestartPolicy:      k8score.RestartPolicyAlways,
 		DNSPolicy:          k8score.DNSClusterFirst,
 	}

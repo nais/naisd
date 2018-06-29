@@ -34,8 +34,8 @@ func createRedisFailoverDef(spec app.Spec) *redisapi.RedisFailover {
 	return &redisapi.RedisFailover{Spec: redisSpec, ObjectMeta: meta}
 }
 
-func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, appName string) (*redisapi.RedisFailover, error) {
-	failover, err := failoverInterface.Get(appName, k8smeta.GetOptions{})
+func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, resourceName string) (*redisapi.RedisFailover, error) {
+	failover, err := failoverInterface.Get(resourceName, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:

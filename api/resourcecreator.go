@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/nais/naisd/api/app"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"os"
 	"strconv"
 	"strings"
@@ -37,6 +38,7 @@ type DeploymentResult struct {
 	AlertsConfigMap *k8score.ConfigMap
 	ServiceAccount  *k8score.ServiceAccount
 	Namespace       *k8score.Namespace
+	RoleBinding     *rbacv1.RoleBinding
 }
 
 // Creates a Kubernetes Service object
@@ -328,8 +330,19 @@ func checkForDuplicates(envVars []k8score.EnvVar, envVar k8score.EnvVar, propert
 	return nil
 }
 
+func createEnvVar(key, value string) k8score.EnvVar {
+	return k8score.EnvVar{
+		Name:  key,
+		Value: value,
+	}
+}
+
 func createEnvironmentVariables(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) ([]k8score.EnvVar, error) {
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
+
+	if manifest.Redis {
+		envVars = append(envVars, createEnvVar("REDIS_HOST", fmt.Sprintf("rfs-%s", spec.ResourceName())))
+	}
 
 	for _, res := range naisResources {
 		for variableName, v := range res.properties {
@@ -598,6 +611,14 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 		return deploymentResult, fmt.Errorf("failed while creating service account: %s", err)
 	}
 	deploymentResult.ServiceAccount = serviceAccount
+
+	roleRef := createRoleRef("clusterrole", "serviceaccount-in-app-namespace")
+	rolebinding, err := client.createOrUpdateRoleBinding(spec, roleRef)
+	if err != nil {
+		glog.Infof("Failed to create RoleBinding %s for service account in namespace %s", spec.ResourceName(), spec.Namespace())
+		return deploymentResult, fmt.Errorf("")
+	}
+	deploymentResult.RoleBinding = rolebinding
 
 	service, err := createService(spec, k8sClient)
 	if err != nil {

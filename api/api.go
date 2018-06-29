@@ -279,6 +279,12 @@ func createResponse(deploymentResult DeploymentResult, warnings []string) []byte
 	if deploymentResult.Namespace != nil {
 		response += "- created namespace\n"
 	}
+	if deploymentResult.ServiceAccount != nil {
+		response += "- created serviceaccount\n"
+	}
+	if deploymentResult.RoleBinding != nil {
+		response += "- created rolebinding\n"
+	}
 
 	if len(warnings) > 0 {
 		response += "\nWarnings:\n"

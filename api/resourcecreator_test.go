@@ -460,20 +460,20 @@ func TestDeployment(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes))
-		assert.Equal(t, appName, updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, spec.ResourceName(), updatedDeployment.Spec.Template.Spec.Volumes[0].Name)
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items))
 		assert.Equal(t, resource1Name+"_"+updatedCertKey, updatedDeployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
 
 		assert.Equal(t, 1, len(updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
-		assert.Equal(t, appName, updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, spec.ResourceName(), updatedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
 	})
 
 	t.Run("File secrets are mounted correctly for a new deployment", func(t *testing.T) {
 		deployment, _ := createOrUpdateDeployment(spec, naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, newDefaultManifest(), naisCertResources, false, clientset)
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Volumes))
-		assert.Equal(t, appName, deployment.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, spec.ResourceName(), deployment.Spec.Template.Spec.Volumes[0].Name)
 		assert.Equal(t, 2, len(deployment.Spec.Template.Spec.Volumes[0].Secret.Items))
 		assert.Equal(t, resource1Name+"_"+cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Key)
 		assert.Equal(t, resource1Name+"_"+cert1Key, deployment.Spec.Template.Spec.Volumes[0].Secret.Items[0].Path)
@@ -482,7 +482,7 @@ func TestDeployment(t *testing.T) {
 
 		assert.Equal(t, 1, len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts))
 		assert.Equal(t, "/var/run/secrets/naisd.io/", deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
-		assert.Equal(t, appName, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, spec.ResourceName(), deployment.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
 
 	})
 
@@ -597,7 +597,7 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, otherTeamName, ingress.Labels["team"])
 		assert.Equal(t, 1, len(ingress.Spec.Rules))
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
-		assert.Equal(t, otherAppName, ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
+		assert.Equal(t, spec.ResourceName(), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
 	})
 
@@ -827,7 +827,7 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 }
 
 func TestDNS1123ValidResourceNames(t *testing.T) {
-	spec := app.Spec{Application: "key_underscore_Upper", Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Environment: "key_underscore_Upper", Team: teamName}
 
 	naisResource := []NaisResource{
 		{

@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/nais/naisd/api/app"
 	"os"
 	"strconv"
@@ -278,10 +279,10 @@ func createCertificateVolume(spec app.Spec, resources []NaisResource) k8score.Vo
 
 	if len(items) > 0 {
 		return k8score.Volume{
-			Name: validLabelName(spec.Application),
+			Name: validLabelName(spec.ResourceName()),
 			VolumeSource: k8score.VolumeSource{
 				Secret: &k8score.SecretVolumeSource{
-					SecretName: spec.Application,
+					SecretName: spec.ResourceName(),
 					Items:      items,
 				},
 			},
@@ -295,7 +296,7 @@ func createCertificateVolumeMount(spec app.Spec, resources []NaisResource) k8sco
 	for _, res := range resources {
 		if res.certificates != nil {
 			return k8score.VolumeMount{
-				Name:      validLabelName(spec.Application),
+				Name:      validLabelName(spec.ResourceName()),
 				MountPath: RootMountPoint,
 			}
 		}
@@ -701,11 +702,11 @@ func createOrUpdateIngress(spec app.Spec, deploymentRequest naisrequest.Deploy, 
 func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource) []k8sextensions.IngressRule {
 	var ingressRules []k8sextensions.IngressRule
 
-	defaultIngressRule := createIngressRule(spec.Application, createIngressHostname(spec.Application, deploymentRequest.Environment, clusterSubdomain), "")
+	defaultIngressRule := createIngressRule(spec.ResourceName(), createIngressHostname(spec.Application, deploymentRequest.Environment, clusterSubdomain), "")
 	ingressRules = append(ingressRules, defaultIngressRule)
 
 	if deploymentRequest.Zone == constant.ZONE_SBS {
-		ingressRules = append(ingressRules, createIngressRule(spec.Application, createSBSPublicHostname(deploymentRequest), spec.Application))
+		ingressRules = append(ingressRules, createIngressRule(spec.ResourceName(), createSBSPublicHostname(deploymentRequest), spec.Application))
 	}
 
 	for _, naisResource := range naisResources {

@@ -611,7 +611,7 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	}
 	deploymentResult.ServiceAccount = serviceAccount
 
-	roleRef := createRoleRef("clusterrole", "serviceaccount-in-app-namespace")
+	roleRef := createRoleRef("ClusterRole", "serviceaccount-in-app-namespace")
 	roleBinding, err := client.createOrUpdateRoleBinding(spec, roleRef)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating role binding: %s", err)

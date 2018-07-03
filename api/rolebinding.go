@@ -19,9 +19,8 @@ func (c clientHolder) createOrUpdateRoleBinding(subject app.Spec, roleRef v1.Rol
 
 func createRoleRef(kind, name string) v1.RoleRef {
 	return v1.RoleRef{
-		Kind:     kind,
-		Name:     name,
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind: kind,
+		Name: name,
 	}
 }
 
@@ -32,7 +31,6 @@ func createRoleBindingDef(subject app.Spec, roleRef v1.RoleRef) *v1.RoleBinding 
 			Kind:      "ServiceAccount",
 			Name:      subject.ResourceName(),
 			Namespace: subject.Namespace(),
-			APIGroup:  "rbac.authorization.k8s.io",
 		}},
 		RoleRef: roleRef,
 	}

@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"github.com/golang/glog"
 	"github.com/nais/naisd/api/app"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"os"
@@ -613,12 +612,11 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	deploymentResult.ServiceAccount = serviceAccount
 
 	roleRef := createRoleRef("clusterrole", "serviceaccount-in-app-namespace")
-	rolebinding, err := client.createOrUpdateRoleBinding(spec, roleRef)
+	roleBinding, err := client.createOrUpdateRoleBinding(spec, roleRef)
 	if err != nil {
-		glog.Infof("Failed to create RoleBinding %s for service account in namespace %s", spec.ResourceName(), spec.Namespace())
-		return deploymentResult, fmt.Errorf("")
+		return deploymentResult, fmt.Errorf("failed while creating role binding: %s", err)
 	}
-	deploymentResult.RoleBinding = rolebinding
+	deploymentResult.RoleBinding = roleBinding
 
 	service, err := createService(spec, k8sClient)
 	if err != nil {

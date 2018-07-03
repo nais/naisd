@@ -21,6 +21,6 @@ func TestRedisResource(t *testing.T) {
 		env, err := createEnvironmentVariables(spec, naisrequest.Deploy{}, manifest, []NaisResource{})
 
 		assert.NoError(t, err)
-		assert.Contains(t, env, v1.EnvVar{Name: "REDIS_HOST", Value: "rfs-" + spec.Environment})
+		assert.Contains(t, env, v1.EnvVar{Name: "REDIS_HOST", Value: "rfs-" + spec.ResourceName()})
 	})
 }

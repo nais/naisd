@@ -326,6 +326,10 @@ func checkForDuplicates(envVars []k8score.EnvVar, envVar k8score.EnvVar, propert
 func createEnvironmentVariables(deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) ([]k8score.EnvVar, error) {
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
+	if manifest.Redis {
+		envVars = append(envVars, k8score.EnvVar{Name: "REDIS_HOST", Value: fmt.Sprintf("rfs-%s", deploymentRequest.Application)})
+	}
+
 	for _, res := range naisResources {
 		for variableName, v := range res.properties {
 			envVar := k8score.EnvVar{Name: res.ToEnvironmentVariable(variableName), Value: v}

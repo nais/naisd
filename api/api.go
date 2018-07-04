@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -10,7 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
 	"goji.io/pat"
-	"io"
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
@@ -96,7 +96,31 @@ func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 
-	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
+	requestBody, err := ioutil.ReadAll(r.Body)
+	deploymentRequest, err := unmarshalDeploymentRequest(requestBody)
+
+	if deploymentRequest.ApplicationNamespace {
+		glog.Info("Forwarding request to daemon-appns because 'ApplicationNamespace' is true in DeploymentRequest.")
+
+		noProxyClient := http.Client{
+			Transport: &http.Transport{
+				Proxy: nil,
+			},
+		}
+		request, err := noProxyClient.Post("http://nais-naisd-appns-naisd/deploy", "application/json", bytes.NewReader(requestBody))
+		if err != nil {
+			return &appError{err, "naisd(application namespace version) was unable to deploy", request.StatusCode}
+		}
+
+		body, readErr := ioutil.ReadAll(request.Body)
+		if readErr != nil {
+			return &appError{readErr, "failed while reading response from naisd(application namespace version))", 500}
+		}
+
+		w.WriteHeader(200)
+		w.Write(body)
+		return nil
+	}
 
 	if err != nil {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
@@ -274,14 +298,9 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 	return []byte(response)
 }
 
-func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) {
-	requestBody, err := ioutil.ReadAll(body)
-	if err != nil {
-		return naisrequest.Deploy{}, fmt.Errorf("could not read deployment request body %s", err)
-	}
-
+func unmarshalDeploymentRequest(requestBody []byte) (naisrequest.Deploy, error) {
 	var deploymentRequest naisrequest.Deploy
-	if err = json.Unmarshal(requestBody, &deploymentRequest); err != nil {
+	if err := json.Unmarshal(requestBody, &deploymentRequest); err != nil {
 		return naisrequest.Deploy{}, fmt.Errorf("could not unmarshal body %s", err)
 	}
 

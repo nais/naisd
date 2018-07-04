@@ -7,3 +7,4 @@ naisd.iml
 /nais
 naisd-service-nodeport.yaml
 *.swp
+cover.out

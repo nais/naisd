@@ -731,7 +731,7 @@ func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clu
 	for _, naisResource := range naisResources {
 		if naisResource.resourceType == "LoadBalancerConfig" && len(naisResource.ingresses) > 0 {
 			for _, ingress := range naisResource.ingresses {
-				ingressRules = append(ingressRules, createIngressRule(spec.Application, ingress.Host, ingress.Path))
+				ingressRules = append(ingressRules, createIngressRule(spec.ResourceName(), ingress.Host, ingress.Path))
 			}
 		}
 	}
@@ -812,7 +812,7 @@ func getExistingSecret(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.
 }
 
 func getExistingDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
-	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(spec.Application)
+	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace())
 	deployment, err := deploymentClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 
 	switch {

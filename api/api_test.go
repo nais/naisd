@@ -497,7 +497,7 @@ func TestEnsurePropertyCompatibility(t *testing.T) {
 		warnings := ensurePropertyCompatibility(&deploy, &teamManifest)
 		response := createResponse(DeploymentResult{}, warnings)
 
-		assert.Contains(t, string(response), "Specifying namespace is deprecated and won't make any difference for this deploy. Please adapt your pipelines to only use the field 'Environment'.\n")
+		assert.Contains(t, string(response), "Specifying namespace is deprecated as each application now has it's own namespace, and won't make any difference for this deploy. Please adapt your pipelines to *only* use the field 'Environment'.\n")
 	})
 
 	t.Run("Should not warn when not specifying namespace", func(t *testing.T) {
@@ -531,6 +531,6 @@ func TestEnsurePropertyCompatibility(t *testing.T) {
 		warnings := ensurePropertyCompatibility(&deploy, &noTeamManifest)
 		response := createResponse(DeploymentResult{}, warnings)
 
-		assert.Contains(t, string(response), "Starting July 1. (01/07) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after July 1.")
+		assert.Contains(t, string(response), "Starting August 1. (01/08) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after August 1.")
 	})
 }

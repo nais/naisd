@@ -13,4 +13,4 @@ request:
 limit:
   memory: 128Mi
   cpu: 500m
-version: 268.0.0
+version: 270.0.0

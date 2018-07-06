@@ -25,7 +25,7 @@ install:
 	${DEP} ensure
 
 test:
-	${GO} test ./api/ ./cli/cmd/
+	${GO} test ./api/ ./cli/cmd/ --coverprofile=cover.out
 
 cli:
 	${GO} build -ldflags='$(LDFLAGS)' -o nais ./cli

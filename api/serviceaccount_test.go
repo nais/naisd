@@ -16,7 +16,7 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 	t.Run("If no service account exists one is created", func(t *testing.T) {
 		clientset := fake.NewSimpleClientset()
 
-		serviceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(spec)
+		serviceAccount, e := NewServiceAccountInterface(clientset).CreateServiceAccountIfNotExist(spec)
 
 		assert.NoError(t, e)
 		assert.NotNil(t, serviceAccount)
@@ -31,7 +31,7 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 		existingServiceAccount := createServiceAccountDef(spec)
 		clientset := fake.NewSimpleClientset(existingServiceAccount)
 
-		newServiceAccount, e := NewServiceAccountInterface(clientset).CreateIfNotExist(spec)
+		newServiceAccount, e := NewServiceAccountInterface(clientset).CreateServiceAccountIfNotExist(spec)
 		assert.NoError(t, e)
 		assert.NotNil(t, newServiceAccount)
 
@@ -50,7 +50,7 @@ func TestDeleteServiceAccount(t *testing.T) {
 		clientset := fake.NewSimpleClientset(existingServiceAccount)
 		serviceAccountInterface := NewServiceAccountInterface(clientset)
 
-		e2 := serviceAccountInterface.Delete(spec)
+		e2 := serviceAccountInterface.DeleteServiceAccount(spec)
 		assert.NoError(t, e2)
 
 		sa, e3 := clientset.CoreV1().ServiceAccounts(team).Get(name, v1.GetOptions{})
@@ -59,6 +59,6 @@ func TestDeleteServiceAccount(t *testing.T) {
 	})
 
 	t.Run("Deleting a non existant service account is a noop", func(t *testing.T) {
-		assert.Nil(t, NewServiceAccountInterface(fake.NewSimpleClientset()).Delete(spec))
+		assert.Nil(t, NewServiceAccountInterface(fake.NewSimpleClientset()).DeleteServiceAccount(spec))
 	})
 }

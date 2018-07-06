@@ -53,11 +53,12 @@ func deleteK8sResouces(spec app.Spec, k8sClient kubernetes.Interface) (results [
 		return results, err
 	}
 
-	if err := NewServiceAccountInterface(k8sClient).Delete(spec); err != nil {
+	if err := NewServiceAccountInterface(k8sClient).DeleteServiceAccount(spec); err != nil {
 		return results, err
 	} else {
 		results = append(results, "service account: OK")
 	}
+
 	return results, nil
 }
 
@@ -126,7 +127,7 @@ func deleteIngress(spec app.Spec, k8sClient kubernetes.Interface) (result string
 
 func deleteRedisFailover(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	redisFailoverspec := spec
-	redisFailoverspec.Application = "rfs-" + spec.ResourceName()
+	redisFailoverspec.Environment = "rfs-" + spec.ResourceName()
 
 	svc, err := getExistingService(redisFailoverspec, k8sClient)
 	if svc == nil {

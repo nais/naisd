@@ -9,13 +9,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type clientHolder struct {
-	client kubernetes.Interface
-}
-
 type ServiceAccountInterface interface {
-	CreateIfNotExist(spec app.Spec) (*v1.ServiceAccount, error)
-	Delete(spec app.Spec) error
+	CreateServiceAccountIfNotExist(spec app.Spec) (*v1.ServiceAccount, error)
+	DeleteServiceAccount(spec app.Spec) error
 }
 
 func NewServiceAccountInterface(client kubernetes.Interface) ServiceAccountInterface {
@@ -24,7 +20,7 @@ func NewServiceAccountInterface(client kubernetes.Interface) ServiceAccountInter
 	}
 }
 
-func (c clientHolder) Delete(spec app.Spec) error {
+func (c clientHolder) DeleteServiceAccount(spec app.Spec) error {
 	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(spec.Namespace())
 
 	if e := serviceAccountInterface.Delete(spec.ResourceName(), &k8smeta.DeleteOptions{}); e != nil && !errors.IsNotFound(e) {
@@ -34,7 +30,7 @@ func (c clientHolder) Delete(spec app.Spec) error {
 	}
 }
 
-func (c clientHolder) CreateIfNotExist(spec app.Spec) (*v1.ServiceAccount, error) {
+func (c clientHolder) CreateServiceAccountIfNotExist(spec app.Spec) (*v1.ServiceAccount, error) {
 	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(spec.Namespace())
 
 	if account, err := serviceAccountInterface.Get(spec.ResourceName(), k8smeta.GetOptions{}); err == nil {

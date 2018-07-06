@@ -285,6 +285,9 @@ func createResponse(deploymentResult DeploymentResult, warnings []string) []byte
 	if deploymentResult.RoleBinding != nil {
 		response += "- created rolebinding\n"
 	}
+	if len(deploymentResult.DeletedOldApp) > 0 {
+		response += "- deleted old app: \n" + deploymentResult.DeletedOldApp
+	}
 
 	if len(warnings) > 0 {
 		response += "\nWarnings:\n"
@@ -316,17 +319,17 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) 
 func ensurePropertyCompatibility(deploy *naisrequest.Deploy, manifest *NaisManifest) []string {
 	var warnings []string
 
-	if deploy.Namespace != "" {
-		if deploy.Environment == "" {
+	if len(deploy.Namespace) > 0 {
+		if len(deploy.Environment) > 0 {
+			warnings = append(warnings, "Specifying namespace is deprecated as each application now has it's own namespace, and won't make any difference for this deploy. Please adapt your pipelines to *only* use the field 'Environment'.")
+		} else {
 			deploy.Environment = deploy.Namespace
 			warnings = append(warnings, fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment))
-		} else {
-			warnings = append(warnings, "Specifying namespace is deprecated and won't make any difference for this deploy. Please adapt your pipelines to only use the field 'Environment'.")
 		}
 	}
 
 	if manifest.Team == "" {
-		warnings = append(warnings, "Starting July 1. (01/07) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after July 1.")
+		warnings = append(warnings, "Starting August 1. (01/08) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after August 1.")
 	}
 
 	return warnings

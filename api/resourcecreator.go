@@ -38,6 +38,7 @@ type DeploymentResult struct {
 	ServiceAccount  *k8score.ServiceAccount
 	Namespace       *k8score.Namespace
 	RoleBinding     *rbacv1.RoleBinding
+	DeletedOldApp   string
 }
 
 // Creates a Kubernetes Service object
@@ -605,7 +606,7 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	}
 	deploymentResult.Namespace = namespace
 
-	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateIfNotExist(spec)
+	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateServiceAccountIfNotExist(spec)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating service account: %s", err)
 	}
@@ -664,6 +665,12 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 		return deploymentResult, fmt.Errorf("failed while creating or updating alerts configmap (app-rules) %s", err)
 	}
 	deploymentResult.AlertsConfigMap = alertsConfigMap
+
+	deleteOldAppStatus, err := client.DeleteOldApp(spec, deploymentRequest, manifest)
+	if err != nil {
+		return deploymentResult, fmt.Errorf("failed while deleting old application: %s", err)
+	}
+	deploymentResult.DeletedOldApp = deleteOldAppStatus
 
 	return deploymentResult, err
 }

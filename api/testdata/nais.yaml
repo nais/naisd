@@ -54,6 +54,7 @@ fasitResources:
     allZones: false
 leaderElection: true
 redis: false
+secrets: true
 ingress:
   disabled: true
 alerts:

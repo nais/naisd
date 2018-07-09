@@ -19,8 +19,8 @@ func GetDefaultManifest(application string) NaisManifest {
 
 	defaultManifest := NaisManifest{
 		Replicas: Replicas{
-			Min: 2,
-			Max: 4,
+			Min:                    2,
+			Max:                    4,
 			CpuThresholdPercentage: 50,
 		},
 		Port: 8080,
@@ -61,6 +61,7 @@ func GetDefaultManifest(application string) NaisManifest {
 		},
 		LeaderElection: false,
 		Redis:          false,
+		Secrets:        false,
 	}
 	defaultManifest.Image = "docker.adeo.no:5000/" + application
 

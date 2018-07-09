@@ -53,7 +53,7 @@ type NaisManifest struct {
 	Image           string
 	Port            int
 	Healthcheck     Healthcheck
-	PreStopHookPath string `yaml:"preStopHookPath"`
+	PreStopHookPath string         `yaml:"preStopHookPath"`
 	Prometheus      PrometheusConfig
 	Istio           IstioConfig
 	Replicas        Replicas
@@ -66,6 +66,7 @@ type NaisManifest struct {
 	Alerts          []PrometheusAlertRule
 	Logformat       string
 	Logtransform    string
+	Secrets         bool           `yaml:"secrets"`
 }
 
 type Ingress struct {

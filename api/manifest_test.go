@@ -56,6 +56,7 @@ func TestManifestUnmarshal(t *testing.T) {
 	assert.Equal(t, "5m", manifest.Alerts[0].For)
 	assert.Equal(t, "Investigate why nais-testapp can't spawn pods. kubectl describe deployment nais-testapp, kubectl describe pod nais-testapp-*.", manifest.Alerts[0].Annotations["action"])
 	assert.Equal(t, "Critical", manifest.Alerts[1].Labels["severity"])
+	assert.Equal(t, true, manifest.Secrets)
 }
 
 func TestManifestUsesDefaultValues(t *testing.T) {
@@ -95,6 +96,7 @@ func TestManifestUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, 1, manifest.Healthcheck.Readiness.Timeout)
 	assert.Equal(t, false, manifest.Ingress.Disabled)
 	assert.Empty(t, manifest.PreStopHookPath)
+	assert.Equal(t,false, manifest.Secrets)
 }
 
 func TestManifestUsesPartialDefaultValues(t *testing.T) {
@@ -212,8 +214,8 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 		Image: "myapp:1",
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max: 4,
-			Min: 5,
+			Max:                    4,
+			Min:                    5,
 		},
 	}
 	errors := ValidateManifest(invalidConfig)
@@ -232,8 +234,8 @@ func TestInvalidCpuThreshold(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max: 4,
-			Min: 5,
+			Max:                    4,
+			Min:                    5,
 		},
 	}
 	errors := validateCpuThreshold(invalidManifest)
@@ -244,8 +246,8 @@ func TestMinCannotBeZero(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
-			Max: 4,
-			Min: 0,
+			Max:                    4,
+			Min:                    0,
 		},
 	}
 	errors := validateReplicasMin(invalidManifest)

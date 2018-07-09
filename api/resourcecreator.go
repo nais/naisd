@@ -645,14 +645,6 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	}
 	deploymentResult.Secret = secret
 
-	if !manifest.Ingress.Disabled {
-		ingress, err := createOrUpdateIngress(spec, deploymentRequest, clusterSubdomain, resources, k8sClient)
-		if err != nil {
-			return deploymentResult, fmt.Errorf("failed while creating ingress: %s", err)
-		}
-		deploymentResult.Ingress = ingress
-	}
-
 	autoscaler, err := createOrUpdateAutoscaler(spec, manifest, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating or updating autoscaler: %s", err)
@@ -666,11 +658,21 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	}
 	deploymentResult.AlertsConfigMap = alertsConfigMap
 
+	// This has to happen before we create ingress, otherwise we risk sending requests to the new app before it's ready.
 	deleteOldAppStatus, err := client.DeleteOldApp(spec, deploymentRequest, manifest)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while deleting old application: %s", err)
 	}
 	deploymentResult.DeletedOldApp = deleteOldAppStatus
+
+	if !manifest.Ingress.Disabled {
+		ingress, err := createOrUpdateIngress(spec, deploymentRequest, clusterSubdomain, resources, k8sClient)
+		if err != nil {
+			return deploymentResult, fmt.Errorf("failed while creating ingress: %s", err)
+		}
+		deploymentResult.Ingress = ingress
+	}
+
 
 	return deploymentResult, err
 }

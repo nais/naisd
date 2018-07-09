@@ -40,18 +40,23 @@ func (c clientHolder) WaitForPodReady(spec app.Spec) error {
 
 func (c clientHolder) DeleteOldApp(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest) (string, error) {
 	service, err := c.client.CoreV1().Services(spec.Environment).Get(spec.Application, v1.GetOptions{})
+
 	if err == nil {
 		err := c.WaitForPodReady(spec)
 		if err != nil {
-			return "aborting deletion of old app", err
+			return "  - aborting deletion of old app", err
 		}
 
 		_, err = c.redirectOldServiceToNewApp(service, spec)
 		if err != nil {
-			return "failed while forwarding traffic to new Service. aborting deletion of old app", err
+			return "  - failed while forwarding traffic to new Service. aborting deletion of old app", err
 		}
 	} else {
 		return "", nil
+	}
+
+	if service.Spec.Type == corev1.ServiceTypeExternalName {
+		return fmt.Sprintf("  - service already redirected to app-namespace, not deleting anything (this is good). App is at: %s\n", service.Spec.ExternalName), nil
 	}
 
 	// This is a "trick" to make it delete the old resources created by the old version naisd prior to app-namespaces.
@@ -61,27 +66,33 @@ func (c clientHolder) DeleteOldApp(spec app.Spec, deploymentRequest naisrequest.
 		Team:        spec.Team,
 	}
 
-	joinedResult := ""
+	result := ""
+	result, _ = deleteDeployment(oldAppSpec, c.client)
+	joinedResult := fmt.Sprintln("  - " + result)
 
-	result, err := deleteDeployment(oldAppSpec, c.client)
-	joinedResult += fmt.Sprintf("result: %s | error: %s\n", result, err.Error())
+	result, _ = deleteAutoscaler(oldAppSpec, c.client)
+	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, err = deleteAutoscaler(oldAppSpec, c.client)
-	joinedResult += fmt.Sprintf("result: %s | error: %s\n", result, err.Error())
+	result, _ = deleteConfigMapRules(oldAppSpec, c.client)
+	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, err = deleteConfigMapRules(oldAppSpec, c.client)
-	joinedResult += fmt.Sprintf("result: %s | error: %s\n", result, err.Error())
+	result, _ = deleteIngress(oldAppSpec, c.client)
+	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, err = deleteIngress(oldAppSpec, c.client)
-	joinedResult += fmt.Sprintf("result: %s | error: %s\n", result, err.Error())
+	result, _ = deleteRedisFailover(oldAppSpec, c.client)
+	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, err = deleteRedisFailover(oldAppSpec, c.client)
-	joinedResult += fmt.Sprintf("result: %s | error: %s\n", result, err.Error())
+	result, _ = deleteSecret(oldAppSpec, c.client)
+	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, err = deleteSecret(oldAppSpec, c.client)
-	joinedResult += fmt.Sprintf("result: %s | error: %s\n", result, err.Error())
+	err = c.DeleteServiceAccount(oldAppSpec)
+	if err != nil {
+		joinedResult += fmt.Sprintln("  - service account: OK")
+	} else {
+		joinedResult += fmt.Sprintln("  - service account: N/A")
+	}
 
-	joinedResult += "\n Redirecting traffic to the old service to the new service in app-namespace."
+	joinedResult += "  - redirected old service to the new service in app-namespace.\n"
 
 	return joinedResult, nil
 }

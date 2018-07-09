@@ -596,7 +596,7 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 		Team:        manifest.Team,
 	}
 
-	namespace, err := client.createNamespace(spec.Namespace())
+	namespace, err := client.createNamespace(spec.Namespace(), spec.Team)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating namespace: %s", err)
 	}

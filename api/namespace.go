@@ -26,7 +26,7 @@ func (c clientHolder) waitForNamespaceReady(namespace *corev1.Namespace) error {
 	return err
 }
 
-func (c clientHolder) createNamespace(name string) (*corev1.Namespace, error) {
+func (c clientHolder) createNamespace(name, team string) (*corev1.Namespace, error) {
 	namespaceInterface := c.client.CoreV1().Namespaces()
 
 	namespace, err := namespaceInterface.Get(name, k8smeta.GetOptions{IncludeUninitialized: false})
@@ -35,17 +35,20 @@ func (c clientHolder) createNamespace(name string) (*corev1.Namespace, error) {
 		return namespace, err
 	} else if errors.IsNotFound(err) {
 		glog.Infof("Creating namespace %s.", name)
-		return namespaceInterface.Create(createNamespaceDef(name))
+		return namespaceInterface.Create(createNamespaceDef(name, team))
 	} else {
 		glog.Errorf("Failed while getting existing namespace: unexpected error: %s", err)
 		return nil, nil
 	}
 }
 
-func createNamespaceDef(name string) *corev1.Namespace {
+func createNamespaceDef(name, team string) *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: k8smeta.ObjectMeta{
 			Name: name,
+			Labels: map[string]string{
+				"team": team,
+			},
 		},
 	}
 }

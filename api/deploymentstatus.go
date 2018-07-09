@@ -47,7 +47,7 @@ func NewDeploymentStatusViewer(clientset kubernetes.Interface) DeploymentStatusV
 
 func (d deploymentStatusViewerImpl) DeploymentStatusView(environment, deployName string) (DeployStatus, DeploymentStatusView, error) {
 	spec := app.Spec{Application: deployName, Environment: environment}
-	dep, err := d.client.ExtensionsV1beta1().Deployments(deployName).Get(spec.ResourceName(), k8smeta.GetOptions{})
+	dep, err := d.client.ExtensionsV1beta1().Deployments(spec.Namespace()).Get(spec.ResourceName(), k8smeta.GetOptions{})
 	if err != nil {
 		errMess := fmt.Sprintf("did not find deployment: %s environment: %s", deployName, environment)
 		glog.Error(errMess)

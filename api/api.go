@@ -99,6 +99,13 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
 
+	// Warn about deprecated fields in deploymentRequest and set default env if not set
+	warnings := ensurePropertyCompatibility(&deploymentRequest)
+	if len(deploymentRequest.Environment) == 0 {
+		deploymentRequest.Environment = "default"
+	}
+
+
 	if err != nil {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
 	}
@@ -111,9 +118,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	if err != nil {
 		return &appError{err, "unable to generate manifest/nais.yaml", http.StatusInternalServerError}
 	}
-
-	// Warn about deprecated fields in deploymentRequest
-	warnings := ensurePropertyCompatibility(&deploymentRequest, &manifest)
 
 	var fasitEnvironmentClass string
 	var naisResources []NaisResource
@@ -305,9 +309,7 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) 
 		return naisrequest.Deploy{}, fmt.Errorf("could not read deployment request body %s", err)
 	}
 
-	deploymentRequest := naisrequest.Deploy{
-		Environment: "default",
-	}
+	deploymentRequest := naisrequest.Deploy{}
 
 	if err = json.Unmarshal(requestBody, &deploymentRequest); err != nil {
 		return naisrequest.Deploy{}, fmt.Errorf("could not unmarshal body %s", err)
@@ -316,7 +318,7 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) 
 	return deploymentRequest, nil
 }
 
-func ensurePropertyCompatibility(deploy *naisrequest.Deploy, manifest *NaisManifest) []string {
+func ensurePropertyCompatibility(deploy *naisrequest.Deploy) []string {
 	var warnings []string
 
 	if len(deploy.Namespace) > 0 {
@@ -326,10 +328,6 @@ func ensurePropertyCompatibility(deploy *naisrequest.Deploy, manifest *NaisManif
 			deploy.Environment = deploy.Namespace
 			warnings = append(warnings, fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment))
 		}
-	}
-
-	if manifest.Team == "" {
-		warnings = append(warnings, "Starting August 1. (01/08) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after August 1.")
 	}
 
 	return warnings

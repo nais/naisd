@@ -235,6 +235,49 @@ func createPodSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest
 		container.VolumeMounts = append(container.VolumeMounts, createCertificateVolumeMount(spec, naisResources))
 	}
 
+	if manifest.Secrets {
+		podSpec.Volumes = append(podSpec.Volumes, k8score.Volume{
+			Name: "vault-secrets",
+			VolumeSource: k8score.VolumeSource{
+				EmptyDir: &k8score.EmptyDirVolumeSource{
+					Medium: k8score.StorageMediumMemory,
+				},
+			},
+		})
+
+		container := &podSpec.Containers[0]
+		mount := k8score.VolumeMount{
+			Name:      "vault-secrets",
+			MountPath: "/var/run/secrets/naisd.io/vault",
+		}
+		container.VolumeMounts = append(container.VolumeMounts, mount)
+
+		podSpec.InitContainers = append(podSpec.InitContainers, k8score.Container{
+			Name:         "vks",
+			VolumeMounts: []k8score.VolumeMount{mount},
+			Image:        "navikt/vks:22", //todo viper.Get
+			Env: []k8score.EnvVar{
+				{
+					Name:  "VKS_VAULT_ADDR",
+					Value: "https://vault-dev.adeo.no:8200",
+				},
+				{
+					Name:  "VKS_AUTH_PATH",
+					Value: "https://vault-dev.adeo.no:8200",
+				},
+				{
+					Name:  "VKS_KV_PATH",
+					Value: "https://vault-dev.adeo.no:8200" + spec.Application + spec.Environment,
+				},
+				{
+					Name:  "VKS_VAULT_ROLE",
+					Value: spec.Application + spec.Environment,
+				},
+			},
+		})
+
+	}
+
 	return podSpec, nil
 }
 

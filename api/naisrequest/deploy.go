@@ -1,7 +1,6 @@
 package naisrequest
 
 import (
-	"errors"
 	"fmt"
 	"github.com/nais/naisd/api/constant"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -43,11 +42,11 @@ func (r Deploy) Validate() []error {
 	}
 
 	if r.Zone != constant.ZONE_FSS && r.Zone != constant.ZONE_SBS && r.Zone != constant.ZONE_IAPP {
-		errs = append(errs, errors.New("zone can only be fss, sbs or iapp"))
+		errs = append(errs, fmt.Errorf("zone can only be fss, sbs or iapp"))
 	}
 
 	for _, e := range validation.IsDNS1123Label(r.Application) {
-		errs = append(errs, errors.New(fmt.Sprintf("invalid application name: %s", e)))
+		errs = append(errs, fmt.Errorf("invalid application name: %s", e))
 	}
 
 	return errs

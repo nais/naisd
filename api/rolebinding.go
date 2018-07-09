@@ -12,9 +12,9 @@ func (c clientHolder) createOrUpdateRoleBinding(subject app.Spec, roleRef v1.Rol
 
 	if _, err := roleBindingInterface.Get(subject.ResourceName(), k8smeta.GetOptions{}); err == nil {
 		return roleBindingInterface.Update(def)
-	} else {
-		return roleBindingInterface.Create(def)
 	}
+
+	return roleBindingInterface.Create(def)
 }
 
 func createRoleRef(kind, name string) v1.RoleRef {

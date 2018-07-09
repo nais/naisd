@@ -7,14 +7,16 @@ type Spec struct {
 	Team        string
 }
 
+// Determine and return in which `namespace` this resource should reside.
 func (s Spec) Namespace() string {
 	return s.Application
 }
 
+// Determine and return the `name` for this resource
 func (s Spec) ResourceName() string {
 	if s.Environment == "default" {
 		return "app"
-	} else {
-		return s.Environment
 	}
+
+	return s.Environment
 }

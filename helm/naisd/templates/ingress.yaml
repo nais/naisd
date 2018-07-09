@@ -1,7 +1,12 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: naisd
+  labels:
+    app: {{ template "naisd.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "naisd.fullname" . }}
 spec:
   rules:
   - host: "{{ .Values.ingress }}"
@@ -9,5 +14,5 @@ spec:
       paths:
       - path: /
         backend:
-          serviceName: naisd
+          serviceName: {{ template "naisd.fullname" . }}
           servicePort: 80

@@ -3,10 +3,11 @@ package api
 import (
 	"fmt"
 	"github.com/golang/glog"
-	"k8s.io/client-go/kubernetes"
+	"github.com/nais/naisd/api/app"
 	k8score "k8s.io/api/core/v1"
-	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sextensions "k8s.io/api/extensions/v1beta1"
+	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type DeployStatus int
@@ -25,13 +26,13 @@ func (d DeployStatus) String() string {
 }
 
 const (
-	Success    DeployStatus = iota
+	Success DeployStatus = iota
 	InProgress
 	Failed
 )
 
 type DeploymentStatusViewer interface {
-	DeploymentStatusView(namespace string, deployName string) (DeployStatus, DeploymentStatusView, error)
+	DeploymentStatusView(environment, deployName string) (DeployStatus, DeploymentStatusView, error)
 }
 
 type deploymentStatusViewerImpl struct {
@@ -44,12 +45,13 @@ func NewDeploymentStatusViewer(clientset kubernetes.Interface) DeploymentStatusV
 	}
 }
 
-func (d deploymentStatusViewerImpl) DeploymentStatusView(namespace string, deployName string) (DeployStatus, DeploymentStatusView, error) {
-	dep, err := d.client.ExtensionsV1beta1().Deployments(namespace).Get(deployName, k8smeta.GetOptions{})
+func (d deploymentStatusViewerImpl) DeploymentStatusView(environment, deployName string) (DeployStatus, DeploymentStatusView, error) {
+	spec := app.Spec{Application: deployName, Environment: environment}
+	dep, err := d.client.ExtensionsV1beta1().Deployments(deployName).Get(spec.ResourceName(), k8smeta.GetOptions{})
 	if err != nil {
-		errMess := fmt.Sprintf("did not find deployment: %s in namespace: %s", deployName, namespace)
+		errMess := fmt.Sprintf("did not find deployment: %s environment: %s", deployName, environment)
 		glog.Error(errMess)
-		return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s in namespace: %s", deployName, namespace)
+		return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s environment: %s", deployName, environment)
 	}
 
 	status, view := deploymentStatusAndView(*dep)

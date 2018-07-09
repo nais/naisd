@@ -18,13 +18,13 @@ func TestSensuClient(t *testing.T) {
 			FasitUsername:    "username",
 			FasitPassword:    "password",
 			OnBehalfOf:       "onbehalfof",
-			Namespace:        "nais",
+			Environment:      "nais",
 		}
 		clusterName := "nais-dev"
 
 		message, err := GenerateDeployMessage(&deploymentRequest, &clusterName)
 		assert.NoError(t, err)
-		expectedMessagePrefix := "{\"name\":\"naisd.deployment\",\"type\":\"metric\",\"handlers\":[\"events_nano\"],\"output\":\"naisd.deployment,application=TestApp,clusterName=nais-dev,namespace=nais version=\\\"42.0.0\\\""
+		expectedMessagePrefix := "{\"name\":\"naisd.deployment\",\"type\":\"metric\",\"handlers\":[\"events_nano\"],\"output\":\"naisd.deployment,application=TestApp,clusterName=nais-dev,environment=nais version=\\\"42.0.0\\\""
 		assert.Equal(t, true, strings.HasPrefix(string(message), expectedMessagePrefix))
 	})
 }

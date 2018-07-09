@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"github.com/nais/naisd/api/naisrequest"
+	"github.com/nais/naisd/api/app"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -10,14 +10,14 @@ import (
 	k8srest "k8s.io/client-go/rest"
 )
 
-func createRedisFailoverDef(deploymentRequest naisrequest.Deploy, team string) *redisapi.RedisFailover {
+func createRedisFailoverDef(spec app.Spec) *redisapi.RedisFailover {
 	replicas := int32(3)
 	resources := redisapi.RedisFailoverResources{
 		Limits:   redisapi.CPUAndMem{Memory: "100Mi"},
 		Requests: redisapi.CPUAndMem{CPU: "100m"},
 	}
 
-	spec := redisapi.RedisFailoverSpec{
+	redisSpec := redisapi.RedisFailoverSpec{
 		HardAntiAffinity: false,
 		Sentinel: redisapi.SentinelSettings{
 			Replicas:  replicas,
@@ -30,12 +30,12 @@ func createRedisFailoverDef(deploymentRequest naisrequest.Deploy, team string) *
 		},
 	}
 
-	meta := createObjectMeta(deploymentRequest.Application, deploymentRequest.Namespace, team)
-	return &redisapi.RedisFailover{Spec: spec, ObjectMeta: meta}
+	meta := generateObjectMeta(spec)
+	return &redisapi.RedisFailover{Spec: redisSpec, ObjectMeta: meta}
 }
 
-func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, appName string) (*redisapi.RedisFailover, error) {
-	failover, err := failoverInterface.Get(appName, k8smeta.GetOptions{})
+func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, resourceName string) (*redisapi.RedisFailover, error) {
+	failover, err := failoverInterface.Get(resourceName, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -47,8 +47,8 @@ func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, a
 	}
 }
 
-func updateOrCreateRedisSentinelCluster(deploymentRequest naisrequest.Deploy, team string) (*redisapi.RedisFailover, error) {
-	newFailover := createRedisFailoverDef(deploymentRequest, team)
+func updateOrCreateRedisSentinelCluster(spec app.Spec) (*redisapi.RedisFailover, error) {
+	newFailover := createRedisFailoverDef(spec)
 
 	config, err := k8srest.InClusterConfig()
 	if err != nil {
@@ -60,7 +60,7 @@ func updateOrCreateRedisSentinelCluster(deploymentRequest naisrequest.Deploy, te
 		return nil, fmt.Errorf("can't create new Redis client for InClusterConfig: %s", err)
 	}
 
-	existingFailover, err := getExistingFailover(redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace), deploymentRequest.Application)
+	existingFailover, err := getExistingFailover(redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace()), spec.ResourceName())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing redis failover: %s", err)
 	}
@@ -68,8 +68,8 @@ func updateOrCreateRedisSentinelCluster(deploymentRequest naisrequest.Deploy, te
 	if existingFailover != nil {
 		existingFailover.Spec = newFailover.Spec
 		existingFailover.ObjectMeta = mergeObjectMeta(existingFailover.ObjectMeta, newFailover.ObjectMeta)
-		return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Update(existingFailover)
+		return redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace()).Update(existingFailover)
 	}
 
-	return redisclient.RedisFailoversGetter(client).RedisFailovers(deploymentRequest.Namespace).Create(newFailover)
+	return redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace()).Create(newFailover)
 }

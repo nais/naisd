@@ -68,8 +68,10 @@ func TestManifestUsesDefaultValues(t *testing.T) {
 		File("testdata/nais_minimal.yaml")
 
 	manifest, err := GenerateManifest(naisrequest.Deploy{ManifestUrl: repopath})
+	manifest.Team = teamName
 
 	assert.NoError(t, err)
+	assert.Equal(t, "aura", manifest.Team)
 	assert.Equal(t, "docker.adeo.no:5000/", manifest.Image)
 	assert.Equal(t, 8080, manifest.Port)
 	assert.Equal(t, "isAlive", manifest.Healthcheck.Liveness.Path)
@@ -93,7 +95,6 @@ func TestManifestUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, 1, manifest.Healthcheck.Readiness.Timeout)
 	assert.Equal(t, false, manifest.Ingress.Disabled)
 	assert.Empty(t, manifest.PreStopHookPath)
-	assert.Empty(t, manifest.Team)
 }
 
 func TestManifestUsesPartialDefaultValues(t *testing.T) {
@@ -136,7 +137,7 @@ func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 			Reply(404)
 		gock.New(urls[2]).
 			Reply(200).
-			JSON(map[string]string{"image": application})
+			JSON(map[string]string{"image": application, "team": teamName})
 
 		manifest, err := GenerateManifest(naisrequest.Deploy{Application: application, Version: version})
 		assert.NoError(t, err)
@@ -147,7 +148,7 @@ func TestGenerateManifestWithoutPassingRepoUrl(t *testing.T) {
 		defer gock.Off()
 		gock.New(urls[0]).
 			Reply(200).
-			JSON(map[string]string{"image": application})
+			JSON(map[string]string{"image": application, "team": teamName})
 		gock.New(urls[1]).
 			Reply(200).
 			JSON(map[string]string{"image": "incorrect"})
@@ -211,13 +212,13 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 		Image: "myapp:1",
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max:                    4,
-			Min:                    5,
+			Max: 4,
+			Min: 5,
 		},
 	}
 	errors := ValidateManifest(invalidConfig)
 
-	assert.Equal(t, 7, len(errors.Errors))
+	assert.Equal(t, 8, len(errors.Errors))
 	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
 	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[1].ErrorMessage)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[2].ErrorMessage)
@@ -225,14 +226,15 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[4].ErrorMessage)
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[5].ErrorMessage)
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[6].ErrorMessage)
+	assert.Equal(t, "Team must be specified", errors.Errors[7].ErrorMessage)
 }
 
 func TestInvalidCpuThreshold(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 5,
-			Max:                    4,
-			Min:                    5,
+			Max: 4,
+			Min: 5,
 		},
 	}
 	errors := validateCpuThreshold(invalidManifest)
@@ -243,8 +245,8 @@ func TestMinCannotBeZero(t *testing.T) {
 	invalidManifest := NaisManifest{
 		Replicas: Replicas{
 			CpuThresholdPercentage: 50,
-			Max:                    4,
-			Min:                    0,
+			Max: 4,
+			Min: 0,
 		},
 	}
 	errors := validateReplicasMin(invalidManifest)
@@ -393,4 +395,22 @@ func TestValidateResource(t *testing.T) {
 	assert.Equal(t, "Alias and ResourceType must be specified", err.ErrorMessage)
 	assert.Equal(t, "Alias and ResourceType must be specified", err2.ErrorMessage)
 	assert.Nil(t, noErr)
+}
+
+func TestValidateTeamName(t *testing.T) {
+	t.Run("Team name must be specified", func(t *testing.T) {
+		noTeamManifest := NaisManifest{}
+
+		err := validateTeamName(noTeamManifest)
+		assert.Equal(t, "Team must be specified", err.ErrorMessage)
+	})
+
+	t.Run("Valid team name should validate", func(t *testing.T) {
+		validManifest := NaisManifest{
+			Team: "valid-team",
+		}
+
+		err := validateTeamName(validManifest)
+		assert.Nil(t, err)
+	})
 }

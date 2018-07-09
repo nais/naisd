@@ -617,11 +617,11 @@ func TestGenerateScope(t *testing.T) {
 }
 
 func TestGetFasitEnvironment(t *testing.T) {
-	namespace := "namespace"
+	fasitEnvironment := "environment"
 
 	defer gock.Off()
 	gock.New("https://fasit.local").
-		Get("/api/v2/environments/" + namespace).
+		Get("/api/v2/environments/" + fasitEnvironment).
 		Reply(200).
 		JSON(map[string]string{"environmentclass": "u"})
 
@@ -632,7 +632,7 @@ func TestGetFasitEnvironment(t *testing.T) {
 		assert.False(t, gock.IsDone())
 	})
 	t.Run("Returns no error if environment is found", func(t *testing.T) {
-		_, err := fasit.GetFasitEnvironmentClass(namespace)
+		_, err := fasit.GetFasitEnvironmentClass(fasitEnvironment)
 		assert.NoError(t, err)
 		assert.True(t, gock.IsDone())
 	})

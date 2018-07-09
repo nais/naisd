@@ -1,20 +1,31 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: naisd
+  labels:
+    #app: {{ template "naisd.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "naisd.fullname" . }}
 spec:
   selector:
     matchLabels:
-      app: naisd
+      #app: {{ template "naisd.name" . }}
+      chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+      heritage: {{ .Release.Service }}
+      release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: naisd
+        #app: {{ template "naisd.name" . }}
+        chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
       annotations:
         prometheus.io/scrape: "true"
         nais.io/logformat: glog
     spec:
-      serviceAccount: naisd
+      serviceAccount: {{ template "naisd.fullname" . }}
       containers:
       - name: naisd
         image: "{{ .Values.repository }}:{{ .Values.version }}"

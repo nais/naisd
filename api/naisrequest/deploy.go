@@ -1,23 +1,23 @@
 package naisrequest
 
 import (
-	"errors"
 	"fmt"
 	"github.com/nais/naisd/api/constant"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 type Deploy struct {
-	Application          string `json:"application"`
-	Version              string `json:"version"`
-	Zone                 string `json:"zone"`
-	ManifestUrl          string `json:"manifesturl,omitempty"`
-	SkipFasit            bool   `json:"skipFasit,omitempty"`
-	FasitEnvironment     string `json:"fasitEnvironment,omitempty"`
-	FasitUsername        string `json:"fasitUsername,omitempty"`
-	FasitPassword        string `json:"fasitPassword,omitempty"`
-	OnBehalfOf           string `json:"onbehalfof,omitempty"`
-	Namespace            string `json:"namespace"`
-	ApplicationNamespace bool   `json:"applicationnamespace"`
+	Application      string `json:"application"`
+	Version          string `json:"version"`
+	Zone             string `json:"zone"`
+	ManifestUrl      string `json:"manifesturl,omitempty"`
+	SkipFasit        bool   `json:"skipFasit,omitempty"`
+	FasitEnvironment string `json:"fasitEnvironment,omitempty"`
+	FasitUsername    string `json:"fasitUsername,omitempty"`
+	FasitPassword    string `json:"fasitPassword,omitempty"`
+	OnBehalfOf       string `json:"onbehalfof,omitempty"`
+	Namespace        string `json:"namespace,omitempty"`
+	Environment      string `json:"environment"`
 }
 
 func (r Deploy) Validate() []error {
@@ -25,7 +25,7 @@ func (r Deploy) Validate() []error {
 		"application": &r.Application,
 		"version":     &r.Version,
 		"zone":        &r.Zone,
-		"namespace":   &r.Namespace,
+		"environment": &r.Environment,
 	}
 
 	if !r.SkipFasit {
@@ -42,7 +42,11 @@ func (r Deploy) Validate() []error {
 	}
 
 	if r.Zone != constant.ZONE_FSS && r.Zone != constant.ZONE_SBS && r.Zone != constant.ZONE_IAPP {
-		errs = append(errs, errors.New("zone can only be fss, sbs or iapp"))
+		errs = append(errs, fmt.Errorf("zone can only be fss, sbs or iapp"))
+	}
+
+	for _, e := range validation.IsDNS1123Label(r.Application) {
+		errs = append(errs, fmt.Errorf("invalid application name: %s", e))
 	}
 
 	return errs

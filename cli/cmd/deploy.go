@@ -73,6 +73,7 @@ var deployCmd = &cobra.Command{
 		deployRequest := naisrequest.Deploy{
 			FasitUsername: os.Getenv("FASIT_USERNAME"),
 			FasitPassword: os.Getenv("FASIT_PASSWORD"),
+			Environment:   "default",
 		}
 
 		var cluster string
@@ -80,7 +81,7 @@ var deployCmd = &cobra.Command{
 			"app":               &deployRequest.Application,
 			"version":           &deployRequest.Version,
 			"zone":              &deployRequest.Zone,
-			"namespace":         &deployRequest.Namespace,
+			"environment":       &deployRequest.Environment,
 			"fasit-environment": &deployRequest.FasitEnvironment,
 			"fasit-username":    &deployRequest.FasitUsername,
 			"fasit-password":    &deployRequest.FasitPassword,
@@ -161,7 +162,8 @@ var deployCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 		} else if wait {
 			start := time.Now()
-			if err := waitForDeploy(clusterUrl + StatusEndpoint + "/" + deployRequest.Namespace + "/" + deployRequest.Application); err != nil {
+
+			if err := waitForDeploy(fmt.Sprintf("%s%s/%s/%s", clusterUrl, StatusEndpoint, deployRequest.Application, deployRequest.Environment)); err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}

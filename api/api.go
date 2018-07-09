@@ -1,16 +1,17 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
 	ver "github.com/nais/naisd/api/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
 	"goji.io/pat"
+	"io"
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
@@ -77,8 +78,8 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 	mux.Handle(pat.Get("/version"), appHandler(api.version))
-	mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
-	mux.Handle(pat.Delete("/app/:namespace/:deployName"), appHandler(api.deleteApplication))
+	mux.Handle(pat.Get("/deploystatus/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
+	mux.Handle(pat.Delete("/app/:deployName/:environment"), appHandler(api.deleteApplication))
 	return mux
 }
 
@@ -96,31 +97,7 @@ func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 
-	requestBody, err := ioutil.ReadAll(r.Body)
-	deploymentRequest, err := unmarshalDeploymentRequest(requestBody)
-
-	if deploymentRequest.ApplicationNamespace {
-		glog.Info("Forwarding request to daemon-appns because 'ApplicationNamespace' is true in DeploymentRequest.")
-
-		noProxyClient := http.Client{
-			Transport: &http.Transport{
-				Proxy: nil,
-			},
-		}
-		request, err := noProxyClient.Post("http://nais-naisd-appns-naisd/deploy", "application/json", bytes.NewReader(requestBody))
-		if err != nil {
-			return &appError{err, "naisd(application namespace version) was unable to deploy", request.StatusCode}
-		}
-
-		body, readErr := ioutil.ReadAll(request.Body)
-		if readErr != nil {
-			return &appError{readErr, "failed while reading response from naisd(application namespace version))", 500}
-		}
-
-		w.WriteHeader(200)
-		w.Write(body)
-		return nil
-	}
+	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
 
 	if err != nil {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
@@ -134,6 +111,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	if err != nil {
 		return &appError{err, "unable to generate manifest/nais.yaml", http.StatusInternalServerError}
 	}
+
+	// Warn about deprecated fields in deploymentRequest
+	warnings := ensurePropertyCompatibility(&deploymentRequest, &manifest)
 
 	var fasitEnvironmentClass string
 	var naisResources []NaisResource
@@ -169,7 +149,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
 	if !deploymentRequest.SkipFasit && hasResources(manifest) {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Namespace, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Environment, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
 			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}
@@ -177,14 +157,15 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	NotifySensuAboutDeploy(&deploymentRequest, &api.ClusterName)
 
 	w.WriteHeader(200)
-	w.Write(createResponse(deploymentResult))
+	w.Write(createResponse(deploymentResult, warnings))
 	return nil
 }
+
 func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
-	namespace := pat.Param(r, "namespace")
+	environment := pat.Param(r, "environment")
 	deployName := pat.Param(r, "deployName")
 
-	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(namespace, deployName)
+	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(environment, deployName)
 
 	if err != nil {
 		return &appError{err, "deployment not found ", http.StatusNotFound}
@@ -225,10 +206,11 @@ func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
 }
 
 func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appError {
-	namespace := pat.Param(r, "namespace")
-	deployName := pat.Param(r, "deployName")
+	environment := pat.Param(r, "environment")
+	application := pat.Param(r, "deployName")
 
-	result, err := deleteK8sResouces(namespace, deployName, api.Clientset)
+	spec := app.Spec{Application: application, Environment: environment}
+	result, err := deleteK8sResouces(spec, api.Clientset)
 
 	response := ""
 	if len(result) > 0 {
@@ -242,7 +224,7 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 		return &appError{err, fmt.Sprintf("there were errors when trying to delete app: %+v", response), http.StatusInternalServerError}
 	}
 
-	glog.Infof("Deleted application %s in %s\n", deployName, namespace)
+	glog.Infof("Deleted application %s-%s in %s\n", application, environment)
 
 	w.Write([]byte(response))
 	w.WriteHeader(http.StatusOK)
@@ -269,7 +251,7 @@ func hasResources(manifest NaisManifest) bool {
 	return true
 }
 
-func createResponse(deploymentResult DeploymentResult) []byte {
+func createResponse(deploymentResult DeploymentResult, warnings []string) []byte {
 
 	response := "result: \n"
 
@@ -294,15 +276,61 @@ func createResponse(deploymentResult DeploymentResult) []byte {
 	if deploymentResult.Redis != nil {
 		response += "- created redis\n"
 	}
+	if deploymentResult.Namespace != nil {
+		response += "- created namespace\n"
+	}
+	if deploymentResult.ServiceAccount != nil {
+		response += "- created serviceaccount\n"
+	}
+	if deploymentResult.RoleBinding != nil {
+		response += "- created rolebinding\n"
+	}
+	if len(deploymentResult.DeletedOldApp) > 0 {
+		response += "- deleted old app: \n" + deploymentResult.DeletedOldApp
+	}
+
+	if len(warnings) > 0 {
+		response += "\nWarnings:\n"
+		for _, warning := range warnings {
+			response += fmt.Sprintf("- %s\n", warning)
+		}
+	}
 
 	return []byte(response)
 }
 
-func unmarshalDeploymentRequest(requestBody []byte) (naisrequest.Deploy, error) {
-	var deploymentRequest naisrequest.Deploy
-	if err := json.Unmarshal(requestBody, &deploymentRequest); err != nil {
+func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) {
+	requestBody, err := ioutil.ReadAll(body)
+	if err != nil {
+		return naisrequest.Deploy{}, fmt.Errorf("could not read deployment request body %s", err)
+	}
+
+	deploymentRequest := naisrequest.Deploy{
+		Environment: "default",
+	}
+
+	if err = json.Unmarshal(requestBody, &deploymentRequest); err != nil {
 		return naisrequest.Deploy{}, fmt.Errorf("could not unmarshal body %s", err)
 	}
 
 	return deploymentRequest, nil
+}
+
+func ensurePropertyCompatibility(deploy *naisrequest.Deploy, manifest *NaisManifest) []string {
+	var warnings []string
+
+	if len(deploy.Namespace) > 0 {
+		if len(deploy.Environment) > 0 {
+			warnings = append(warnings, "Specifying namespace is deprecated as each application now has it's own namespace, and won't make any difference for this deploy. Please adapt your pipelines to *only* use the field 'Environment'.")
+		} else {
+			deploy.Environment = deploy.Namespace
+			warnings = append(warnings, fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment))
+		}
+	}
+
+	if manifest.Team == "" {
+		warnings = append(warnings, "Starting August 1. (01/08) team name is a mandatory part of the nais manifest. Please update your applications manifest to include 'team: yourTeamName' in order to be able to deploy after August 1.")
+	}
+
+	return warnings
 }

@@ -133,6 +133,7 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 
 func createPodObjectMetaWithAnnotations(spec app.Spec, manifest NaisManifest, istioEnabled bool) k8smeta.ObjectMeta {
 	objectMeta := generateObjectMeta(spec)
+	delete(objectMeta.Labels, "team") // Don't add team labels to pods as old replicasets exist without this label.
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
 		"prometheus.io/port":   DefaultPortName,
@@ -594,6 +595,7 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 		Application: deploymentRequest.Application,
 		Environment: deploymentRequest.Environment,
 		Team:        manifest.Team,
+		ApplicationNamespaced: deploymentRequest.ApplicationNamespaced,
 	}
 
 	namespace, err := client.createNamespace(spec.Namespace(), spec.Team)
@@ -659,11 +661,13 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	deploymentResult.AlertsConfigMap = alertsConfigMap
 
 	// This has to happen before we create ingress, otherwise we risk sending requests to the new app before it's ready.
-	deleteOldAppStatus, err := client.DeleteOldApp(spec, deploymentRequest, manifest)
-	if err != nil {
-		return deploymentResult, fmt.Errorf("failed while deleting old application: %s", err)
+	if deploymentRequest.ApplicationNamespaced {
+		deleteOldAppStatus, err := client.DeleteOldApp(spec, deploymentRequest, manifest)
+		if err != nil {
+			return deploymentResult, fmt.Errorf("failed while deleting old application: %s", err)
+		}
+		deploymentResult.DeletedOldApp = deleteOldAppStatus
 	}
-	deploymentResult.DeletedOldApp = deleteOldAppStatus
 
 	if !manifest.Ingress.Disabled {
 		ingress, err := createOrUpdateIngress(spec, deploymentRequest, clusterSubdomain, resources, k8sClient)
@@ -672,7 +676,6 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 		}
 		deploymentResult.Ingress = ingress
 	}
-
 
 	return deploymentResult, err
 }
@@ -755,12 +758,8 @@ func createService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Serv
 		return nil, fmt.Errorf("unable to get existing service: %s", err)
 	}
 
-	if existingService != nil {
-		return nil, nil // we have done nothing
-	}
-
 	serviceDef := createServiceDef(spec)
-	return createServiceResource(serviceDef, spec.Namespace(), k8sClient)
+	return createOrUpdateServiceResource(serviceDef, spec.Namespace(), k8sClient)
 }
 
 func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
@@ -900,8 +899,14 @@ func createOrUpdateDeploymentResource(deploymentSpec *k8sextensions.Deployment, 
 	}
 }
 
-func createServiceResource(serviceSpec *k8score.Service, namespace string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	return k8sClient.CoreV1().Services(namespace).Create(serviceSpec)
+func createOrUpdateServiceResource(serviceSpec *k8score.Service, namespace string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+	serviceInterface := k8sClient.CoreV1().Services(namespace)
+
+	if serviceSpec.ResourceVersion != "" {
+		return serviceInterface.Update(serviceSpec)
+	} else {
+		return serviceInterface.Create(serviceSpec)
+	}
 }
 
 func createOrUpdateSecretResource(secretSpec *k8score.Secret, namespace string, k8sClient kubernetes.Interface) (*k8score.Secret, error) {

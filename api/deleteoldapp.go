@@ -49,7 +49,7 @@ func (c clientHolder) DeleteOldApp(spec app.Spec, deploymentRequest naisrequest.
 
 		_, err = c.redirectOldServiceToNewApp(service, spec)
 		if err != nil {
-			return "  - failed while forwarding traffic to new Service. aborting deletion of old app", err
+			return "  - failed while forwarding traffic to new service. aborting deletion of old app", err
 		}
 	} else {
 		return "", nil
@@ -60,32 +60,33 @@ func (c clientHolder) DeleteOldApp(spec app.Spec, deploymentRequest naisrequest.
 	}
 
 	// This is a "trick" to make it delete the old resources created by the old version naisd prior to app-namespaces.
-	oldAppSpec := app.Spec{
-		Application: spec.Environment,
-		Environment: spec.Application,
+	appInEnvironmentNamespace := app.Spec{
+		Application: spec.Application,
+		Environment: spec.Environment,
 		Team:        spec.Team,
+		ApplicationNamespaced: false,
 	}
 
 	result := ""
-	result, _ = deleteDeployment(oldAppSpec, c.client)
+	result, _ = deleteDeployment(appInEnvironmentNamespace, c.client)
 	joinedResult := fmt.Sprintln("  - " + result)
 
-	result, _ = deleteAutoscaler(oldAppSpec, c.client)
+	result, _ = deleteAutoscaler(appInEnvironmentNamespace, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, _ = deleteConfigMapRules(oldAppSpec, c.client)
+	result, _ = deleteConfigMapRules(appInEnvironmentNamespace, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, _ = deleteIngress(oldAppSpec, c.client)
+	result, _ = deleteIngress(appInEnvironmentNamespace, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, _ = deleteRedisFailover(oldAppSpec, c.client)
+	result, _ = deleteRedisFailover(appInEnvironmentNamespace, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, _ = deleteSecret(oldAppSpec, c.client)
+	result, _ = deleteSecret(appInEnvironmentNamespace, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	err = c.DeleteServiceAccount(oldAppSpec)
+	err = c.DeleteServiceAccount(appInEnvironmentNamespace)
 	if err != nil {
 		joinedResult += fmt.Sprintln("  - service account: OK")
 	} else {

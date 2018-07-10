@@ -80,14 +80,14 @@ func newDefaultManifest() NaisManifest {
 }
 
 func TestService(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}
 	service := createServiceDef(spec)
 	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)
 
 	t.Run("Fetching nonexistant service yields nil and no error", func(t *testing.T) {
-		nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
+		nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName, ApplicationNamespaced: true}
 		nonExistantService, err := getExistingService(nonExistingSpec, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nonExistantService)
@@ -253,8 +253,8 @@ func TestDeployment(t *testing.T) {
 		},
 	}
 
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}
 	deployment, err := createDeploymentDef(spec, naisResources, newDefaultManifest(), naisrequest.Deploy{Environment: environment, Application: appName, Version: version}, nil, false)
 
 	assert.Nil(t, err)
@@ -264,7 +264,7 @@ func TestDeployment(t *testing.T) {
 	clientset := fake.NewSimpleClientset(deployment)
 
 	t.Run("Nonexistant deployment yields empty string and no error", func(t *testing.T) {
-		nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
+		nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName, ApplicationNamespaced: true}
 		nilValue, err := getExistingDeployment(nonExistingSpec, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
@@ -569,9 +569,9 @@ func TestIngress(t *testing.T) {
 	appName := "appname"
 	environment := "default"
 	subDomain := "example.no"
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName}
-	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}
+	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName, ApplicationNamespaced: true}
 
 	ingress := createIngressDef(spec)
 	ingress.ObjectMeta.ResourceVersion = resourceVersion
@@ -603,7 +603,7 @@ func TestIngress(t *testing.T) {
 
 	t.Run("when ingress is created in non-default environment, hostname is postfixed with environment", func(t *testing.T) {
 		otherEnvironment := "nondefault"
-		otherEnvSpec := app.Spec{Application: otherAppName, Environment: otherEnvironment, Team: otherTeamName}
+		otherEnvSpec := app.Spec{Application: otherAppName, Environment: otherEnvironment, Team: otherTeamName, ApplicationNamespaced: true}
 
 		ingress, err := createOrUpdateIngress(otherEnvSpec, naisrequest.Deploy{Environment: otherEnvironment, Application: otherAppName}, subDomain, []NaisResource{}, clientset)
 		assert.NoError(t, err)
@@ -686,9 +686,9 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 	files1 := map[string][]byte{fileKey1: fileValue1}
 	files2 := map[string][]byte{fileKey2: fileValue2}
 
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
-	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}
 
 	naisResources := []NaisResource{
 		{
@@ -771,9 +771,9 @@ func TestCreateOrUpdateSecret(t *testing.T) {
 }
 
 func TestCreateOrUpdateAutoscaler(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
-	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}
 
 	autoscaler := createOrUpdateAutoscalerDef(spec, 1, 2, 3, nil)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
@@ -827,7 +827,7 @@ func TestCreateOrUpdateAutoscaler(t *testing.T) {
 }
 
 func TestDNS1123ValidResourceNames(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: "key_underscore_Upper", Team: teamName}
+	spec := app.Spec{Application: appName, Environment: "key_underscore_Upper", Team: teamName, ApplicationNamespaced: true}
 
 	naisResource := []NaisResource{
 		{
@@ -858,15 +858,16 @@ func TestDNS1123ValidResourceNames(t *testing.T) {
 }
 
 func TestCreateK8sResources(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
 
 	deploymentRequest := naisrequest.Deploy{
-		Application:      appName,
-		Version:          version,
-		FasitEnvironment: environment,
-		ManifestUrl:      "http://repo.com/app",
-		Zone:             "zone",
-		Environment:      environment,
+		Application:           spec.Application,
+		Version:               version,
+		FasitEnvironment:      spec.Environment,
+		ManifestUrl:           "http://repo.com/app",
+		Zone:                  "zone",
+		Environment:           spec.Environment,
+		ApplicationNamespaced: true,
 	}
 
 	manifest := NaisManifest{
@@ -955,7 +956,7 @@ func TestCreateK8sResources(t *testing.T) {
 }
 
 func TestCheckForDuplicates(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
 
 	t.Run("duplicate fasitEnvironment variables should error", func(t *testing.T) {
 		resource1 := NaisResource{
@@ -976,8 +977,9 @@ func TestCheckForDuplicates(t *testing.T) {
 		}
 
 		deploymentRequest := naisrequest.Deploy{
-			Application: "myapp",
-			Version:     "1",
+			Application:           "myapp",
+			Version:               "1",
+			ApplicationNamespaced: true,
 		}
 
 		_, err := createEnvironmentVariables(spec, deploymentRequest, NaisManifest{}, []NaisResource{resource1, resource2})
@@ -1019,12 +1021,13 @@ func TestCheckForDuplicates(t *testing.T) {
 }
 
 func TestInjectProxySettings(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
 
 	t.Run("proxy settings not be injected in the pod unless requested through manifest", func(t *testing.T) {
 		deploymentRequest := naisrequest.Deploy{
-			Application: "myapp",
-			Version:     "1",
+			Application:           "myapp",
+			Version:               "1",
+			ApplicationNamespaced: true,
 		}
 
 		manifest := NaisManifest{
@@ -1045,8 +1048,9 @@ func TestInjectProxySettings(t *testing.T) {
 
 	t.Run("proxy settings should be injected in the pod if requested through manifest", func(t *testing.T) {
 		deploymentRequest := naisrequest.Deploy{
-			Application: "myapp",
-			Version:     "1",
+			Application:           "myapp",
+			Version:               "1",
+			ApplicationNamespaced: true,
 		}
 
 		manifest := NaisManifest{
@@ -1079,7 +1083,7 @@ func TestCreateSBSPublicHostname(t *testing.T) {
 }
 
 func TestCreateObjectMeta(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
 
 	t.Run("Test required metadata field values", func(t *testing.T) {
 		objectMeta := generateObjectMeta(spec)
@@ -1092,8 +1096,8 @@ func TestCreateObjectMeta(t *testing.T) {
 }
 
 func TestMergeObjectMeta(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName}
+	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}
 
 	t.Run("Test merging objectmeta", func(t *testing.T) {
 		existingObjectMeta := generateObjectMeta(spec)
@@ -1143,20 +1147,22 @@ func TestTeamNamespaceMultipleDeploys(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 
 	t.Run("Test deploying same application to different environments", func(t *testing.T) {
-		specT0 := app.Spec{Application: "application", Environment: "t0", Team: "team"}
+		specT0 := app.Spec{Application: "application", Environment: "t0", Team: "team", ApplicationNamespaced: true}
 		deploymentRequest1 := naisrequest.Deploy{
-			Environment: "t0",
-			Application: "application",
-			Version:     "1",
+			Environment:           "t0",
+			Application:           "application",
+			Version:               "1",
+			ApplicationNamespaced: true,
 		}
 
 		response1, err1 := createOrUpdateK8sResources(deploymentRequest1, manifest, naisResources, "nais.unittest.no", false, clientset)
 
-		specT1 := app.Spec{Application: "application", Environment: "t1", Team: "team"}
+		specT1 := app.Spec{Application: "application", Environment: "t1", Team: "team", ApplicationNamespaced: true}
 		deploymentRequest2 := naisrequest.Deploy{
-			Environment: "t1",
-			Application: "application",
-			Version:     "1",
+			Environment:           "t1",
+			Application:           "application",
+			Version:               "1",
+			ApplicationNamespaced: true,
 		}
 
 		response2, err2 := createOrUpdateK8sResources(deploymentRequest2, manifest, naisResources, "nais.unittest.no", false, clientset)

@@ -127,7 +127,6 @@ func deleteIngress(spec app.Spec, k8sClient kubernetes.Interface) (result string
 
 func deleteRedisFailover(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	redisFailoverspec := spec
-	redisFailoverspec.Environment = "rfs-" + spec.ResourceName()
 
 	svc, err := getExistingService(redisFailoverspec, k8sClient)
 	if svc == nil {

@@ -10,39 +10,39 @@ import (
 
 const (
 	MountPath             = "/var/run/secrets/naisd.io/vault"
-	envVaultAddr          = "NAISD_VAULT_ADDR"
-	envInitContainerImage = "NAISD_VAULT_INIT_CONTAINER_IMAGE"
-	envVaultAuthPath      = "NAISD_VAULT_AUTH_PATH"
-	envVaultKVPath        = "NAISD_VAULT_KV_PATH"
-	envVaultEnabled       = "NAISD_VAULT_ENABLED" //temp feature flag
+	EnvVaultAddr          = "NAISD_VAULT_ADDR"
+	EnvInitContainerImage = "NAISD_VAULT_INIT_CONTAINER_IMAGE"
+	EnvVaultAuthPath      = "NAISD_VAULT_AUTH_PATH"
+	EnvVaultKVPath        = "NAISD_VAULT_KV_PATH"
+	EnvVaultEnabled       = "NAISD_VAULT_ENABLED" //temp feature flag
 
 )
 
-type vaultConfig struct {
+type config struct {
 	vaultAddr          string
 	initContainerImage string
 	authPath           string
 	kvPath             string
 }
 
-func (c vaultConfig) validate() (bool, error) {
+func (c config) validate() (bool, error) {
 
 	var result = &multierror.Error{}
 
 	if len(c.vaultAddr) == 0 {
-		multierror.Append(result, fmt.Errorf("vault address not found in environment. Missing %s", envVaultAddr))
+		multierror.Append(result, fmt.Errorf("vault address not found in environment. Missing %s", EnvVaultAddr))
 	}
 
 	if len(c.initContainerImage) == 0 {
-		multierror.Append(result, fmt.Errorf("vault address not found in environment. Missing %s", envInitContainerImage))
+		multierror.Append(result, fmt.Errorf("vault address not found in environment. Missing %s", EnvInitContainerImage))
 	}
 
 	if len(c.authPath) == 0 {
-		multierror.Append(result, fmt.Errorf("auth path not found in environment. Missing %s", envVaultAuthPath))
+		multierror.Append(result, fmt.Errorf("auth path not found in environment. Missing %s", EnvVaultAuthPath))
 	}
 
 	if len(c.kvPath) == 0 {
-		multierror.Append(result, fmt.Errorf("kv path not found in environment. Missing %s", envVaultKVPath))
+		multierror.Append(result, fmt.Errorf("kv path not found in environment. Missing %s", EnvVaultKVPath))
 	}
 
 	return result.ErrorOrNil() == nil, result.ErrorOrNil()
@@ -50,20 +50,20 @@ func (c vaultConfig) validate() (bool, error) {
 }
 
 func init() {
-	viper.BindEnv(envVaultAddr, envVaultAddr)
-	viper.BindEnv(envInitContainerImage, envInitContainerImage)
-	viper.BindEnv(envVaultAuthPath, envVaultAuthPath)
-	viper.BindEnv(envVaultKVPath, envVaultKVPath)
+	viper.BindEnv(EnvVaultAddr, EnvVaultAddr)
+	viper.BindEnv(EnvInitContainerImage, EnvInitContainerImage)
+	viper.BindEnv(EnvVaultAuthPath, EnvVaultAuthPath)
+	viper.BindEnv(EnvVaultKVPath, EnvVaultKVPath)
 
 	//temp feature flag. Disable by default
-	viper.BindEnv(envVaultEnabled, envVaultEnabled)
-	viper.SetDefault(envVaultEnabled, false)
+	viper.BindEnv(EnvVaultEnabled, EnvVaultEnabled)
+	viper.SetDefault(EnvVaultEnabled, false)
 
 }
 
 type initializer struct {
 	spec   app.Spec
-	config vaultConfig
+	config config
 }
 
 type Initializer interface {
@@ -71,15 +71,15 @@ type Initializer interface {
 }
 
 func Enabled() bool {
-	return viper.GetBool(envVaultEnabled)
+	return viper.GetBool(EnvVaultEnabled)
 }
 
 func NewInitializer(spec app.Spec) (Initializer, error) {
-	config := vaultConfig{
-		vaultAddr:          viper.GetString(envVaultAddr),
-		initContainerImage: viper.GetString(envInitContainerImage),
-		authPath:           viper.GetString(envVaultAuthPath),
-		kvPath:             viper.GetString(envVaultKVPath),
+	config := config{
+		vaultAddr:          viper.GetString(EnvVaultAddr),
+		initContainerImage: viper.GetString(EnvInitContainerImage),
+		authPath:           viper.GetString(EnvVaultAuthPath),
+		kvPath:             viper.GetString(EnvVaultKVPath),
 	}
 
 	if ok, err := config.validate(); !ok {
@@ -93,22 +93,20 @@ func NewInitializer(spec app.Spec) (Initializer, error) {
 }
 
 func (c initializer) AddInitContainer(podSpec *k8score.PodSpec) k8score.PodSpec {
-
-	//Feature flag
-	if !Enabled() {
-		return *podSpec
-	}
-
 	volume, mount := volumeAndMount()
 
 	//Add shared volume to pod
 	podSpec.Volumes = append(podSpec.Volumes, volume)
 
-	//Each container in the pod gets the shared volume mounted.
-	//Though we should only have one container..
-	for _, container := range podSpec.Containers {
-		container.VolumeMounts = append(container.VolumeMounts, mount)
+	//"Main" container in the pod gets the shared volume mounted.
+	mutatedContainers := make([]k8score.Container,0, len(podSpec.Containers))
+	for _, containerCopy := range podSpec.Containers {
+		if containerCopy.Name == c.spec.Application {
+			containerCopy.VolumeMounts = append(containerCopy.VolumeMounts, mount)
+		}
+		mutatedContainers = append(mutatedContainers, containerCopy)
 	}
+	podSpec.Containers = mutatedContainers
 
 	//Finally add init container which also gets the shared volume mounted.
 	podSpec.InitContainers = append(podSpec.InitContainers, c.initContainer(mount))

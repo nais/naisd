@@ -237,10 +237,10 @@ func createPodSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest
 	}
 
 	if manifest.Secrets && vault.Enabled() {
-		if initializer, e := vault.NewInitializer(spec); e != nil {
-			podSpec = initializer.AddInitContainer(&podSpec)
+		if initializer, initializerErr := vault.NewInitializer(spec); initializerErr != nil {
+			return k8score.PodSpec{}, initializerErr
 		} else {
-			return k8score.PodSpec{}, err
+			podSpec = initializer.AddInitContainer(&podSpec)
 		}
 	}
 

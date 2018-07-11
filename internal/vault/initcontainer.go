@@ -1,11 +1,11 @@
 package vault
 
 import (
+	"fmt"
+	"github.com/hashicorp/go-multierror"
+	"github.com/nais/naisd/api/app"
 	"github.com/spf13/viper"
 	k8score "k8s.io/api/core/v1"
-	"github.com/nais/naisd/api/app"
-	"github.com/hashicorp/go-multierror"
-	"fmt"
 )
 
 const (
@@ -99,7 +99,7 @@ func (c initializer) AddInitContainer(podSpec *k8score.PodSpec) k8score.PodSpec 
 	podSpec.Volumes = append(podSpec.Volumes, volume)
 
 	//"Main" container in the pod gets the shared volume mounted.
-	mutatedContainers := make([]k8score.Container,0, len(podSpec.Containers))
+	mutatedContainers := make([]k8score.Container, 0, len(podSpec.Containers))
 	for _, containerCopy := range podSpec.Containers {
 		if containerCopy.Name == c.spec.Application {
 			containerCopy.VolumeMounts = append(containerCopy.VolumeMounts, mount)

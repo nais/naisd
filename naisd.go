@@ -26,7 +26,6 @@ func main() {
 	glog.Infof("running on port %s", Port)
 	glog.Infof("istio enabled = %b", *istioEnabled)
 
-
 	clientSet := newClientSet(*kubeconfig)
 	err := http.ListenAndServe(Port, api.NewApi(clientSet, *fasitUrl, *clusterSubdomain, *clusterName, *istioEnabled, api.NewDeploymentStatusViewer(clientSet)).Handler())
 	if err != nil {

@@ -1,8 +1,8 @@
 package test
 
 import (
-	"testing"
 	"os"
+	"testing"
 )
 
 func EnvWrapper(envVars map[string]string, testFunc func(t *testing.T)) func(t *testing.T) {

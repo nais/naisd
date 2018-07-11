@@ -1,12 +1,12 @@
 package vault
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"os"
 	"github.com/nais/naisd/api/app"
-	"k8s.io/api/core/v1"
 	"github.com/nais/naisd/pkg/test"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/api/core/v1"
+	"os"
+	"testing"
 )
 
 var envVars = map[string]string{

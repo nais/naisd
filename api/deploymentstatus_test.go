@@ -1,12 +1,13 @@
 package api
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	k8score "k8s.io/api/core/v1"
 	k8sextension "k8s.io/api/extensions/v1beta1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
-	"testing"
 )
 
 func TestIsDeploymentStatus(t *testing.T) {

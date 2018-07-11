@@ -1,12 +1,12 @@
 package api
 
 import (
-	"testing"
 	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
-	"github.com/nais/naisd/pkg/test"
 	"github.com/nais/naisd/internal/vault"
+	"github.com/nais/naisd/pkg/test"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 var properEnabledVaultEnv = map[string]string{

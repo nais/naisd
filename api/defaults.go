@@ -19,8 +19,8 @@ func GetDefaultManifest(application string) NaisManifest {
 
 	defaultManifest := NaisManifest{
 		Replicas: Replicas{
-			Min:                    2,
-			Max:                    4,
+			Min: 2,
+			Max: 4,
 			CpuThresholdPercentage: 50,
 		},
 		Port: 8080,

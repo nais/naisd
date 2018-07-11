@@ -10,6 +10,7 @@ import (
 
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
+	"github.com/nais/naisd/internal/vault"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
@@ -19,7 +20,6 @@ import (
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"github.com/nais/naisd/internal/vault"
 )
 
 const (

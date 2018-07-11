@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	MountPath             = "/var/run/secrets/naisd.io/vault"
+	mountPath             = "/var/run/secrets/naisd.io/vault"
 	EnvVaultAddr          = "NAISD_VAULT_ADDR"
 	EnvInitContainerImage = "NAISD_VAULT_INIT_CONTAINER_IMAGE"
 	EnvVaultAuthPath      = "NAISD_VAULT_AUTH_PATH"
@@ -66,14 +66,17 @@ type initializer struct {
 	config config
 }
 
+//Initializer adds init containers
 type Initializer interface {
 	AddInitContainer(podSpec *k8score.PodSpec) k8score.PodSpec
 }
 
+//Feature toggling flag for this initializer
 func Enabled() bool {
 	return viper.GetBool(EnvVaultEnabled)
 }
 
+//Create Initializer. Err if required env variables are not set.
 func NewInitializer(spec app.Spec) (Initializer, error) {
 	config := config{
 		vaultAddr:          viper.GetString(EnvVaultAddr),
@@ -92,6 +95,7 @@ func NewInitializer(spec app.Spec) (Initializer, error) {
 	}, nil
 }
 
+//Add init container to pod spec.
 func (c initializer) AddInitContainer(podSpec *k8score.PodSpec) k8score.PodSpec {
 	volume, mount := volumeAndMount()
 
@@ -127,7 +131,7 @@ func volumeAndMount() (k8score.Volume, k8score.VolumeMount) {
 
 	mount := k8score.VolumeMount{
 		Name:      name,
-		MountPath: MountPath,
+		MountPath: mountPath,
 	}
 
 	return volume, mount
@@ -165,7 +169,7 @@ func (c initializer) initContainer(mount k8score.VolumeMount) k8score.Container 
 			},
 			{
 				Name:  "VKS_SECRET_DEST_PATH",
-				Value: MountPath,
+				Value: mountPath,
 			},
 		},
 	}

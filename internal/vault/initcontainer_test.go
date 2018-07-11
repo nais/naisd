@@ -146,7 +146,7 @@ func TestVolumeAndMountCreation(t *testing.T) {
 	assert.Equal(t, volume.Name, mount.Name)
 	assert.NotEmpty(t, volume.EmptyDir)
 	assert.Equal(t, volume.EmptyDir.Medium, v1.StorageMediumMemory)
-	assert.Equal(t, mount.MountPath, MountPath)
+	assert.Equal(t, mount.MountPath, mountPath)
 }
 
 func TestInitContainerCreation(t *testing.T) {
@@ -165,7 +165,7 @@ func TestInitContainerCreation(t *testing.T) {
 	for _, envVar := range actualContainer.Env {
 		switch envVar.Name {
 		case "VKS_SECRET_DEST_PATH":
-			assert.Equal(t, MountPath, envVar.Value)
+			assert.Equal(t, mountPath, envVar.Value)
 		case "VKS_VAULT_ADDR":
 			assert.Equal(t, config.vaultAddr, envVar.Value)
 		case "VKS_AUTH_PATH":

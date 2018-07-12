@@ -13,4 +13,10 @@ request:
 limit:
   memory: 128Mi
   cpu: 500m
+vaultEnabled: false
+vaultAddr: https://vault.example.com
+vaultKVPath: /kv/kubernetes/env/zone
+vaultAuthPath: /kubernetes/env/zone
+vaultInitContainerImage: navikt/vks:25
 version: 279.0.0
+

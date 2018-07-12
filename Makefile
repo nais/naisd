@@ -3,7 +3,7 @@ NAME    := navikt/naisd
 LATEST  := ${NAME}:latest
 DEP_IMG := navikt/dep:2.0.0
 DEP     := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${DEP_IMG} dep
-GO_IMG  := golang:1.10.1
+GO_IMG  := golang:1.10.3
 GO      := docker run --rm -v ${PWD}:/go/src/github.com/nais/naisd -w /go/src/github.com/nais/naisd ${GO_IMG} go
 LDFLAGS := -X github.com/nais/naisd/api/version.Revision=$(shell git rev-parse --short HEAD) -X github.com/nais/naisd/api/version.Version=$(shell /bin/cat ./version)
 
@@ -25,7 +25,7 @@ install:
 	${DEP} ensure
 
 test:
-	${GO} test ./api/ ./cli/cmd/ --coverprofile=cover.out
+	${GO} test ./... --coverprofile=cover.out
 
 cli:
 	${GO} build -ldflags='$(LDFLAGS)' -o nais ./cli

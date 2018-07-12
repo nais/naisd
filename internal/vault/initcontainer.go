@@ -9,12 +9,17 @@ import (
 )
 
 const (
-	mountPath             = "/var/run/secrets/naisd.io/vault"
-	EnvVaultAddr          = "NAISD_VAULT_ADDR"
+	mountPath = "/var/run/secrets/naisd.io/vault"
+	//Environment name for Vault address
+	EnvVaultAddr = "NAISD_VAULT_ADDR" //
+	//Environment name for init container to use
 	EnvInitContainerImage = "NAISD_VAULT_INIT_CONTAINER_IMAGE"
-	EnvVaultAuthPath      = "NAISD_VAULT_AUTH_PATH"
-	EnvVaultKVPath        = "NAISD_VAULT_KV_PATH"
-	EnvVaultEnabled       = "NAISD_VAULT_ENABLED" //temp feature flag
+	//Environment name for path to vault kubernetes auth backend
+	EnvVaultAuthPath = "NAISD_VAULT_AUTH_PATH"
+	//Environment name for path to Vault KV mount
+	EnvVaultKVPath = "NAISD_VAULT_KV_PATH"
+	//Environment name for feature flag
+	EnvVaultEnabled = "NAISD_VAULT_ENABLED" //temp feature flag
 
 )
 
@@ -71,12 +76,12 @@ type Initializer interface {
 	AddInitContainer(podSpec *k8score.PodSpec) k8score.PodSpec
 }
 
-//Feature toggling flag for this initializer
+//Enabled checks if this Initalizer is enabled
 func Enabled() bool {
 	return viper.GetBool(EnvVaultEnabled)
 }
 
-//Create Initializer. Err if required env variables are not set.
+//NewInitializer creates a new Initializer. Err if required env variables are not set.
 func NewInitializer(spec app.Spec) (Initializer, error) {
 	config := config{
 		vaultAddr:          viper.GetString(EnvVaultAddr),

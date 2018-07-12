@@ -10,16 +10,16 @@ import (
 
 const (
 	mountPath = "/var/run/secrets/naisd.io/vault"
-	//Environment name for Vault address
+	//EnvVaultAddr is the environment name for looking up the address of the Vault server
 	EnvVaultAddr = "NAISD_VAULT_ADDR" //
-	//Environment name for init container to use
+	//EnvInitContainerImage is the environment name for looking up the init container to use
 	EnvInitContainerImage = "NAISD_VAULT_INIT_CONTAINER_IMAGE"
-	//Environment name for path to vault kubernetes auth backend
+	//EnvInitContainerImage is the environment name for looking up the path to vault kubernetes auth backend
 	EnvVaultAuthPath = "NAISD_VAULT_AUTH_PATH"
-	//Environment name for path to Vault KV mount
+	//EnvVaultKVPath is the environment name for looking up the path to Vault KV mount
 	EnvVaultKVPath = "NAISD_VAULT_KV_PATH"
-	//Environment name for feature flag
-	EnvVaultEnabled = "NAISD_VAULT_ENABLED" //temp feature flag
+	//EnvVaultEnabled is the environment name for looking up the enable/disable feature flag
+	EnvVaultEnabled = "NAISD_VAULT_ENABLED"
 
 )
 

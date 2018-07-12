@@ -1,12 +1,13 @@
 package vault
 
 import (
+	"os"
+	"testing"
+
 	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
-	"os"
-	"testing"
 )
 
 var envVars = map[string]string{
@@ -44,9 +45,9 @@ func TestConfigValidation(t *testing.T) {
 			{config{vaultAddr: "addr", kvPath: "path", authPath: "auth"}, false},
 		}
 
-		for _, test := range tests {
-			actualResult, err := test.config.validate()
-			assert.Equal(t, test.expectedResult, actualResult)
+		for _, testCase := range tests {
+			actualResult, err := testCase.config.validate()
+			assert.Equal(t, testCase.expectedResult, actualResult)
 			assert.NotNil(t, err)
 		}
 	})
@@ -110,7 +111,7 @@ func TestInitializer_AddInitContainer(t *testing.T) {
 
 		assert.Equal(t, 1, len(actualPodSpec.Containers))
 		assert.Equal(t, 1, len(actualPodSpec.Containers[0].VolumeMounts))
-		assert.Equal(t, actualPodSpec.Containers[0].VolumeMounts[0], expectedMount)
+		assert.Equal(t, expectedMount, actualPodSpec.Containers[0].VolumeMounts[0])
 
 	})
 
@@ -145,8 +146,8 @@ func TestVolumeAndMountCreation(t *testing.T) {
 
 	assert.Equal(t, volume.Name, mount.Name)
 	assert.NotEmpty(t, volume.EmptyDir)
-	assert.Equal(t, volume.EmptyDir.Medium, v1.StorageMediumMemory)
-	assert.Equal(t, mount.MountPath, mountPath)
+	assert.Equal(t, v1.StorageMediumMemory, volume.EmptyDir.Medium)
+	assert.Equal(t, mountPath, mount.MountPath)
 }
 
 func TestInitContainerCreation(t *testing.T) {
@@ -169,11 +170,11 @@ func TestInitContainerCreation(t *testing.T) {
 		case "VKS_VAULT_ADDR":
 			assert.Equal(t, config.vaultAddr, envVar.Value)
 		case "VKS_AUTH_PATH":
-			assert.Equal(t, envVar.Value, config.authPath)
+			assert.Equal(t, config.authPath, envVar.Value)
 		case "VKS_KV_PATH":
-			assert.Equal(t, envVar.Value, initializer.kvPath())
+			assert.Equal(t, initializer.kvPath(), envVar.Value)
 		case "VKS_VAULT_ROLE":
-			assert.Equal(t, envVar.Value, initializer.vaultRole())
+			assert.Equal(t, initializer.vaultRole(), envVar.Value)
 		default:
 			t.Errorf("Illegal envvar %s", envVar)
 		}

@@ -14,13 +14,12 @@ const (
 	EnvVaultAddr = "NAISD_VAULT_ADDR" //
 	//EnvInitContainerImage is the environment name for looking up the init container to use
 	EnvInitContainerImage = "NAISD_VAULT_INIT_CONTAINER_IMAGE"
-	//EnvInitContainerImage is the environment name for looking up the path to vault kubernetes auth backend
+	//EnvVaultAuthPath is the environment name for looking up the path to vault kubernetes auth backend
 	EnvVaultAuthPath = "NAISD_VAULT_AUTH_PATH"
 	//EnvVaultKVPath is the environment name for looking up the path to Vault KV mount
 	EnvVaultKVPath = "NAISD_VAULT_KV_PATH"
 	//EnvVaultEnabled is the environment name for looking up the enable/disable feature flag
 	EnvVaultEnabled = "NAISD_VAULT_ENABLED"
-
 )
 
 type config struct {

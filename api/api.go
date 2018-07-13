@@ -104,8 +104,13 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	if len(deploymentRequest.Environment) == 0 {
 		deploymentRequest.Environment = "app"
 	}
+
 	if len(deploymentRequest.Namespace) == 0 {
 		deploymentRequest.Namespace = "default"
+	}
+
+	if !deploymentRequest.ApplicationNamespaced {
+		deploymentRequest.Environment = deploymentRequest.Namespace
 	}
 
 	if err != nil {

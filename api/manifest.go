@@ -213,7 +213,6 @@ func ValidateManifest(manifest NaisManifest) ValidationErrors {
 		validateLimitsCpuQuantity,
 		validateResources,
 		validateAlertRules,
-		validateTeamName,
 	}
 
 	var validationErrors ValidationErrors
@@ -345,14 +344,6 @@ func validateReplicasMax(manifest NaisManifest) *ValidationError {
 	}
 	return nil
 
-}
-
-func validateTeamName(manifest NaisManifest) *ValidationError {
-	if manifest.Team == "" {
-		return &ValidationError{"Team must be specified", map[string]string{"team": manifest.Team}}
-	}
-
-	return nil
 }
 
 func (errors ValidationErrors) Error() (s string) {

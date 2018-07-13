@@ -218,7 +218,7 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 	}
 	errors := ValidateManifest(invalidConfig)
 
-	assert.Equal(t, 8, len(errors.Errors))
+	assert.Equal(t, 7, len(errors.Errors))
 	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
 	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[1].ErrorMessage)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[2].ErrorMessage)
@@ -226,7 +226,6 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[4].ErrorMessage)
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[5].ErrorMessage)
 	assert.Equal(t, "not a valid quantity. quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'", errors.Errors[6].ErrorMessage)
-	assert.Equal(t, "Team must be specified", errors.Errors[7].ErrorMessage)
 }
 
 func TestInvalidCpuThreshold(t *testing.T) {
@@ -395,22 +394,4 @@ func TestValidateResource(t *testing.T) {
 	assert.Equal(t, "Alias and ResourceType must be specified", err.ErrorMessage)
 	assert.Equal(t, "Alias and ResourceType must be specified", err2.ErrorMessage)
 	assert.Nil(t, noErr)
-}
-
-func TestValidateTeamName(t *testing.T) {
-	t.Run("Team name must be specified", func(t *testing.T) {
-		noTeamManifest := NaisManifest{}
-
-		err := validateTeamName(noTeamManifest)
-		assert.Equal(t, "Team must be specified", err.ErrorMessage)
-	})
-
-	t.Run("Valid team name should validate", func(t *testing.T) {
-		validManifest := NaisManifest{
-			Team: "valid-team",
-		}
-
-		err := validateTeamName(validManifest)
-		assert.Nil(t, err)
-	})
 }

@@ -17,8 +17,8 @@ type Deploy struct {
 	FasitPassword         string `json:"fasitPassword,omitempty"`
 	OnBehalfOf            string `json:"onbehalfof,omitempty"`
 	Namespace             string `json:"namespace,omitempty"`
-	Environment           string `json:"environment"`
-	ApplicationNamespaced bool   `json:"applicationNamespaced"`
+	Environment           string `json:"environment,omitempty"`
+	ApplicationNamespaced bool   `json:"applicationNamespaced,omitempty"`
 }
 
 func (r Deploy) Validate() []error {

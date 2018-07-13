@@ -96,6 +96,13 @@ func (c clientHolder) DeleteOldApp(spec app.Spec, deploymentRequest naisrequest.
 		joinedResult += fmt.Sprintln("  - service account: N/A")
 	}
 
+	err = c.deleteRoleBinding(oldApp)
+	if err == nil {
+		joinedResult += fmt.Sprintln("  - role binding: OK")
+	} else {
+		joinedResult += fmt.Sprintln("  - role binding: N/A")
+	}
+
 	joinedResult += "  - redirected old service to the new service in app-namespace.\n"
 
 	return joinedResult, nil

@@ -52,7 +52,7 @@ func createServiceDef(spec app.Spec) *k8score.Service {
 	}
 }
 
-func fillServiceSpec(spec app.Spec, serviceSpec *k8score.ServiceSpec) {
+func createPodSelector(spec app.Spec) map[string]string {
 	selector := map[string]string{
 		"app": spec.Application,
 	}
@@ -61,8 +61,12 @@ func fillServiceSpec(spec app.Spec, serviceSpec *k8score.ServiceSpec) {
 		selector["environment"] = spec.Environment
 	}
 
+	return selector
+}
+
+func fillServiceSpec(spec app.Spec, serviceSpec *k8score.ServiceSpec) {
 	serviceSpec.Type = k8score.ServiceTypeClusterIP
-	serviceSpec.Selector = selector
+	serviceSpec.Selector = createPodSelector(spec)
 	serviceSpec.Ports = []k8score.ServicePort{
 		{
 			Name:     "http",
@@ -115,6 +119,9 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 
 	return k8sextensions.DeploymentSpec{
 		Replicas: int32p(1),
+		Selector: &k8smeta.LabelSelector{
+			MatchLabels: createPodSelector(spec),
+		},
 		Strategy: k8sextensions.DeploymentStrategy{
 			Type: k8sextensions.RollingUpdateDeploymentStrategyType,
 			RollingUpdate: &k8sextensions.RollingUpdateDeployment{
@@ -139,14 +146,6 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 
 func createPodObjectMetaWithAnnotations(spec app.Spec, manifest NaisManifest, istioEnabled bool) k8smeta.ObjectMeta {
 	objectMeta := generateObjectMeta(spec)
-
-	// If we're running with old ReplicaSets we can't add labels to selectors without causing problems.
-	delete(objectMeta.Labels, "team")
-
-	// In ApplicationNamespace however we need the environment label to distinguish them, and old ReplicasSets don't exist here yet.
-	if !spec.ApplicationNamespaced {
-		delete(objectMeta.Labels, "environment")
-	}
 
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),

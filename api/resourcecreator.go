@@ -532,8 +532,8 @@ func createIngressDef(spec app.Spec) *k8sextensions.Ingress {
 	}
 }
 
-func createIngressHostname(application, environment, subdomain string) string {
-	if environment == "default" {
+func createIngressHostname(application, environment, namespace, subdomain string) string {
+	if environment == "app" || namespace == "default" {
 		return fmt.Sprintf("%s.%s", application, subdomain)
 	} else {
 		return fmt.Sprintf("%s-%s.%s", application, environment, subdomain)
@@ -747,7 +747,7 @@ func createOrUpdateIngress(spec app.Spec, deploymentRequest naisrequest.Deploy, 
 func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource) []k8sextensions.IngressRule {
 	var ingressRules []k8sextensions.IngressRule
 
-	defaultIngressRule := createIngressRule(spec.ResourceName(), createIngressHostname(spec.Application, deploymentRequest.Environment, clusterSubdomain), "")
+	defaultIngressRule := createIngressRule(spec.ResourceName(), createIngressHostname(spec.Application, deploymentRequest.Environment, deploymentRequest.Namespace, clusterSubdomain), "")
 	ingressRules = append(ingressRules, defaultIngressRule)
 
 	if deploymentRequest.Zone == constant.ZONE_SBS {

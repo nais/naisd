@@ -6,6 +6,7 @@ import (
 	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 )
@@ -39,7 +40,14 @@ func (c clientHolder) WaitForPodReady(spec app.Spec) error {
 }
 
 func (c clientHolder) DeleteOldApp(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest) (string, error) {
-	service, err := c.client.CoreV1().Services(spec.Environment).Get(spec.Application, v1.GetOptions{})
+	oldApp := app.Spec{
+		Application: spec.Application,
+		Environment: spec.Environment,
+		Team:        spec.Team,
+		ApplicationNamespaced: false,
+	}
+
+	service, err := c.client.CoreV1().Services(oldApp.Namespace()).Get(oldApp.ResourceName(), v1.GetOptions{})
 
 	if err == nil {
 		err := c.WaitForPodReady(spec)
@@ -51,43 +59,38 @@ func (c clientHolder) DeleteOldApp(spec app.Spec, deploymentRequest naisrequest.
 		if err != nil {
 			return "  - failed while forwarding traffic to new service. aborting deletion of old app", err
 		}
-	} else {
+	} else if errors.IsNotFound(err) {
+		// No old service exists.
 		return "", nil
+	} else {
+		return "failed while fetching existing service", err
 	}
 
 	if service.Spec.Type == corev1.ServiceTypeExternalName {
 		return fmt.Sprintf("  - service already redirected to app-namespace, not deleting anything (this is good). App is at: %s\n", service.Spec.ExternalName), nil
 	}
 
-	// This is a "trick" to make it delete the old resources created by the old version naisd prior to app-namespaces.
-	appInEnvironmentNamespace := app.Spec{
-		Application: spec.Application,
-		Environment: spec.Environment,
-		Team:        spec.Team,
-		ApplicationNamespaced: false,
-	}
-
 	result := ""
-	result, _ = deleteDeployment(appInEnvironmentNamespace, c.client)
+	result, _ = deleteDeployment(oldApp, c.client)
 	joinedResult := fmt.Sprintln("  - " + result)
 
-	result, _ = deleteAutoscaler(appInEnvironmentNamespace, c.client)
+	result, _ = deleteAutoscaler(oldApp, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, _ = deleteConfigMapRules(appInEnvironmentNamespace, c.client)
+	result, _ = deleteConfigMapRules(oldApp, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, _ = deleteIngress(appInEnvironmentNamespace, c.client)
+	result, _ = deleteIngress(oldApp, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, _ = deleteRedisFailover(appInEnvironmentNamespace, c.client)
+	result, _ = deleteRedisFailover(oldApp, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	result, _ = deleteSecret(appInEnvironmentNamespace, c.client)
+	result, _ = deleteSecret(oldApp, c.client)
 	joinedResult += fmt.Sprintln("  - " + result)
 
-	err = c.DeleteServiceAccount(appInEnvironmentNamespace)
-	if err != nil {
+	err = c.DeleteServiceAccount(oldApp)
+	if err == nil {
 		joinedResult += fmt.Sprintln("  - service account: OK")
 	} else {
 		joinedResult += fmt.Sprintln("  - service account: N/A")

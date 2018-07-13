@@ -14,16 +14,16 @@ func (s Spec) Namespace() string {
 		return s.Application
 	}
 
+	if s.Environment == "app" {
+		return "default"
+	}
+
 	return s.Environment
 }
 
 // Determine and return the `name` for this resource
 func (s Spec) ResourceName() string {
 	if s.ApplicationNamespaced {
-		if s.Environment == "default" {
-			return "app"
-		}
-
 		return s.Environment
 	}
 

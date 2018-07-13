@@ -583,7 +583,7 @@ func TestDeployment(t *testing.T) {
 
 func TestIngress(t *testing.T) {
 	appName := "appname"
-	environment := "default"
+	environment := "app"
 	subDomain := "example.no"
 	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
 	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}

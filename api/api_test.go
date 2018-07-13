@@ -155,12 +155,13 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
 	depReq := naisrequest.Deploy{
-		Application:      appName,
-		Version:          version,
-		FasitEnvironment: fasitEnvironment,
-		ManifestUrl:      "http://repo.com/app",
-		Zone:             "zone",
-		Environment:      environment,
+		Application:           appName,
+		Version:               version,
+		FasitEnvironment:      fasitEnvironment,
+		ManifestUrl:           "http://repo.com/app",
+		Zone:                  "zone",
+		Environment:           environment,
+		ApplicationNamespaced: true,
 	}
 
 	manifest := NaisManifest{
@@ -245,12 +246,13 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
 	depReq := naisrequest.Deploy{
-		Application:      appName,
-		Version:          version,
-		FasitEnvironment: fasitEnvironment,
-		ManifestUrl:      "http://repo.com/app",
-		Zone:             "zone",
-		Environment:      environment,
+		Application:           appName,
+		Version:               version,
+		FasitEnvironment:      fasitEnvironment,
+		ManifestUrl:           "http://repo.com/app",
+		Zone:                  "zone",
+		Environment:           environment,
+		ApplicationNamespaced: true,
 	}
 
 	manifest := NaisManifest{
@@ -316,12 +318,13 @@ func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
 	depReq := naisrequest.Deploy{
-		Application: appName,
-		Version:     version,
-		ManifestUrl: "http://repo.com/app",
-		SkipFasit:   true,
-		Zone:        "zone",
-		Environment: environment,
+		Application:           appName,
+		Version:               version,
+		ManifestUrl:           "http://repo.com/app",
+		SkipFasit:             true,
+		Zone:                  "zone",
+		Environment:           environment,
+		ApplicationNamespaced: true,
 	}
 
 	manifest := NaisManifest{
@@ -476,39 +479,55 @@ func TestValidateDeploymentRequest(t *testing.T) {
 func TestEnsurePropertyCompatibility(t *testing.T) {
 	t.Run("Should warn when specifying only namespace", func(t *testing.T) {
 		deploy := naisrequest.Deploy{
-			Application: "application",
-			Namespace:   "t1",
+			Application:           "application",
+			Namespace:             "t1",
+			ApplicationNamespaced: true,
 		}
 
 		warnings := ensurePropertyCompatibility(&deploy)
 		response := createResponse(DeploymentResult{}, warnings)
 
-		assert.Contains(t, string(response), fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment))
+		assert.Contains(t, string(response), "Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. Using default environment \"app\" for this deploy.")
 	})
 
-	t.Run("Should warn when specifying namespace and environment", func(t *testing.T) {
+	t.Run("Should warn when deploying to application namespace and specifies namespace", func(t *testing.T) {
 		deploy := naisrequest.Deploy{
-			Application: "application",
-			Namespace:   "t1",
-			Environment: "t1",
+			Application:           "application",
+			Environment:           "t1",
+			ApplicationNamespaced: false,
 		}
 
 		warnings := ensurePropertyCompatibility(&deploy)
 		response := createResponse(DeploymentResult{}, warnings)
 
-		assert.Contains(t, string(response), "Specifying namespace is deprecated as each application now has it's own namespace, and won't make any difference for this deploy. Please adapt your pipelines to *only* use the field 'Environment'.\n")
+		assert.Contains(t, string(response), "Specifying environment when not deploying to app-namespace makes no difference.")
 	})
 
-	t.Run("Should not warn when not specifying namespace", func(t *testing.T) {
+	t.Run("Should not warn when not deploying to application namespace and specifying namespace", func(t *testing.T) {
 		deploy := naisrequest.Deploy{
-			Application: "application",
-			Environment: "t1",
+			Application:           "application",
+			Namespace:             "namespace",
+			ApplicationNamespaced: false,
 		}
 
 		warnings := ensurePropertyCompatibility(&deploy)
 		response := createResponse(DeploymentResult{}, warnings)
 
 		assert.NotContains(t, string(response), "Specifying namespace")
+		assert.Len(t, warnings, 0)
+	})
+
+	t.Run("Should not warn when deploying to application namespace and specifying environment", func(t *testing.T) {
+		deploy := naisrequest.Deploy{
+			Application:           "application",
+			Environment:           "t1",
+			ApplicationNamespaced: true,
+		}
+
+		warnings := ensurePropertyCompatibility(&deploy)
+		response := createResponse(DeploymentResult{}, warnings)
+
+		assert.NotContains(t, string(response), "Specifying environment")
 		assert.Len(t, warnings, 0)
 	})
 }

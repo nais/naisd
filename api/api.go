@@ -102,9 +102,11 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	// Warn about deprecated fields in deploymentRequest and set default env if not set
 	warnings := ensurePropertyCompatibility(&deploymentRequest)
 	if len(deploymentRequest.Environment) == 0 {
-		deploymentRequest.Environment = "default"
+		deploymentRequest.Environment = "app"
 	}
-
+	if len(deploymentRequest.Namespace) == 0 {
+		deploymentRequest.Namespace = "default"
+	}
 
 	if err != nil {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
@@ -153,7 +155,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
 	if !deploymentRequest.SkipFasit && hasResources(manifest) {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Environment, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Environment, deploymentRequest.Namespace, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
 			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}
@@ -321,13 +323,12 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) 
 func ensurePropertyCompatibility(deploy *naisrequest.Deploy) []string {
 	var warnings []string
 
-	if len(deploy.Namespace) > 0 {
-		if len(deploy.Environment) > 0 {
-			warnings = append(warnings, "Specifying namespace is deprecated as each application now has it's own namespace, and won't make any difference for this deploy. Please adapt your pipelines to *only* use the field 'Environment'.")
-		} else {
-			deploy.Environment = deploy.Namespace
-			warnings = append(warnings, fmt.Sprintf("Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. For this deploy, as you did not specify 'Environment' I've assumed the previous behaviour and set Environment to '%s' for you.", deploy.Environment))
-		}
+	if !deploy.ApplicationNamespaced && len(deploy.Environment) > 0 {
+		warnings = append(warnings, "Specifying environment when not deploying to app-namespace makes no difference.")
+	}
+
+	if deploy.ApplicationNamespaced && len(deploy.Namespace) > 0 {
+		warnings = append(warnings, "Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. Using default environment \"app\" for this deploy.")
 	}
 
 	return warnings

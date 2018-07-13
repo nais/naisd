@@ -83,6 +83,7 @@ func TestService(t *testing.T) {
 	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
 	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}
 	service := createServiceDef(spec)
+	fillServiceSpec(spec, &service.Spec)
 	service.Spec.ClusterIP = clusterIP
 	clientset := fake.NewSimpleClientset(service)
 
@@ -99,8 +100,28 @@ func TestService(t *testing.T) {
 		assert.Equal(t, service, existingService)
 	})
 
+	t.Run("Creating service with ApplicationNamespaced has correct labels", func(t *testing.T) {
+		service := createServiceDef(spec)
+		fillServiceSpec(spec, &service.Spec)
+
+		assert.Equal(t, service.Spec.Selector["app"], appName)
+		assert.Equal(t, service.Spec.Selector["environment"], environment)
+		assert.Empty(t, service.Spec.Selector["teamm"])
+	})
+
+	t.Run("Creating service without ApplicationNamespaced has correct labels", func(t *testing.T) {
+		oldSpec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: false}
+
+		service := createServiceDef(oldSpec)
+		fillServiceSpec(oldSpec, &service.Spec)
+
+		assert.Equal(t, service.Spec.Selector["app"], appName)
+		assert.Empty(t, service.Spec.Selector["team"])
+		assert.Empty(t, service.Spec.Selector["environment"])
+	})
+
 	t.Run("when no service exists, a new one is created", func(t *testing.T) {
-		service, err := createService(otherSpec, clientset)
+		service, err := createOrUpdateService(otherSpec, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, otherSpec.ResourceName(), service.Name)
@@ -108,11 +129,6 @@ func TestService(t *testing.T) {
 		assert.Equal(t, DefaultPortName, service.Spec.Ports[0].TargetPort.StrVal)
 		assert.Equal(t, "http", service.Spec.Ports[0].Name)
 		assert.Equal(t, map[string]string{"app": otherAppName, "environment": environment}, service.Spec.Selector)
-	})
-	t.Run("when service exists, nothing happens", func(t *testing.T) {
-		nilValue, err := createService(spec, clientset)
-		assert.NoError(t, err)
-		assert.Nil(t, nilValue)
 	})
 }
 
@@ -902,6 +918,8 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	service := createServiceDef(spec)
+	fillServiceSpec(spec, &service.Spec)
+	service.ResourceVersion = "abc"
 
 	autoscaler := createOrUpdateAutoscalerDef(spec, 6, 9, 6, nil)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
@@ -912,14 +930,14 @@ func TestCreateK8sResources(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.NotEmpty(t, deploymentResult.Secret)
-		assert.Nil(t, deploymentResult.Service, "nothing happens to service if it already exists")
+		assert.NotEmpty(t, deploymentResult.Service)
 		assert.NotEmpty(t, deploymentResult.Deployment)
 		assert.NotEmpty(t, deploymentResult.Ingress)
 		assert.NotEmpty(t, deploymentResult.Autoscaler)
 		assert.NotEmpty(t, deploymentResult.ServiceAccount)
 
-		assert.Equal(t, resourceVersion, deploymentResult.Autoscaler.ObjectMeta.ResourceVersion, "autoscaler should have same id as the preexisting")
-		assert.Equal(t, "", deploymentResult.Secret.ObjectMeta.ResourceVersion, "secret should not have any id set")
+		assert.Equal(t, resourceVersion, deploymentResult.Autoscaler.ResourceVersion, "autoscaler should have same id as the preexisting")
+		assert.Equal(t, "", deploymentResult.Secret.ResourceVersion, "secret should not have any id set")
 	})
 
 	naisResourcesNoSecret := []NaisResource{

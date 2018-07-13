@@ -49,22 +49,28 @@ func createServiceDef(spec app.Spec) *k8score.Service {
 			APIVersion: "v1",
 		},
 		ObjectMeta: generateObjectMeta(spec),
-		Spec: k8score.ServiceSpec{
-			Type: k8score.ServiceTypeClusterIP,
-			Selector: map[string]string{
-				"app":         spec.Application,
-				"environment": spec.Environment,
-			},
-			Ports: []k8score.ServicePort{
-				{
-					Name:     "http",
-					Protocol: k8score.ProtocolTCP,
-					Port:     80,
-					TargetPort: intstr.IntOrString{
-						Type:   intstr.String,
-						StrVal: DefaultPortName,
-					},
-				},
+	}
+}
+
+func fillServiceSpec(spec app.Spec, serviceSpec *k8score.ServiceSpec) {
+	selector := map[string]string{
+		"app": spec.Application,
+	}
+
+	if spec.ApplicationNamespaced {
+		selector["environment"] = spec.Environment
+	}
+
+	serviceSpec.Type = k8score.ServiceTypeClusterIP
+	serviceSpec.Selector = selector
+	serviceSpec.Ports = []k8score.ServicePort{
+		{
+			Name:     "http",
+			Protocol: k8score.ProtocolTCP,
+			Port:     80,
+			TargetPort: intstr.IntOrString{
+				Type:   intstr.String,
+				StrVal: DefaultPortName,
 			},
 		},
 	}
@@ -133,7 +139,15 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 
 func createPodObjectMetaWithAnnotations(spec app.Spec, manifest NaisManifest, istioEnabled bool) k8smeta.ObjectMeta {
 	objectMeta := generateObjectMeta(spec)
-	delete(objectMeta.Labels, "team") // Don't add team labels to pods as old replicasets exist without this label.
+
+	// If we're running with old ReplicaSets we can't add labels to selectors without causing problems.
+	delete(objectMeta.Labels, "team")
+
+	// In ApplicationNamespace however we need the environment label to distinguish them, and old ReplicasSets don't exist here yet.
+	if !spec.ApplicationNamespaced {
+		delete(objectMeta.Labels, "environment")
+	}
+
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": strconv.FormatBool(manifest.Prometheus.Enabled),
 		"prometheus.io/port":   DefaultPortName,
@@ -621,7 +635,7 @@ func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest N
 	}
 	deploymentResult.RoleBinding = roleBinding
 
-	service, err := createService(spec, k8sClient)
+	service, err := createOrUpdateService(spec, k8sClient)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating service: %s", err)
 	}
@@ -751,15 +765,17 @@ func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clu
 	return ingressRules
 }
 
-func createService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	existingService, err := getExistingService(spec, k8sClient)
+func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+	service, err := getExistingService(spec, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing service: %s", err)
+	} else if service == nil {
+		service = createServiceDef(spec)
 	}
 
-	serviceDef := createServiceDef(spec)
-	return createOrUpdateServiceResource(serviceDef, spec.Namespace(), k8sClient)
+	fillServiceSpec(spec, &service.Spec)
+	return createOrUpdateServiceResource(service, spec.Namespace(), k8sClient)
 }
 
 func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {

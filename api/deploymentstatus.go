@@ -46,12 +46,19 @@ func NewDeploymentStatusViewer(clientset kubernetes.Interface) DeploymentStatusV
 }
 
 func (d deploymentStatusViewerImpl) DeploymentStatusView(environment, deployName string) (DeployStatus, DeploymentStatusView, error) {
-	spec := app.Spec{Application: deployName, Environment: environment}
+	// First, check new namespace
+	spec := app.Spec{Application: deployName, Environment: environment, ApplicationNamespaced: true}
 	dep, err := d.client.ExtensionsV1beta1().Deployments(spec.Namespace()).Get(spec.ResourceName(), k8smeta.GetOptions{})
 	if err != nil {
-		errMess := fmt.Sprintf("did not find deployment: %s environment: %s", deployName, environment)
-		glog.Error(errMess)
-		return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s environment: %s", deployName, environment)
+		// if not in new namespace, fallback to old namespace.
+		spec = app.Spec{Application: deployName, Environment: environment, ApplicationNamespaced: false}
+		dep, err = d.client.ExtensionsV1beta1().Deployments(spec.Namespace()).Get(spec.ResourceName(), k8smeta.GetOptions{})
+
+		if err != nil {
+			errMess := fmt.Sprintf("did not find deployment: %s environment: %s", deployName, environment)
+			glog.Error(errMess)
+			return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s environment: %s", deployName, environment)
+		}
 	}
 
 	status, view := deploymentStatusAndView(*dep)

@@ -2,7 +2,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   labels:
-    #app: {{ template "naisd.name" . }}
+    app: {{ template "naisd.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
@@ -10,14 +10,13 @@ metadata:
 spec:
   selector:
     matchLabels:
-      #app: {{ template "naisd.name" . }}
-      chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+      app: {{ template "naisd.name" . }}
       heritage: {{ .Release.Service }}
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        #app: {{ template "naisd.name" . }}
+        app: {{ template "naisd.name" . }}
         chart: {{ .Chart.Name }}-{{ .Chart.Version }}
         heritage: {{ .Release.Service }}
         release: {{ .Release.Name }}

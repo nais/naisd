@@ -10,6 +10,7 @@ import (
 
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
+	"github.com/nais/naisd/internal/vault"
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
@@ -233,6 +234,14 @@ func createPodSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest
 		podSpec.Volumes = append(podSpec.Volumes, createCertificateVolume(spec, naisResources))
 		container := &podSpec.Containers[0]
 		container.VolumeMounts = append(container.VolumeMounts, createCertificateVolumeMount(spec, naisResources))
+	}
+
+	if manifest.Secrets && vault.Enabled() {
+		if initializer, initializerErr := vault.NewInitializer(spec); initializerErr != nil {
+			return k8score.PodSpec{}, initializerErr
+		} else {
+			podSpec = initializer.AddInitContainer(&podSpec)
+		}
 	}
 
 	return podSpec, nil

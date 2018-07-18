@@ -66,6 +66,7 @@ type NaisManifest struct {
 	Alerts          []PrometheusAlertRule
 	Logformat       string
 	Logtransform    string
+	Secrets         bool `yaml:"secrets"`
 }
 
 type Ingress struct {

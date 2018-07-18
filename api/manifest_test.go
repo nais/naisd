@@ -56,6 +56,7 @@ func TestManifestUnmarshal(t *testing.T) {
 	assert.Equal(t, "5m", manifest.Alerts[0].For)
 	assert.Equal(t, "Investigate why nais-testapp can't spawn pods. kubectl describe deployment nais-testapp, kubectl describe pod nais-testapp-*.", manifest.Alerts[0].Annotations["action"])
 	assert.Equal(t, "Critical", manifest.Alerts[1].Labels["severity"])
+	assert.Equal(t, true, manifest.Secrets)
 }
 
 func TestManifestUsesDefaultValues(t *testing.T) {
@@ -95,6 +96,7 @@ func TestManifestUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, 1, manifest.Healthcheck.Readiness.Timeout)
 	assert.Equal(t, false, manifest.Ingress.Disabled)
 	assert.Empty(t, manifest.PreStopHookPath)
+	assert.Equal(t, false, manifest.Secrets)
 }
 
 func TestManifestUsesPartialDefaultValues(t *testing.T) {

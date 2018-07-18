@@ -579,6 +579,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, createPodObjectMetaWithAnnotations(spec, istioDisabledManifest, true).Annotations["sidecar.istio.io/inject"], "")
 		assert.Equal(t, createPodObjectMetaWithAnnotations(spec, istioEnabledManifest, true).Annotations["sidecar.istio.io/inject"], "true")
 	})
+
 }
 
 func TestIngress(t *testing.T) {

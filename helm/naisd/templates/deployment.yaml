@@ -48,6 +48,16 @@ spec:
             value: "{{ .Values.clusterName }}"
           - name: istio_enabled
             value: "{{ .Values.istioEnabled }}"
+          - name: NAISD_VAULT_ADDR
+            value: "{{ .Values.vaultAddr }}"
+          - name: NAISD_VAULT_INIT_CONTAINER_IMAGE
+            value: "{{ .Values.vaultInitContainerImage }}"
+          - name: NAISD_VAULT_KV_PATH
+            value: "{{ .Values.vaultKVPath }}"
+          - name: NAISD_VAULT_AUTH_PATH
+            value: "{{ .Values.vaultAuthPath }}"
+          - name: NAISD_VAULT_ENABLED
+            value: "{{ .Values.vaultEnabled }}"
 {{ if .skipProxy }}
 {{ else }}
           - name: https_proxy

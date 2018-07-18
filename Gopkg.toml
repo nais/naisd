@@ -57,3 +57,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/hashicorp/go-multierror"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "1.0.2"

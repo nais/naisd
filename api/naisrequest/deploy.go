@@ -1,6 +1,7 @@
 package naisrequest
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/nais/naisd/api/constant"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -51,4 +52,16 @@ func (r Deploy) Validate() []error {
 	}
 
 	return errs
+}
+
+func (r Deploy) String() string {
+	r.FasitPassword = "***"
+	r.FasitUsername = "***"
+
+	bytes, err := json.MarshalIndent(r, "", "    ")
+	if err != nil {
+		return fmt.Sprintf("failed to marshal struct: %s", err)
+	}
+
+	return string(bytes)
 }

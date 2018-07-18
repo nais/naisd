@@ -116,6 +116,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	if err != nil {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
 	}
+	glog.Infof("Received deployment request: %s", deploymentRequest)
 
 	fasit := FasitClient{api.FasitUrl, deploymentRequest.FasitUsername, deploymentRequest.FasitPassword}
 

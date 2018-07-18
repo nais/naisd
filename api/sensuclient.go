@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
 	"net"
 	"time"
@@ -22,8 +23,8 @@ type message struct {
 	Output      string   `json:"output"`
 }
 
-func GenerateDeployMessage(deploymentRequest *naisrequest.Deploy, clusterName *string) ([]byte, error) {
-	output := fmt.Sprintf("naisd.deployment,application=%s,clusterName=%s,environment=%s version=\"%s\" %d", deploymentRequest.Application, *clusterName, deploymentRequest.Environment, deploymentRequest.Version, time.Now().UnixNano())
+func GenerateDeployMessage(spec app.Spec, deploymentRequest *naisrequest.Deploy, clusterName *string) ([]byte, error) {
+	output := fmt.Sprintf("naisd.deployment,application=%s,clusterName=%s,namespace=%s version=\"%s\" %d", spec.Application, *clusterName, spec.Namespace(), deploymentRequest.Version, time.Now().UnixNano())
 	m := message{"naisd.deployment", "metric", []string{"events_nano"}, output}
 
 	b, err := json.Marshal(m)
@@ -60,8 +61,8 @@ func sendMessage(message []byte) error {
 	return nil
 }
 
-func NotifySensuAboutDeploy(deploymentRequest *naisrequest.Deploy, clusterName *string) {
-	message, err := GenerateDeployMessage(deploymentRequest, clusterName)
+func NotifySensuAboutDeploy(spec app.Spec, deploymentRequest *naisrequest.Deploy, clusterName *string) {
+	message, err := GenerateDeployMessage(spec, deploymentRequest, clusterName)
 	if err != nil {
 		glog.Errorln(err)
 		return

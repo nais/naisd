@@ -153,7 +153,13 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		}
 	}
 
-	deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.IstioEnabled, api.Clientset)
+	spec := app.Spec{
+		Application: deploymentRequest.Application,
+		Environment: deploymentRequest.Environment,
+		Team:        manifest.Team,
+		ApplicationNamespaced: deploymentRequest.ApplicationNamespaced,
+	}
+	deploymentResult, err := createOrUpdateK8sResources(spec, deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.IstioEnabled, api.Clientset)
 	if err != nil {
 		return &appError{err, "failed while creating or updating k8s-resources", http.StatusInternalServerError}
 	}
@@ -166,7 +172,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		}
 	}
 
-	NotifySensuAboutDeploy(&deploymentRequest, &api.ClusterName)
+	NotifySensuAboutDeploy(spec, &deploymentRequest, &api.ClusterName)
 
 	w.WriteHeader(200)
 	w.Write(createResponse(deploymentResult, warnings))

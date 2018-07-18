@@ -927,7 +927,7 @@ func TestCreateK8sResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset(autoscaler, service)
 
 	t.Run("creates all resources", func(t *testing.T) {
-		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResources, "nais.example.yo", false, clientset)
+		deploymentResult, err := createOrUpdateK8sResources(spec, deploymentRequest, manifest, naisResources, "nais.example.yo", false, clientset)
 		assert.NoError(t, err)
 
 		assert.NotEmpty(t, deploymentResult.Secret)
@@ -956,7 +956,7 @@ func TestCreateK8sResources(t *testing.T) {
 	}
 
 	t.Run("omits secret creation when no secret resources ex", func(t *testing.T) {
-		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
+		deploymentResult, err := createOrUpdateK8sResources(spec, deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
 		assert.NoError(t, err)
 
 		assert.Empty(t, deploymentResult.Secret)
@@ -966,7 +966,7 @@ func TestCreateK8sResources(t *testing.T) {
 	t.Run("omits ingress creation when disabled", func(t *testing.T) {
 		manifest.Ingress.Disabled = true
 
-		deploymentResult, err := createOrUpdateK8sResources(deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
+		deploymentResult, err := createOrUpdateK8sResources(spec, deploymentRequest, manifest, naisResourcesNoSecret, "nais.example.yo", false, fake.NewSimpleClientset())
 		assert.NoError(t, err)
 
 		assert.Empty(t, deploymentResult.Ingress)
@@ -1174,7 +1174,7 @@ func TestTeamNamespaceMultipleDeploys(t *testing.T) {
 			ApplicationNamespaced: true,
 		}
 
-		response1, err1 := createOrUpdateK8sResources(deploymentRequest1, manifest, naisResources, "nais.unittest.no", false, clientset)
+		response1, err1 := createOrUpdateK8sResources(specT0, deploymentRequest1, manifest, naisResources, "nais.unittest.no", false, clientset)
 
 		specT1 := app.Spec{Application: "application", Environment: "t1", Team: "team", ApplicationNamespaced: true}
 		deploymentRequest2 := naisrequest.Deploy{
@@ -1184,7 +1184,7 @@ func TestTeamNamespaceMultipleDeploys(t *testing.T) {
 			ApplicationNamespaced: true,
 		}
 
-		response2, err2 := createOrUpdateK8sResources(deploymentRequest2, manifest, naisResources, "nais.unittest.no", false, clientset)
+		response2, err2 := createOrUpdateK8sResources(specT1, deploymentRequest2, manifest, naisResources, "nais.unittest.no", false, clientset)
 
 		assert.NoError(t, err1)
 		assert.Equal(t, response1.Autoscaler.Name, specT0.ResourceName())

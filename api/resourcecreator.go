@@ -609,16 +609,9 @@ func createAutoscalerSpec(min, max, cpuTargetPercentage int, objectName string) 
 	}
 }
 
-func createOrUpdateK8sResources(deploymentRequest naisrequest.Deploy, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
+func createOrUpdateK8sResources(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, resources []NaisResource, clusterSubdomain string, istioEnabled bool, k8sClient kubernetes.Interface) (DeploymentResult, error) {
 	var deploymentResult DeploymentResult
 	client := clientHolder{k8sClient}
-
-	spec := app.Spec{
-		Application: deploymentRequest.Application,
-		Environment: deploymentRequest.Environment,
-		Team:        manifest.Team,
-		ApplicationNamespaced: deploymentRequest.ApplicationNamespaced,
-	}
 
 	namespace, err := client.createNamespace(spec.Namespace(), spec.Team)
 	if err != nil {

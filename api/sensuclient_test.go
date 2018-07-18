@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	"strings"
@@ -9,8 +10,14 @@ import (
 
 func TestSensuClient(t *testing.T) {
 	t.Run("Check generated deploy message", func(t *testing.T) {
+		spec := app.Spec{
+			Application: "TestApp",
+			Environment: "nais",
+			Team:        "team",
+			ApplicationNamespaced: false,
+		}
 		deploymentRequest := naisrequest.Deploy{
-			Application:      "TestApp",
+			Application:      spec.Application,
 			Version:          "42.0.0",
 			FasitEnvironment: "environment",
 			Zone:             "zone",
@@ -18,13 +25,13 @@ func TestSensuClient(t *testing.T) {
 			FasitUsername:    "username",
 			FasitPassword:    "password",
 			OnBehalfOf:       "onbehalfof",
-			Environment:      "nais",
+			Environment:      spec.Environment,
 		}
 		clusterName := "nais-dev"
 
-		message, err := GenerateDeployMessage(&deploymentRequest, &clusterName)
+		message, err := GenerateDeployMessage(spec, &deploymentRequest, &clusterName)
 		assert.NoError(t, err)
-		expectedMessagePrefix := "{\"name\":\"naisd.deployment\",\"type\":\"metric\",\"handlers\":[\"events_nano\"],\"output\":\"naisd.deployment,application=TestApp,clusterName=nais-dev,environment=nais version=\\\"42.0.0\\\""
+		expectedMessagePrefix := "{\"name\":\"naisd.deployment\",\"type\":\"metric\",\"handlers\":[\"events_nano\"],\"output\":\"naisd.deployment,application=TestApp,clusterName=nais-dev,namespace=nais version=\\\"42.0.0\\\""
 		assert.Equal(t, true, strings.HasPrefix(string(message), expectedMessagePrefix))
 	})
 }

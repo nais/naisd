@@ -201,5 +201,5 @@ func TestRole(t *testing.T) {
 			Application: "app",
 		},
 	}
-	assert.Equal(t, "app/env", initializer.vaultRole())
+	assert.Equal(t, "app-env", initializer.vaultRole())
 }

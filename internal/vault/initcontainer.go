@@ -2,6 +2,7 @@ package vault
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/nais/naisd/api/app"
 	"github.com/spf13/viper"
@@ -146,7 +147,7 @@ func (c initializer) kvPath() string {
 }
 
 func (c initializer) vaultRole() string {
-	return c.spec.Application + "/" + c.spec.Environment
+	return c.spec.Application + "-" + c.spec.Environment
 }
 
 func (c initializer) initContainer(mount k8score.VolumeMount) k8score.Container {

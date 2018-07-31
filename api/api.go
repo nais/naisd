@@ -167,7 +167,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
 	if !deploymentRequest.SkipFasit && hasResources(manifest) {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Environment, deploymentRequest.Namespace, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Environment, deploymentRequest.Namespace, api.ClusterSubdomain, deploymentRequest.ApplicationNamespaced), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
 			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}

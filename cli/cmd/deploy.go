@@ -81,6 +81,7 @@ var deployCmd = &cobra.Command{
 			"app":               &deployRequest.Application,
 			"version":           &deployRequest.Version,
 			"zone":              &deployRequest.Zone,
+			"namespace":         &deployRequest.Namespace,
 			"environment":       &deployRequest.Environment,
 			"fasit-environment": &deployRequest.FasitEnvironment,
 			"fasit-username":    &deployRequest.FasitUsername,
@@ -96,6 +97,13 @@ var deployCmd = &cobra.Command{
 			} else if len(value) > 0 {
 				*pointer = value
 			}
+		}
+
+		deployRequest.ApplicationNamespaced, _ = cmd.Flags().GetBool("application-namespaced")
+		if deployRequest.ApplicationNamespaced {
+			fmt.Printf("Deploying to namespace: %s, environment: %s", deployRequest.Application, deployRequest.Environment)
+		} else {
+			fmt.Printf("Deploying to namespace: %s", deployRequest.Namespace)
 		}
 
 		deployRequest.SkipFasit, _ = cmd.Flags().GetBool("skip-fasit")
@@ -182,9 +190,11 @@ func init() {
 	deployCmd.Flags().StringP("fasit-environment", "e", "q0", "environment you want to use")
 	deployCmd.Flags().StringP("zone", "z", constant.ZONE_FSS, "the zone the app will be in")
 	deployCmd.Flags().StringP("namespace", "n", "default", "the kubernetes namespace")
+	deployCmd.Flags().StringP("environment", "i", "app", "the test environment (i.e. t0)")
 	deployCmd.Flags().StringP("fasit-username", "u", "", "the username")
 	deployCmd.Flags().StringP("fasit-password", "p", "", "the password")
 	deployCmd.Flags().StringP("manifest-url", "m", "", "alternative URL to the nais manifest")
 	deployCmd.Flags().Bool("wait", false, "whether to wait until the deploy has succeeded (or failed)")
 	deployCmd.Flags().Bool("skip-fasit", false, "whether to skip interaction with fasit")
+	deployCmd.Flags().Bool("application-namespaced", false, "whether to deploy application to it's own namespace")
 }

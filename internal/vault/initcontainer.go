@@ -147,7 +147,7 @@ func (c initializer) kvPath() string {
 }
 
 func (c initializer) vaultRole() string {
-	return c.spec.Application + "-" + c.spec.Environment
+	return c.spec.Application
 }
 
 func (c initializer) initContainer(mount k8score.VolumeMount) k8score.Container {

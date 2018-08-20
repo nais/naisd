@@ -197,9 +197,8 @@ func TestKVPath(t *testing.T) {
 func TestRole(t *testing.T) {
 	initializer := initializer{
 		spec: app.Spec{
-			Environment: "env",
 			Application: "app",
 		},
 	}
-	assert.Equal(t, "app-env", initializer.vaultRole())
+	assert.Equal(t, "app", initializer.vaultRole())
 }

@@ -20,8 +20,8 @@ func TestDeleteK8sResouces(t *testing.T) {
 	secretKey := "password"
 	secretValue := "secret"
 
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Namespace: namespace, Team: teamName}
+	nonExistingSpec := app.Spec{Application: "nonexisting", Namespace: namespace, Team: teamName}
 
 	serviceDef := createServiceDef(spec)
 	naisResources := []NaisResource{
@@ -38,7 +38,7 @@ func TestDeleteK8sResouces(t *testing.T) {
 		},
 	}
 
-	naisDeploymentRequest := naisrequest.Deploy{Environment: environment, Application: appName, Version: version}
+	naisDeploymentRequest := naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}
 	deploymentDef, _ := createDeploymentDef(spec, naisResources, newDefaultManifest(), naisDeploymentRequest, nil, false)
 	secretDef := createSecretDef(spec, naisResources, nil)
 	secretDef.ObjectMeta.ResourceVersion = resourceVersion
@@ -70,7 +70,7 @@ func TestDeleteK8sResouces(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Nil(t, secret)
 
-		account, e := clientset.CoreV1().ServiceAccounts(spec.Namespace()).Get(spec.ResourceName(), v1.GetOptions{})
+		account, e := clientset.CoreV1().ServiceAccounts(spec.Namespace).Get(spec.ResourceName(), v1.GetOptions{})
 		assert.Error(t, e)
 		assert.True(t, errors.IsNotFound(e))
 		assert.Nil(t, account)
@@ -78,8 +78,8 @@ func TestDeleteK8sResouces(t *testing.T) {
 }
 
 func TestDeleteAutoscaler(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Namespace: namespace, Team: teamName}
+	nonExistingSpec := app.Spec{Application: "nonexisting", Namespace: namespace, Team: teamName}
 
 	autoscaler := createOrUpdateAutoscalerDef(spec, 1, 2, 3, nil)
 	autoscaler.ObjectMeta.ResourceVersion = resourceVersion
@@ -106,8 +106,8 @@ func TestDeleteAutoscaler(t *testing.T) {
 }
 
 func TestDeleteIngress(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Namespace: namespace, Team: teamName}
+	nonExistingSpec := app.Spec{Application: "nonexisting", Namespace: namespace, Team: teamName}
 
 	ingress := createIngressDef(spec)
 	ingress.ObjectMeta.ResourceVersion = resourceVersion
@@ -135,8 +135,8 @@ func TestDeleteConfigMapRules(t *testing.T) {
 	configMap.ObjectMeta.ResourceVersion = resourceVersion
 	clientset := fake.NewSimpleClientset(configMap)
 
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Namespace: namespace, Team: teamName}
+	nonExistingSpec := app.Spec{Application: "nonexisting", Namespace: namespace, Team: teamName}
 
 	t.Run("No error when deleting nonexistant app from alerts configmap", func(t *testing.T) {
 		_, err := deleteConfigMapRules(nonExistingSpec, clientset)
@@ -152,7 +152,7 @@ func TestDeleteConfigMapRules(t *testing.T) {
 		configmap, err := getExistingConfigMap(AlertsConfigMapName, AlertsConfigMapNamespace, clientset)
 		assert.NoError(t, err)
 		assert.NotNil(t, configmap)
-		alert, _ := configmap.Data[teamName+appName+environment+".yml"]
+		alert, _ := configmap.Data[teamName+appName+namespace+".yml"]
 		assert.Empty(t, alert)
 	})
 }

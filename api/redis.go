@@ -60,7 +60,7 @@ func updateOrCreateRedisSentinelCluster(spec app.Spec) (*redisapi.RedisFailover,
 		return nil, fmt.Errorf("can't create new Redis client for InClusterConfig: %s", err)
 	}
 
-	existingFailover, err := getExistingFailover(redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace()), spec.ResourceName())
+	existingFailover, err := getExistingFailover(redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace), spec.ResourceName())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing redis failover: %s", err)
 	}
@@ -68,8 +68,8 @@ func updateOrCreateRedisSentinelCluster(spec app.Spec) (*redisapi.RedisFailover,
 	if existingFailover != nil {
 		existingFailover.Spec = newFailover.Spec
 		existingFailover.ObjectMeta = mergeObjectMeta(existingFailover.ObjectMeta, newFailover.ObjectMeta)
-		return redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace()).Update(existingFailover)
+		return redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace).Update(existingFailover)
 	}
 
-	return redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace()).Create(newFailover)
+	return redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace).Create(newFailover)
 }

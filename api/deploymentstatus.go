@@ -32,7 +32,7 @@ const (
 )
 
 type DeploymentStatusViewer interface {
-	DeploymentStatusView(environment, deployName string) (DeployStatus, DeploymentStatusView, error)
+	DeploymentStatusView(namespace, deployName string) (DeployStatus, DeploymentStatusView, error)
 }
 
 type deploymentStatusViewerImpl struct {
@@ -45,20 +45,14 @@ func NewDeploymentStatusViewer(clientset kubernetes.Interface) DeploymentStatusV
 	}
 }
 
-func (d deploymentStatusViewerImpl) DeploymentStatusView(environment, deployName string) (DeployStatus, DeploymentStatusView, error) {
+func (d deploymentStatusViewerImpl) DeploymentStatusView(namespace, deployName string) (DeployStatus, DeploymentStatusView, error) {
 	// First, check new namespace
-	spec := app.Spec{Application: deployName, Environment: environment, ApplicationNamespaced: true}
-	dep, err := d.client.ExtensionsV1beta1().Deployments(spec.Namespace()).Get(spec.ResourceName(), k8smeta.GetOptions{})
+	spec := app.Spec{Application: deployName, Namespace: namespace}
+	dep, err := d.client.ExtensionsV1beta1().Deployments(spec.Namespace).Get(spec.ResourceName(), k8smeta.GetOptions{})
 	if err != nil {
-		// if not in new namespace, fallback to old namespace.
-		spec = app.Spec{Application: deployName, Environment: environment, ApplicationNamespaced: false}
-		dep, err = d.client.ExtensionsV1beta1().Deployments(spec.Namespace()).Get(spec.ResourceName(), k8smeta.GetOptions{})
-
-		if err != nil {
-			errMess := fmt.Sprintf("did not find deployment: %s environment: %s", deployName, environment)
-			glog.Error(errMess)
-			return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s environment: %s", deployName, environment)
-		}
+		errMess := fmt.Sprintf("did not find deployment: %s namespace: %s", deployName, namespace)
+		glog.Error(errMess)
+		return Failed, DeploymentStatusView{}, fmt.Errorf("did not find deployment: %s namespace: %s", deployName, namespace)
 	}
 
 	status, view := deploymentStatusAndView(*dep)

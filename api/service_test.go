@@ -27,7 +27,7 @@ func TestRedirectServiceToNewDeployment(t *testing.T) {
 			},
 		}
 
-		newTargetSpec := app.Spec{Application: "targetApp", Environment: "targetEnv", Team: "targetTeam"}
+		newTargetSpec := app.Spec{Application: "targetApp", Namespace: "targetEnv", Team: "targetTeam"}
 
 		client := fake.NewSimpleClientset(existingService)
 		clientHolder := clientHolder{client: client}
@@ -36,6 +36,6 @@ func TestRedirectServiceToNewDeployment(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, updatedService.Name, existingService.Name)
-		assert.Equal(t, updatedService.Spec.ExternalName, fmt.Sprintf("%s.%s.svc.nais.local", newTargetSpec.ResourceName(), newTargetSpec.Namespace()))
+		assert.Equal(t, updatedService.Spec.ExternalName, fmt.Sprintf("%s.%s.svc.nais.local", newTargetSpec.ResourceName(), newTargetSpec.Namespace))
 	})
 }

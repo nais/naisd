@@ -1,6 +1,6 @@
 {
 	"application": "k8s-testapp",
-	"environment": "app",
+	"namespace": "default",
 	"version": "42.0.0",
 	"manifestUrl": "https://raw.githubusercontent.com/nais/naisd/master/testdata/nais.yml",
 	"username": "user",

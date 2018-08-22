@@ -21,7 +21,7 @@ func NewServiceAccountInterface(client kubernetes.Interface) ServiceAccountInter
 }
 
 func (c clientHolder) DeleteServiceAccount(spec app.Spec) error {
-	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(spec.Namespace())
+	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(spec.Namespace)
 
 	if e := serviceAccountInterface.Delete(spec.ResourceName(), &k8smeta.DeleteOptions{}); e != nil && !errors.IsNotFound(e) {
 		return e
@@ -31,10 +31,10 @@ func (c clientHolder) DeleteServiceAccount(spec app.Spec) error {
 }
 
 func (c clientHolder) CreateServiceAccountIfNotExist(spec app.Spec) (*v1.ServiceAccount, error) {
-	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(spec.Namespace())
+	serviceAccountInterface := c.client.CoreV1().ServiceAccounts(spec.Namespace)
 
 	if account, err := serviceAccountInterface.Get(spec.ResourceName(), k8smeta.GetOptions{}); err == nil {
-		glog.Infof("Skipping service account creation. All ready exist for application: %s in namespace: %s", spec.ResourceName(), spec.Namespace())
+		glog.Infof("Skipping service account creation. All ready exist for application: %s in namespace: %s", spec.ResourceName(), spec.Namespace)
 		return account, nil
 	}
 

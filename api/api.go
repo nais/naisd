@@ -242,7 +242,7 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 		return &appError{err, fmt.Sprintf("there were errors when trying to delete app: %+v", response), http.StatusInternalServerError}
 	}
 
-	glog.Infof("Deleted application %s-%s in %s\n", application, environment)
+	glog.Infof("Deleted application %s in %s\n", application, environment)
 
 	w.Write([]byte(response))
 	w.WriteHeader(http.StatusOK)

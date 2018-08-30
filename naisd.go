@@ -24,7 +24,7 @@ func main() {
 
 	glog.Infof("using fasit instance %s", *fasitUrl)
 	glog.Infof("running on port %s", Port)
-	glog.Infof("istio enabled = %b", *istioEnabled)
+	glog.Infof("istio enabled = %t", *istioEnabled)
 
 	clientSet := newClientSet(*kubeconfig)
 	err := http.ListenAndServe(Port, api.NewApi(clientSet, *fasitUrl, *clusterSubdomain, *clusterName, *istioEnabled, api.NewDeploymentStatusViewer(clientSet)).Handler())

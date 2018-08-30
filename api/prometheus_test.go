@@ -164,3 +164,21 @@ func TestPrefixAlertNames(t *testing.T) {
 	assert.Equal(t, prefixAlertName(prefix, alert1), alerts[0].Alert)
 	assert.Equal(t, prefixAlertName(prefix, alert2), alerts[1].Alert)
 }
+
+func TestNamespaceSubstitution(t *testing.T) {
+	alerts := []PrometheusAlertRule{
+		{
+			Alert: "alert1",
+			For:   "For",
+			Expr:  "up{kubernetes_namespace=\"$namespace\"} > 0",
+			Annotations: map[string]string{
+				"action": "action",
+			},
+		},
+	}
+
+	assert.NotNil(t, alerts[0], "Alerts should not be nil.")
+
+	substituteNamespaceVariables(alerts,"q1")
+	assert.Equal(t, alerts[0].Expr, "up{kubernetes_namespace=\"q1\"} > 0")
+}

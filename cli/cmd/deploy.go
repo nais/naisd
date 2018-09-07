@@ -171,7 +171,7 @@ var deployCmd = &cobra.Command{
 		} else if wait {
 			start := time.Now()
 
-			if err := waitForDeploy(fmt.Sprintf("%s%s/%s/%s", clusterUrl, StatusEndpoint, deployRequest.Application, deployRequest.Environment)); err != nil {
+			if err := waitForDeploy(fmt.Sprintf("%s%s/%s/%s", clusterUrl, StatusEndpoint, deployRequest.Application, deployRequest.Namespace)); err != nil {
 				fmt.Printf("%v\n", err)
 				os.Exit(1)
 			}

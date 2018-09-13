@@ -430,16 +430,16 @@ func createEnvironmentVariables(spec app.Spec, deploymentRequest naisrequest.Dep
 	// Instead, JVM must be started with a specific set of command-line options. These are also
 	// provided as environment variables, for convenience.
 	if manifest.WebProxy {
-		proxyUrl := getEnvDualCase("NAIS_POD_HTTP_PROXY")
+		proxyURL := getEnvDualCase("NAIS_POD_HTTP_PROXY")
 		noProxy := getEnvDualCase("NAIS_POD_NO_PROXY")
 
 		// Set non-JVM environment variables
-		envVars = appendDualCaseEnvVar(envVars, "HTTP_PROXY", proxyUrl)
-		envVars = appendDualCaseEnvVar(envVars, "HTTPS_PROXY", proxyUrl)
+		envVars = appendDualCaseEnvVar(envVars, "HTTP_PROXY", proxyURL)
+		envVars = appendDualCaseEnvVar(envVars, "HTTPS_PROXY", proxyURL)
 		envVars = appendDualCaseEnvVar(envVars, "NO_PROXY", noProxy)
 
 		// Set environment variables specifically for JVM
-		javaOpts, err := proxyopts.JavaProxyOptions(proxyUrl, noProxy)
+		javaOpts, err := proxyopts.JavaProxyOptions(proxyURL, noProxy)
 		if err == nil {
 			if len(javaOpts) > 0 {
 				envVar := k8score.EnvVar{

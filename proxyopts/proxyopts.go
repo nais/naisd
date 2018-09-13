@@ -32,12 +32,12 @@ func (o javaOptions) Format() string {
 	return strings.Join(s, " ")
 }
 
-func httpOpts(flags javaOptions, proxyUrl string) (javaOptions, error) {
-	if len(proxyUrl) == 0 {
+func httpOpts(flags javaOptions, proxyURL string) (javaOptions, error) {
+	if len(proxyURL) == 0 {
 		return flags, nil
 	}
 
-	u, err := url.Parse(proxyUrl)
+	u, err := url.Parse(proxyURL)
 	if err != nil {
 		return flags, err
 	}
@@ -78,10 +78,12 @@ func noProxyOpts(flags javaOptions, noProxy string) (javaOptions, error) {
 	return flags, nil
 }
 
-func JavaProxyOptions(proxyUrl, noProxy string) (s string, err error) {
+// JavaProxyOptions converts *NIX style http proxy environment variables
+// $HTTP_PROXY and $NO_PROXY to JVM startup flag equivalents.
+func JavaProxyOptions(proxyURL, noProxy string) (s string, err error) {
 	flags := make(javaOptions, 0)
 
-	flags, err = httpOpts(flags, proxyUrl)
+	flags, err = httpOpts(flags, proxyURL)
 	if err != nil {
 		err = fmt.Errorf("error in parsing proxy URL: %s", err)
 		return

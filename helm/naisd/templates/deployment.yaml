@@ -58,6 +58,10 @@ spec:
             value: "{{ .Values.vaultAuthPath }}"
           - name: NAISD_VAULT_ENABLED
             value: "{{ .Values.vaultEnabled }}"
+          - name: NAIS_POD_HTTP_PROXY
+            value: "{{ .Values.podHttpProxy }}"
+          - name: NAIS_POD_NO_PROXY
+            value: "{{ .Values.podNoProxy }}"
 {{ if .skipProxy }}
 {{ else }}
           - name: https_proxy

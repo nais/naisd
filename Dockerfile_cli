@@ -7,6 +7,7 @@ COPY vendor vendor/
 COPY api api/
 COPY pkg pkg/
 COPY internal internal/
+COPY proxyopts proxyopts/
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o nais /go/src/github.com/nais/naisd/cli/nais.go
 
 # Image to build 

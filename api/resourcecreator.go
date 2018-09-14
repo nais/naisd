@@ -417,42 +417,43 @@ func createEnvironmentVariables(spec app.Spec, deploymentRequest naisrequest.Dep
 		}
 	}
 
-	// If the deployment specifies webproxy=true in the nais manifest, the pods
-	// will have web proxy settings injected as environment variables. This is
-	// useful for automatic proxy configuration so that apps don't need to be aware
-	// of infrastructure quirks. The web proxy should be set up as an external service.
-	//
-	// Proxy settings on Linux is in a messy state. Some applications and libraries
-	// read the upper-case variables, while some read the lower-case versions.
-	// We handle this by setting both versions.
-	//
-	// On top of everything, the Java virtual machine does not honor these environment variables.
-	// Instead, JVM must be started with a specific set of command-line options. These are also
-	// provided as environment variables, for convenience.
-	if manifest.WebProxy {
-		proxyURL := getEnvDualCase("NAIS_POD_HTTP_PROXY")
-		noProxy := getEnvDualCase("NAIS_POD_NO_PROXY")
+	return createProxyEnvironmentVariables(envVars)
+}
 
-		// Set non-JVM environment variables
-		envVars = appendDualCaseEnvVar(envVars, "HTTP_PROXY", proxyURL)
-		envVars = appendDualCaseEnvVar(envVars, "HTTPS_PROXY", proxyURL)
-		envVars = appendDualCaseEnvVar(envVars, "NO_PROXY", noProxy)
+// All pods will have web proxy settings injected as environment variables. This is
+// useful for automatic proxy configuration so that apps don't need to be aware
+// of infrastructure quirks. The web proxy should be set up as an external service.
+//
+// Proxy settings on Linux is in a messy state. Some applications and libraries
+// read the upper-case variables, while some read the lower-case versions.
+// We handle this by setting both versions.
+//
+// On top of everything, the Java virtual machine does not honor these environment variables.
+// Instead, JVM must be started with a specific set of command-line options. These are also
+// provided as environment variables, for convenience.
+func createProxyEnvironmentVariables(envVars []k8score.EnvVar) ([]k8score.EnvVar, error) {
+	proxyURL := getEnvDualCase("NAIS_POD_HTTP_PROXY")
+	noProxy := getEnvDualCase("NAIS_POD_NO_PROXY")
 
-		// Set environment variables specifically for JVM
-		javaOpts, err := proxyopts.JavaProxyOptions(proxyURL, noProxy)
-		if err == nil {
-			if len(javaOpts) > 0 {
-				envVar := k8score.EnvVar{
-					Name:  "JAVA_PROXY_OPTIONS",
-					Value: javaOpts,
-				}
-				envVars = append(envVars, envVar)
+	// Set non-JVM environment variables
+	envVars = appendDualCaseEnvVar(envVars, "HTTP_PROXY", proxyURL)
+	envVars = appendDualCaseEnvVar(envVars, "HTTPS_PROXY", proxyURL)
+	envVars = appendDualCaseEnvVar(envVars, "NO_PROXY", noProxy)
+
+	// Set environment variables specifically for JVM
+	javaOpts, err := proxyopts.JavaProxyOptions(proxyURL, noProxy)
+	if err == nil {
+		if len(javaOpts) > 0 {
+			envVar := k8score.EnvVar{
+				Name:  "JAVA_PROXY_OPTIONS",
+				Value: javaOpts,
 			}
-		} else {
-			// A failure state here means that there is something wrong with the syntax
-			// of our proxy config. This situation should be made clearly visible.
-			return nil, fmt.Errorf("while converting webproxy settings to Java format: %s", err)
+			envVars = append(envVars, envVar)
 		}
+	} else {
+		// A failure state here means that there is something wrong with the syntax
+		// of our proxy config. This situation should be made clearly visible.
+		return nil, fmt.Errorf("while converting webproxy settings to Java format: %s", err)
 	}
 
 	return envVars, nil

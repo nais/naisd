@@ -204,8 +204,8 @@ func (fasit FasitClient) createApplicationInstance(deploymentRequest naisrequest
 func (fasit FasitClient) getLoadBalancerConfig(application string, fasitEnvironment string) (*NaisResource, error) {
 	req, err := fasit.buildRequest("GET", "/api/v2/resources", map[string]string{
 		"fasitEnvironment": fasitEnvironment,
-		"application": application,
-		"type":        "LoadBalancerConfig",
+		"application":      application,
+		"type":             "LoadBalancerConfig",
 	})
 
 	body, appErr := fasit.doRequest(req)
@@ -617,7 +617,7 @@ func parseLoadBalancerConfig(config []byte) ([]FasitIngress, error) {
 	for _, lbConfig := range lbConfigs {
 		host, found := lbConfig.Path("properties.url").Data().(string)
 		if !found {
-			glog.Warning("no host found for loadbalancer config: %s", lbConfig)
+			glog.Warningf("no host found for loadbalancer config: %s", lbConfig)
 			continue
 		}
 		pathList, _ := lbConfig.Path("properties.contextRoots").Data().(string)
@@ -681,7 +681,7 @@ func resolveSecret(secrets map[string]map[string]string, username string, passwo
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		if requestDump, e := httputil.DumpRequest(req, false); e == nil {
-			glog.Errorf("Fasit request: ", requestDump)
+			glog.Error("Fasit request: ", requestDump)
 		}
 		return map[string]string{}, fmt.Errorf("fasit gave error message when resolving secret: %s (HTTP %v)", body, strconv.Itoa(resp.StatusCode))
 	}

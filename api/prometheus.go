@@ -6,6 +6,7 @@ import (
 	"github.com/nais/naisd/api/app"
 	"gopkg.in/yaml.v2"
 	k8score "k8s.io/api/core/v1"
+	"strings"
 )
 
 type PrometheusAlertGroups struct {
@@ -37,6 +38,15 @@ func prefixAlertNames(alertRules []PrometheusAlertRule, prefix string) {
 	return
 }
 
+func substituteNamespaceVariables(alertRules []PrometheusAlertRule, namespace string) {
+	for i := range alertRules {
+		alertRules[i].Expr = strings.Replace(alertRules[i].Expr, "$namespace", namespace, -1)
+	}
+
+	return
+}
+
+
 func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 	if teamName != "" {
 		for i := range alertRules {
@@ -60,6 +70,7 @@ func addRulesToConfigMap(spec app.Spec, configMap *k8score.ConfigMap, manifest N
 
 	addTeamLabel(manifest.Alerts, manifest.Team)
 	prefixAlertNames(manifest.Alerts, deploymentPrefix)
+	substituteNamespaceVariables(manifest.Alerts, spec.Namespace())
 
 	alertGroup := PrometheusAlertGroup{Name: deploymentPrefix, Rules: manifest.Alerts}
 	alertGroups := PrometheusAlertGroups{Groups: []PrometheusAlertGroup{alertGroup}}

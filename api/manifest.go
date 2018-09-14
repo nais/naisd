@@ -121,12 +121,12 @@ func GenerateManifest(deploymentRequest naisrequest.Deploy) (naisManifest NaisMa
 	manifest, err := downloadManifest(deploymentRequest)
 
 	if err != nil {
-		glog.Errorf("could not download manifest", err)
+		glog.Error("could not download manifest: ", err)
 		return NaisManifest{}, err
 	}
 
 	if err := AddDefaultManifestValues(&manifest, deploymentRequest.Application); err != nil {
-		glog.Errorf("Could not merge manifest %s", err)
+		glog.Error("Could not merge manifest: ", err)
 		return NaisManifest{}, err
 	}
 
@@ -196,7 +196,7 @@ func fetchManifest(url string) (NaisManifest, error) {
 			glog.Errorf("Could not unmarshal yaml %s from URL: %s", err, url)
 			return NaisManifest{}, fmt.Errorf("unable to unmarshal %s from URL: %s", err.Error(), url)
 		}
-		glog.Infof("Got manifest %s", manifest)
+		glog.Info("Got manifest: ", manifest)
 		return manifest, err
 	}
 }

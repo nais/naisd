@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM alpine:3.8
 MAINTAINER Johnny Horvi <johnny.horvi@nav.no>
 
 COPY webproxy.nav.no.cer /usr/local/share/ca-certificates/

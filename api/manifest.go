@@ -62,7 +62,6 @@ type NaisManifest struct {
 	FasitResources  FasitResources `yaml:"fasitResources"`
 	LeaderElection  bool           `yaml:"leaderElection"`
 	Redis           bool           `yaml:"redis"`
-	WebProxy        bool
 	Alerts          []PrometheusAlertRule
 	Logformat       string
 	Logtransform    string

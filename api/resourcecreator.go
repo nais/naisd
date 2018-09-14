@@ -436,9 +436,13 @@ func createProxyEnvironmentVariables(envVars []k8score.EnvVar) ([]k8score.EnvVar
 	noProxy := getEnvDualCase("NAIS_POD_NO_PROXY")
 
 	// Set non-JVM environment variables
-	envVars = appendDualCaseEnvVar(envVars, "HTTP_PROXY", proxyURL)
-	envVars = appendDualCaseEnvVar(envVars, "HTTPS_PROXY", proxyURL)
-	envVars = appendDualCaseEnvVar(envVars, "NO_PROXY", noProxy)
+	if len(proxyURL) > 0 {
+		envVars = appendDualCaseEnvVar(envVars, "HTTP_PROXY", proxyURL)
+		envVars = appendDualCaseEnvVar(envVars, "HTTPS_PROXY", proxyURL)
+	}
+	if len(noProxy) > 0 {
+		envVars = appendDualCaseEnvVar(envVars, "NO_PROXY", noProxy)
+	}
 
 	// Set environment variables specifically for JVM
 	javaOpts, err := proxyopts.JavaProxyOptions(proxyURL, noProxy)

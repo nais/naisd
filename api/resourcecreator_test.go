@@ -1117,7 +1117,9 @@ func TestInjectProxySettings(t *testing.T) {
 			ApplicationNamespaced: true,
 		}
 
-		manifest := NaisManifest{}
+		manifest := NaisManifest{
+			Webproxy: true,
+		}
 
 		os.Setenv("NAIS_POD_HTTP_PROXY", "http://foo.bar:1234")
 		os.Setenv("NAIS_POD_NO_PROXY", "baz")
@@ -1132,6 +1134,30 @@ func TestInjectProxySettings(t *testing.T) {
 		assert.Contains(t, env, k8score.EnvVar{Name: "https_proxy", Value: "http://foo.bar:1234"})
 		assert.Contains(t, env, k8score.EnvVar{Name: "no_proxy", Value: "baz"})
 		assert.Contains(t, env, k8score.EnvVar{Name: "JAVA_PROXY_OPTIONS", Value: "-Dhttp.proxyHost=foo.bar -Dhttps.proxyHost=foo.bar -Dhttp.proxyPort=1234 -Dhttps.proxyPort=1234 -Dhttp.nonProxyHosts=baz"})
+	})
+
+	t.Run("proxy settings should not be injected in the pod unless requested through manifest", func(t *testing.T) {
+		deploymentRequest := naisrequest.Deploy{
+			Application:           "myapp",
+			Version:               "1",
+			ApplicationNamespaced: true,
+		}
+
+		manifest := NaisManifest{}
+
+		os.Setenv("NAIS_POD_HTTP_PROXY", "http://foo.bar:1234")
+		os.Setenv("NAIS_POD_NO_PROXY", "baz")
+
+		env, err := createEnvironmentVariables(spec, deploymentRequest, manifest, []NaisResource{})
+
+		assert.Nil(t, err)
+		assert.NotContains(t, env, k8score.EnvVar{Name: "HTTP_PROXY", Value: "http://foo.bar:1234"})
+		assert.NotContains(t, env, k8score.EnvVar{Name: "HTTPS_PROXY", Value: "http://foo.bar:1234"})
+		assert.NotContains(t, env, k8score.EnvVar{Name: "NO_PROXY", Value: "baz"})
+		assert.NotContains(t, env, k8score.EnvVar{Name: "http_proxy", Value: "http://foo.bar:1234"})
+		assert.NotContains(t, env, k8score.EnvVar{Name: "https_proxy", Value: "http://foo.bar:1234"})
+		assert.NotContains(t, env, k8score.EnvVar{Name: "no_proxy", Value: "baz"})
+		assert.NotContains(t, env, k8score.EnvVar{Name: "JAVA_PROXY_OPTIONS", Value: "-Dhttp.proxyHost=foo.bar -Dhttps.proxyHost=foo.bar -Dhttp.proxyPort=1234 -Dhttps.proxyPort=1234 -Dhttp.nonProxyHosts=baz"})
 	})
 }
 

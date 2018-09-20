@@ -66,6 +66,7 @@ type NaisManifest struct {
 	Logformat       string
 	Logtransform    string
 	Secrets         bool `yaml:"secrets"`
+	Webproxy        bool `yaml:"webproxy"`
 }
 
 type Ingress struct {

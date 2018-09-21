@@ -417,7 +417,11 @@ func createEnvironmentVariables(spec app.Spec, deploymentRequest naisrequest.Dep
 		}
 	}
 
-	return createProxyEnvironmentVariables(envVars)
+	if manifest.Webproxy {
+		return createProxyEnvironmentVariables(envVars)
+	}
+
+	return envVars, nil
 }
 
 // All pods will have web proxy settings injected as environment variables. This is

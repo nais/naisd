@@ -774,7 +774,7 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 			Scope: generateScope(resource, existingResource, fasitEnvironmentClass, fasitEnvironment, zone),
 		}
 
-	} else if (strings.EqualFold("WebserviceEndpoint", resource.ResourceType) || strings.EqualFold("SoapService", resource.ResourceType)) {
+	} else if strings.EqualFold("WebserviceEndpoint", resource.ResourceType) || strings.EqualFold("SoapService", resource.ResourceType) {
 		var resourceType string
 		if strings.EqualFold("SoapService", resource.ResourceType) {
 			resourceType = "SoapService"

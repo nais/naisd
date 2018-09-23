@@ -762,7 +762,7 @@ func buildApplicationInstancePayload(deploymentRequest naisrequest.Deploy, fasit
 
 func buildResourcePayload(resource ExposedResource, existingResource NaisResource, fasitEnvironmentClass, fasitEnvironment, zone, hostname string) ResourcePayload {
 	// Reference of valid resources in Fasit
-	// ['DataSource', 'MSSQLDataSource', 'DB2DataSource', 'LDAP', 'BaseUrl', 'Credential', 'Certificate', 'OpenAm', 'Cics', 'RoleMapping', 'QueueManager', 'WebserviceEndpoint', 'RestService', 'WebserviceGateway', 'EJB', 'Datapower', 'EmailAddress', 'SMTPServer', 'Queue', 'Topic', 'DeploymentManager', 'ApplicationProperties', 'MemoryParameters', 'LoadBalancer', 'LoadBalancerConfig', 'FileLibrary', 'Channel
+	// ['DataSource', 'MSSQLDataSource', 'DB2DataSource', 'LDAP', 'BaseUrl', 'Credential', 'Certificate', 'OpenAm', 'Cics', 'RoleMapping', 'QueueManager', 'WebserviceEndpoint', 'SoapService', 'RestService', 'WebserviceGateway', 'EJB', 'Datapower', 'EmailAddress', 'SMTPServer', 'Queue', 'Topic', 'DeploymentManager', 'ApplicationProperties', 'MemoryParameters', 'LoadBalancer', 'LoadBalancerConfig', 'FileLibrary', 'Channel
 	if strings.EqualFold("restservice", resource.ResourceType) {
 		return RestResourcePayload{
 			Type:  "RestService",
@@ -774,7 +774,13 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 			Scope: generateScope(resource, existingResource, fasitEnvironmentClass, fasitEnvironment, zone),
 		}
 
-	} else if strings.EqualFold("WebserviceEndpoint", resource.ResourceType) {
+	} else if (strings.EqualFold("WebserviceEndpoint", resource.ResourceType) || strings.EqualFold("SoapService", resource.ResourceType)) {
+		var resourceType string
+		if strings.EqualFold("SoapService", resource.ResourceType) {
+			resourceType = "SoapService"
+		} else {
+			resourceType = "WebserviceEndpoint"
+		}
 		Url, _ := url.Parse("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect")
 		q := url.Values{}
 		q.Add("r", "m2internal")
@@ -785,7 +791,7 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 		Url.RawQuery = q.Encode()
 
 		return WebserviceResourcePayload{
-			Type:  "WebserviceEndpoint",
+			Type:  resourceType,
 			Alias: resource.Alias,
 			Properties: WebserviceProperties{
 				EndpointUrl:   "https://" + hostname + resource.Path,

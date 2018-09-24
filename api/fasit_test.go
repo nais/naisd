@@ -511,6 +511,16 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		SecurityToken:  securityToken,
 		Description:    description,
 	}
+	soapServiceResource := ExposedResource{
+		Alias:          alias,
+		ResourceType:   "SoapService",
+		Path:           path,
+		WsdlGroupId:    wsdlGroupId,
+		WsdlArtifactId: wsdlArtifactId,
+		WsdlVersion:    version,
+		SecurityToken:  securityToken,
+		Description:    description,
+	}
 	exposedResources := []Resource{{1}, {2}, {3}}
 	usedResources := []Resource{{4}, {5}, {6}}
 
@@ -568,6 +578,16 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		assert.Equal(t, environment, payload.Scope.Environment)
 		assert.Equal(t, zone, payload.Scope.Zone)
 	})
+	t.Run("Building SoapService ResourcePayload", func(t *testing.T) {
+		payloadReturn := buildResourcePayload(soapServiceResource, NaisResource{}, class, environment, zone, hostname)
+		payload, _ := payloadReturn.(WebserviceResourcePayload)
+		assert.Equal(t, "SoapService", payload.Type)
+		assert.Equal(t, alias, payload.Alias)
+		assert.Equal(t, wsdlPath, payload.Properties.WsdlUrl)
+		assert.Equal(t, description, payload.Properties.Description)
+		assert.Equal(t, environment, payload.Scope.Environment)
+		assert.Equal(t, zone, payload.Scope.Zone)
+	})
 	t.Run("Marshalling Webservice payloads yields expected result", func(t *testing.T) {
 
 		payload, err := json.Marshal(buildResourcePayload(webserviceResource, NaisResource{}, class, environment, zone, hostname))
@@ -575,6 +595,14 @@ func TestBuildingFasitPayloads(t *testing.T) {
 		assert.NoError(t, err)
 		n := len(payload)
 		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"zone\":\"fss\"},\"type\":\"WebserviceEndpoint\",\"properties\":{\"endpointUrl\":\"https://hostname/myPath\",\"wsdlUrl\":\"http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=myArtifactId&e=zip&g=myGroup&r=m2internal&v=2.1\",\"securityToken\":\"LDAP\",\"description\":\"myDescription\"}}", string(payload[:n]))
+	})
+	t.Run("Marshalling SoapService payloads yields expected result", func(t *testing.T) {
+
+		payload, err := json.Marshal(buildResourcePayload(soapServiceResource, NaisResource{}, class, environment, zone, hostname))
+		payload = bytes.Replace(payload, []byte("\\u0026"), []byte("&"), -1)
+		assert.NoError(t, err)
+		n := len(payload)
+		assert.Equal(t, "{\"alias\":\"resourceAlias\",\"scope\":{\"environmentclass\":\"t\",\"environment\":\"t1000\",\"zone\":\"fss\"},\"type\":\"SoapService\",\"properties\":{\"endpointUrl\":\"https://hostname/myPath\",\"wsdlUrl\":\"http://maven.adeo.no/nexus/service/local/artifact/maven/redirect?a=myArtifactId&e=zip&g=myGroup&r=m2internal&v=2.1\",\"securityToken\":\"LDAP\",\"description\":\"myDescription\"}}", string(payload[:n]))
 	})
 	t.Run("Building RestService ResourcePayload with AllZones returns wider scope", func(t *testing.T) {
 		restResource.AllZones = allZones

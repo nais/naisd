@@ -775,12 +775,6 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 		}
 
 	} else if strings.EqualFold("WebserviceEndpoint", resource.ResourceType) || strings.EqualFold("SoapService", resource.ResourceType) {
-		var resourceType string
-		if strings.EqualFold("SoapService", resource.ResourceType) {
-			resourceType = "SoapService"
-		} else {
-			resourceType = "WebserviceEndpoint"
-		}
 		Url, _ := url.Parse("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect")
 		wsdlArtifactQuery := url.Values{}
 		wsdlArtifactQuery.Add("r", "m2internal")
@@ -791,7 +785,7 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 		Url.RawQuery = wsdlArtifactQuery.Encode()
 
 		return WebserviceResourcePayload{
-			Type:  resourceType,
+			Type:  resource.ResourceType,
 			Alias: resource.Alias,
 			Properties: WebserviceProperties{
 				EndpointUrl:   "https://" + hostname + resource.Path,

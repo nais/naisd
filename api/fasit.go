@@ -782,13 +782,13 @@ func buildResourcePayload(resource ExposedResource, existingResource NaisResourc
 			resourceType = "WebserviceEndpoint"
 		}
 		Url, _ := url.Parse("http://maven.adeo.no/nexus/service/local/artifact/maven/redirect")
-		q := url.Values{}
-		q.Add("r", "m2internal")
-		q.Add("g", resource.WsdlGroupId)
-		q.Add("a", resource.WsdlArtifactId)
-		q.Add("v", resource.WsdlVersion)
-		q.Add("e", "zip")
-		Url.RawQuery = q.Encode()
+		wsdlArtifactQuery := url.Values{}
+		wsdlArtifactQuery.Add("r", "m2internal")
+		wsdlArtifactQuery.Add("g", resource.WsdlGroupId)
+		wsdlArtifactQuery.Add("a", resource.WsdlArtifactId)
+		wsdlArtifactQuery.Add("v", resource.WsdlVersion)
+		wsdlArtifactQuery.Add("e", "zip")
+		Url.RawQuery = wsdlArtifactQuery.Encode()
 
 		return WebserviceResourcePayload{
 			Type:  resourceType,

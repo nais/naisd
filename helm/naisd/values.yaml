@@ -19,4 +19,4 @@ vaultKVPath: /kv/kubernetes/env/zone
 vaultAuthPath: /kubernetes/env/zone
 vaultInitContainerImage: navikt/vks:25
 
-version: 296.0.0
+version: 297.0.0

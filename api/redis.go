@@ -10,7 +10,7 @@ import (
 	k8srest "k8s.io/client-go/rest"
 )
 
-// Enables and set resources for Redis-pods
+// Redis yaml-object to enable and set resources
 type Redis struct {
 	Enabled  bool
 	Limits   ResourceList

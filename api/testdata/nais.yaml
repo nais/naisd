@@ -53,7 +53,8 @@ fasitResources:
     description: "Dette er en webservicetjeneste"
     allZones: false
 leaderElection: true
-redis: false
+redis:
+  enabled: false
 secrets: true
 ingress:
   disabled: true

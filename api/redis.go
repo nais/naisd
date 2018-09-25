@@ -10,11 +10,37 @@ import (
 	k8srest "k8s.io/client-go/rest"
 )
 
-func createRedisFailoverDef(spec app.Spec) *redisapi.RedisFailover {
+// Redis yaml-object to enable and set resources
+type Redis struct {
+	Enabled  bool
+	Limits   ResourceList
+	Requests ResourceList
+}
+
+func createRedisFailoverDef(spec app.Spec, redis Redis) *redisapi.RedisFailover {
 	replicas := int32(3)
 	resources := redisapi.RedisFailoverResources{
-		Limits:   redisapi.CPUAndMem{Memory: "100Mi"},
-		Requests: redisapi.CPUAndMem{CPU: "100m"},
+		Limits: redisapi.CPUAndMem{
+			CPU:    "100m",
+			Memory: "128Mi",
+		},
+		Requests: redisapi.CPUAndMem{
+			CPU:    "100m",
+			Memory: "256Mi",
+		},
+	}
+
+	if len(redis.Limits.Cpu) != 0 {
+		resources.Limits.CPU = redis.Limits.Cpu
+	}
+	if len(redis.Limits.Memory) != 0 {
+		resources.Limits.Memory = redis.Limits.Memory
+	}
+	if len(redis.Requests.Cpu) != 0 {
+		resources.Requests.CPU = redis.Requests.Cpu
+	}
+	if len(redis.Requests.Memory) != 0 {
+		resources.Requests.Memory = redis.Requests.Memory
 	}
 
 	redisSpec := redisapi.RedisFailoverSpec{
@@ -47,8 +73,8 @@ func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, r
 	}
 }
 
-func updateOrCreateRedisSentinelCluster(spec app.Spec) (*redisapi.RedisFailover, error) {
-	newFailover := createRedisFailoverDef(spec)
+func updateOrCreateRedisSentinelCluster(spec app.Spec, redis Redis) (*redisapi.RedisFailover, error) {
+	newFailover := createRedisFailoverDef(spec, redis)
 
 	config, err := k8srest.InClusterConfig()
 	if err != nil {

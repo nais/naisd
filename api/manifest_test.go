@@ -57,6 +57,7 @@ func TestManifestUnmarshal(t *testing.T) {
 	assert.Equal(t, "Investigate why nais-testapp can't spawn pods. kubectl describe deployment nais-testapp, kubectl describe pod nais-testapp-*.", manifest.Alerts[0].Annotations["action"])
 	assert.Equal(t, "Critical", manifest.Alerts[1].Labels["severity"])
 	assert.Equal(t, true, manifest.Secrets)
+	assert.Equal(t, false, manifest.Redis.Enabled)
 }
 
 func TestManifestUsesDefaultValues(t *testing.T) {

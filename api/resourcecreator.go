@@ -364,7 +364,7 @@ func createEnvVar(key, value string) k8score.EnvVar {
 func createEnvironmentVariables(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) ([]k8score.EnvVar, error) {
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
-	if manifest.Redis {
+	if manifest.Redis.Enabled {
 		envVars = append(envVars, createEnvVar("REDIS_HOST", fmt.Sprintf("rfs-%s", spec.ResourceName())))
 	}
 
@@ -685,8 +685,8 @@ func createOrUpdateK8sResources(spec app.Spec, deploymentRequest naisrequest.Dep
 	}
 	deploymentResult.Service = service
 
-	if manifest.Redis {
-		redis, err := updateOrCreateRedisSentinelCluster(spec)
+	if manifest.Redis.Enabled {
+		redis, err := updateOrCreateRedisSentinelCluster(spec, manifest.Redis)
 		if err != nil {
 			return deploymentResult, fmt.Errorf("failed while creating Redis sentinel cluster: %s", err)
 		}

@@ -71,7 +71,7 @@ func newDefaultManifest() NaisManifest {
 			Enabled: true,
 		},
 		LeaderElection: false,
-		Redis:          false,
+		Redis:          Redis{Enabled: false},
 		Team:           teamName,
 	}
 
@@ -358,7 +358,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[12].Name)
 		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[13].Name)
 		assert.False(t, manifest.LeaderElection, "LeaderElection should default to false")
-		assert.False(t, manifest.Redis, "Redis should default to false")
+		assert.False(t, manifest.Redis.Enabled, "Redis should default to false")
 	})
 
 	t.Run("when fasit is skipped, FAIST_ENVIRONMENT_NAME is not set", func(t *testing.T) {
@@ -381,7 +381,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, "APP_VERSION", env[1].Name)
 		assert.Equal(t, version, env[1].Value)
 		assert.False(t, manifest.LeaderElection, "LeaderElection should default to false")
-		assert.False(t, manifest.Redis, "Redis should default to false")
+		assert.False(t, manifest.Redis.Enabled, "Redis should default to false")
 	})
 
 	t.Run("when a deployment exists, its updated", func(t *testing.T) {

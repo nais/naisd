@@ -19,24 +19,28 @@ type Redis struct {
 
 func createRedisFailoverDef(spec app.Spec, redis Redis) *redisapi.RedisFailover {
 	replicas := int32(3)
-	resources := redisapi.RedisFailoverResources{}
-
-	if redis.Limits != (ResourceList{}) {
-		resources.Limits = redisapi.CPUAndMem{
-			CPU:    redis.Limits.Cpu,
-			Memory: redis.Limits.Memory,
-		}
-	} else {
-		resources.Limits = redisapi.CPUAndMem{Memory: "100Mi"}
+	resources := redisapi.RedisFailoverResources{
+		Limits: redisapi.CPUAndMem{
+			CPU:    "100m",
+			Memory: "128Mi",
+		},
+		Requests: redisapi.CPUAndMem{
+			CPU:    "100m",
+			Memory: "256Mi",
+		},
 	}
 
-	if redis.Requests != (ResourceList{}) {
-		resources.Requests = redisapi.CPUAndMem{
-			CPU:    redis.Requests.Cpu,
-			Memory: redis.Requests.Memory,
-		}
-	} else {
-		resources.Requests = redisapi.CPUAndMem{CPU: "100m"}
+	if len(redis.Limits.Cpu) != 0 {
+		resources.Limits.CPU = redis.Limits.Cpu
+	}
+	if len(redis.Limits.Memory) != 0 {
+		resources.Limits.Memory = redis.Limits.Memory
+	}
+	if len(redis.Requests.Cpu) != 0 {
+		resources.Requests.CPU = redis.Requests.Cpu
+	}
+	if len(redis.Requests.Memory) != 0 {
+		resources.Requests.Memory = redis.Requests.Memory
 	}
 
 	redisSpec := redisapi.RedisFailoverSpec{

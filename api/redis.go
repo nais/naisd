@@ -26,7 +26,7 @@ func createRedisFailoverDef(spec app.Spec, redis Redis) *redisapi.RedisFailover 
 		},
 		Requests: redisapi.CPUAndMem{
 			CPU:    "100m",
-			Memory: "256Mi",
+			Memory: "128Mi",
 		},
 	}
 

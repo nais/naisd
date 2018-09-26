@@ -28,7 +28,7 @@ redis:
     memory: 128Mi  # app will be killed if exceeding these limits
   requests: # App is guaranteed the requested resources and  will be scheduled on nodes with at least this amount of resources available
     cpu: 100m
-    memory: 256Mi
+    memory: 128Mi
 #Optional. Defaults to NONE.
 #See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
 preStopHookPath: "" # A HTTP GET will be issued to this endpoint at least once before the pod is terminated.

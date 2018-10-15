@@ -2,12 +2,13 @@ package api
 
 import (
 	"fmt"
-	"github.com/nais/naisd/api/app"
-	"github.com/nais/naisd/proxyopts"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/nais/naisd/api/app"
+	"github.com/nais/naisd/proxyopts"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
@@ -728,7 +729,7 @@ func createOrUpdateK8sResources(spec app.Spec, deploymentRequest naisrequest.Dep
 	}
 
 	if !manifest.Ingress.Disabled {
-		ingress, err := createOrUpdateIngress(spec, deploymentRequest, clusterSubdomain, resources, k8sClient)
+		ingress, err := createOrUpdateIngress(spec, manifest, deploymentRequest, clusterSubdomain, resources, k8sClient)
 		if err != nil {
 			return deploymentResult, fmt.Errorf("failed while creating ingress: %s", err)
 		}
@@ -773,7 +774,7 @@ func createOrUpdateAutoscaler(spec app.Spec, manifest NaisManifest, k8sClient ku
 }
 
 // Returns nil,nil if ingress already exists. No reason to do update, as nothing can change
-func createOrUpdateIngress(spec app.Spec, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
+func createOrUpdateIngress(spec app.Spec, manifest NaisManifest, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
 	ingress, err := getExistingIngress(spec, k8sClient)
 
 	if err != nil {
@@ -783,6 +784,8 @@ func createOrUpdateIngress(spec app.Spec, deploymentRequest naisrequest.Deploy, 
 	if ingress == nil {
 		ingress = createIngressDef(spec)
 	}
+
+	ingress.Annotations = createIngressAnnotations(manifest)
 
 	ingress.Spec.Rules = createIngressRules(spec, deploymentRequest, clusterSubdomain, naisResources)
 	return createOrUpdateIngressResource(ingress, spec.Namespace(), k8sClient)
@@ -987,6 +990,15 @@ func createOrUpdateConfigMapResource(configMapSpec *k8score.ConfigMap, namespace
 
 func int32p(i int32) *int32 {
 	return &i
+}
+
+func createIngressAnnotations(manifest NaisManifest) map[string]string {
+	annotations := make(map[string]string, 2)
+
+	annotations["prometheus.io/scrape"] = "true"
+	annotations["prometheus.io/path"] = manifest.Healthcheck.Liveness.Path
+
+	return annotations
 }
 
 func generateObjectMeta(spec app.Spec) k8smeta.ObjectMeta {

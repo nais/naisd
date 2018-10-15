@@ -2,10 +2,11 @@ package api
 
 import (
 	"fmt"
-	"github.com/nais/naisd/api/app"
-	"github.com/nais/naisd/pkg/test"
 	"strings"
 	"testing"
+
+	"github.com/nais/naisd/api/app"
+	"github.com/nais/naisd/pkg/test"
 
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
@@ -589,6 +590,13 @@ func TestIngress(t *testing.T) {
 	spec := app.Spec{Application: appName, Environment: environment, Team: teamName, ApplicationNamespaced: true}
 	otherSpec := app.Spec{Application: otherAppName, Environment: environment, Team: otherTeamName, ApplicationNamespaced: true}
 	nonExistingSpec := app.Spec{Application: "nonexisting", Environment: environment, Team: teamName, ApplicationNamespaced: true}
+	naisManifest := NaisManifest{
+		Healthcheck: Healthcheck{
+			Liveness: Probe{
+				Path: "/internal/liveness",
+			},
+		},
+	}
 
 	ingress := createIngressDef(spec)
 	ingress.ObjectMeta.ResourceVersion = resourceVersion
@@ -607,7 +615,7 @@ func TestIngress(t *testing.T) {
 	})
 
 	t.Run("when no ingress exists, a default ingress is created", func(t *testing.T) {
-		ingress, err := createOrUpdateIngress(otherSpec, naisrequest.Deploy{Environment: environment, Application: otherAppName, ApplicationNamespaced: true}, subDomain, []NaisResource{}, clientset)
+		ingress, err := createOrUpdateIngress(otherSpec, naisManifest, naisrequest.Deploy{Environment: environment, Application: otherAppName, ApplicationNamespaced: true}, subDomain, []NaisResource{}, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, spec.ResourceName(), ingress.Name)
@@ -616,13 +624,15 @@ func TestIngress(t *testing.T) {
 		assert.Equal(t, otherAppName+"."+subDomain, ingress.Spec.Rules[0].Host)
 		assert.Equal(t, spec.ResourceName(), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName)
 		assert.Equal(t, intstr.FromInt(80), ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort)
+		assert.Equal(t, "true", ingress.Annotations["prometheus.io/scrape"])
+		assert.Equal(t, naisManifest.Healthcheck.Liveness.Path, ingress.Annotations["prometheus.io/path"])
 	})
 
 	t.Run("when ingress is created in non-default environment, hostname is postfixed with environment", func(t *testing.T) {
 		otherEnvironment := "nondefault"
 		otherEnvSpec := app.Spec{Application: otherAppName, Environment: otherEnvironment, Team: otherTeamName, ApplicationNamespaced: true}
 
-		ingress, err := createOrUpdateIngress(otherEnvSpec, naisrequest.Deploy{Environment: otherEnvironment, Namespace: otherEnvironment, Application: otherAppName}, subDomain, []NaisResource{}, clientset)
+		ingress, err := createOrUpdateIngress(otherEnvSpec, naisManifest, naisrequest.Deploy{Environment: otherEnvironment, Namespace: otherEnvironment, Application: otherAppName}, subDomain, []NaisResource{}, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, otherAppName+"-"+otherEnvironment+"."+subDomain, ingress.Spec.Rules[0].Host)
 	})
@@ -643,7 +653,7 @@ func TestIngress(t *testing.T) {
 				},
 			},
 		}
-		ingress, err := createOrUpdateIngress(otherSpec, naisrequest.Deploy{Environment: environment, Application: otherAppName}, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(otherSpec, naisManifest, naisrequest.Deploy{Environment: environment, Application: otherAppName}, subDomain, naisResources, clientset)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 3, len(ingress.Spec.Rules))
@@ -662,7 +672,7 @@ func TestIngress(t *testing.T) {
 		clientset := fake.NewSimpleClientset(ingress) // Avoid interfering with other tests in suite.
 		var naisResources []NaisResource
 
-		ingress, err := createOrUpdateIngress(spec, naisrequest.Deploy{Environment: environment, Application: spec.Application, Zone: constant.ZONE_SBS, FasitEnvironment: spec.Environment, ApplicationNamespaced: true}, subDomain, naisResources, clientset)
+		ingress, err := createOrUpdateIngress(spec, naisManifest, naisrequest.Deploy{Environment: environment, Application: spec.Application, Zone: constant.ZONE_SBS, FasitEnvironment: spec.Environment, ApplicationNamespaced: true}, subDomain, naisResources, clientset)
 		rules := ingress.Spec.Rules
 
 		assert.NoError(t, err)

@@ -14,7 +14,7 @@ type javaOption struct {
 type javaOptions []javaOption
 
 func (o javaOption) Format() string {
-	return fmt.Sprintf("-D%s=%s", o.Key, o.Value)
+	return fmt.Sprintf("-D%s='%s'", o.Key, o.Value)
 }
 
 func newJavaOption(key string, value string) javaOption {

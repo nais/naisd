@@ -46,7 +46,6 @@ func substituteNamespaceVariables(alertRules []PrometheusAlertRule, namespace st
 	return
 }
 
-
 func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 	if teamName != "" {
 		for i := range alertRules {

@@ -1036,9 +1036,8 @@ func TestInjectProxySettings(t *testing.T) {
 		func(t *testing.T) {
 			t.Run("proxy settings should be injected in the pod if requested through manifest", func(t *testing.T) {
 				deploymentRequest := naisrequest.Deploy{
-					Application:           "myapp",
-					Version:               "1",
-
+					Application: "myapp",
+					Version:     "1",
 				}
 
 				manifest := NaisManifest{
@@ -1059,9 +1058,8 @@ func TestInjectProxySettings(t *testing.T) {
 
 			t.Run("proxy settings should not be injected in the pod unless requested through manifest", func(t *testing.T) {
 				deploymentRequest := naisrequest.Deploy{
-					Application:           "myapp",
-					Version:               "1",
-
+					Application: "myapp",
+					Version:     "1",
 				}
 
 				manifest := NaisManifest{}

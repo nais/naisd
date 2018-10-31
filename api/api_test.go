@@ -476,8 +476,8 @@ func TestValidateDeploymentRequest(t *testing.T) {
 func TestEnsurePropertyCompatibility(t *testing.T) {
 	t.Run("Should warn when specifying environment", func(t *testing.T) {
 		deploy := naisrequest.Deploy{
-			Application:           "application",
-			Environment:           "default",
+			Application: "application",
+			Environment: "default",
 		}
 
 		warnings := ensurePropertyCompatibility(&deploy)

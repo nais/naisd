@@ -296,7 +296,7 @@ func FetchFasitResources(fasit FasitClientAdapter, application string, fasitEnvi
 			naisresources = append(naisresources, *lbResource)
 		}
 	} else {
-		glog.Warning("failed getting loadbalancer config for application %s in fasitEnvironment %s: %s ", application, fasitEnvironment, e)
+		glog.Warningf("failed getting loadbalancer config for application %s in fasitEnvironment %s: %s ", application, fasitEnvironment, e)
 	}
 
 	return naisresources, nil

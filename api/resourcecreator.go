@@ -39,9 +39,7 @@ type DeploymentResult struct {
 	Redis           *redisapi.RedisFailover
 	AlertsConfigMap *k8score.ConfigMap
 	ServiceAccount  *k8score.ServiceAccount
-	Namespace       *k8score.Namespace
 	RoleBinding     *rbacv1.RoleBinding
-	DeletedOldApp   string
 }
 
 // Creates a Kubernetes Service object
@@ -58,10 +56,6 @@ func createServiceDef(spec app.Spec) *k8score.Service {
 func createPodSelector(spec app.Spec) map[string]string {
 	selector := map[string]string{
 		"app": spec.Application,
-	}
-
-	if spec.ApplicationNamespaced {
-		selector["environment"] = spec.Environment
 	}
 
 	return selector
@@ -262,7 +256,7 @@ func createLeaderElectionContainer(spec app.Spec) k8score.Container {
 		Ports: []k8score.ContainerPort{
 			{ContainerPort: 4040, Protocol: k8score.ProtocolTCP},
 		},
-		Args: []string{"--election=" + spec.ResourceName(), "--http=localhost:4040", fmt.Sprintf("--election-namespace=%s", spec.Namespace())},
+		Args: []string{"--election=" + spec.ResourceName(), "--http=localhost:4040", fmt.Sprintf("--election-namespace=%s", spec.Namespace)},
 	}
 }
 
@@ -502,7 +496,7 @@ func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.En
 		},
 		{
 			Name:  "APP_ENVIRONMENT",
-			Value: request.Environment,
+			Value: request.Namespace,
 		},
 	}
 
@@ -582,20 +576,18 @@ func createIngressDef(spec app.Spec) *k8sextensions.Ingress {
 	}
 }
 
-func createIngressHostname(application, environment, namespace, subdomain string, applicationNamespaced bool) string {
-	if (applicationNamespaced && environment == "app") || (!applicationNamespaced && namespace == "default") {
+func createIngressHostname(application, namespace, subdomain string) string {
+	if namespace == "default" {
 		return fmt.Sprintf("%s.%s", application, subdomain)
-	} else if applicationNamespaced {
-		return fmt.Sprintf("%s-%s.%s", application, environment, subdomain)
 	} else {
 		return fmt.Sprintf("%s-%s.%s", application, namespace, subdomain)
 	}
 }
 
 func createSBSPublicHostname(request naisrequest.Deploy) string {
-	environment := request.FasitEnvironment
-	if environment != constant.ENVIRONMENT_P {
-		return fmt.Sprintf("tjenester-%s.nav.no", environment)
+	fasitEnvironment := request.FasitEnvironment
+	if fasitEnvironment != constant.ENVIRONMENT_P {
+		return fmt.Sprintf("tjenester-%s.nav.no", fasitEnvironment)
 	} else {
 		return "tjenester.nav.no"
 	}
@@ -657,16 +649,6 @@ func createOrUpdateK8sResources(spec app.Spec, deploymentRequest naisrequest.Dep
 	var deploymentResult DeploymentResult
 	client := clientHolder{k8sClient}
 
-	namespace, err := client.createNamespace(spec.Namespace(), spec.Team)
-	if err != nil {
-		return deploymentResult, fmt.Errorf("failed while creating namespace: %s", err)
-	}
-	err = client.waitForNamespaceReady(namespace)
-	if err != nil {
-		return deploymentResult, fmt.Errorf("failed while waiting for namespace to become ready: %s", err)
-	}
-	deploymentResult.Namespace = namespace
-
 	serviceAccount, err := NewServiceAccountInterface(k8sClient).CreateServiceAccountIfNotExist(spec)
 	if err != nil {
 		return deploymentResult, fmt.Errorf("failed while creating service account: %s", err)
@@ -719,15 +701,6 @@ func createOrUpdateK8sResources(spec app.Spec, deploymentRequest naisrequest.Dep
 	}
 	deploymentResult.AlertsConfigMap = alertsConfigMap
 
-	// This has to happen before we create ingress, otherwise we risk sending requests to the new app before it's ready.
-	if deploymentRequest.ApplicationNamespaced {
-		deleteOldAppStatus, err := client.DeleteOldApp(spec, deploymentRequest, manifest)
-		if err != nil {
-			return deploymentResult, fmt.Errorf("failed while deleting old application: %s", err)
-		}
-		deploymentResult.DeletedOldApp = deleteOldAppStatus
-	}
-
 	if !manifest.Ingress.Disabled {
 		ingress, err := createOrUpdateIngress(spec, manifest, deploymentRequest, clusterSubdomain, resources, k8sClient)
 		if err != nil {
@@ -770,7 +743,7 @@ func createOrUpdateAutoscaler(spec app.Spec, manifest NaisManifest, k8sClient ku
 	}
 
 	autoscalerDef := createOrUpdateAutoscalerDef(spec, manifest.Replicas.Min, manifest.Replicas.Max, manifest.Replicas.CpuThresholdPercentage, autoscaler)
-	return createOrUpdateAutoscalerResource(autoscalerDef, spec.Namespace(), k8sClient)
+	return createOrUpdateAutoscalerResource(autoscalerDef, spec.Namespace, k8sClient)
 }
 
 // Returns nil,nil if ingress already exists. No reason to do update, as nothing can change
@@ -788,13 +761,13 @@ func createOrUpdateIngress(spec app.Spec, manifest NaisManifest, deploymentReque
 	ingress.Annotations = createIngressAnnotations(manifest)
 
 	ingress.Spec.Rules = createIngressRules(spec, deploymentRequest, clusterSubdomain, naisResources)
-	return createOrUpdateIngressResource(ingress, spec.Namespace(), k8sClient)
+	return createOrUpdateIngressResource(ingress, spec.Namespace, k8sClient)
 }
 
 func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource) []k8sextensions.IngressRule {
 	var ingressRules []k8sextensions.IngressRule
 
-	defaultIngressRule := createIngressRule(spec.ResourceName(), createIngressHostname(spec.Application, deploymentRequest.Environment, deploymentRequest.Namespace, clusterSubdomain, deploymentRequest.ApplicationNamespaced), "")
+	defaultIngressRule := createIngressRule(spec.ResourceName(), createIngressHostname(spec.Application, deploymentRequest.Namespace, clusterSubdomain), "")
 	ingressRules = append(ingressRules, defaultIngressRule)
 
 	if deploymentRequest.Zone == constant.ZONE_SBS {
@@ -822,7 +795,7 @@ func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8sc
 	}
 
 	fillServiceSpec(spec, &service.Spec)
-	return createOrUpdateServiceResource(service, spec.Namespace(), k8sClient)
+	return createOrUpdateServiceResource(service, spec.Namespace, k8sClient)
 }
 
 func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
@@ -838,7 +811,7 @@ func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deplo
 		return nil, fmt.Errorf("unable to create deployment: %s", err)
 	}
 
-	return createOrUpdateDeploymentResource(deploymentDef, spec.Namespace(), k8sClient)
+	return createOrUpdateDeploymentResource(deploymentDef, spec.Namespace, k8sClient)
 }
 
 func createOrUpdateSecret(spec app.Spec, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8score.Secret, error) {
@@ -849,14 +822,14 @@ func createOrUpdateSecret(spec app.Spec, naisResources []NaisResource, k8sClient
 	}
 
 	if secretDef := createSecretDef(spec, naisResources, existingSecret); secretDef != nil {
-		return createOrUpdateSecretResource(secretDef, spec.Namespace(), k8sClient)
+		return createOrUpdateSecretResource(secretDef, spec.Namespace, k8sClient)
 	} else {
 		return nil, nil
 	}
 }
 
 func getExistingService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	serviceClient := k8sClient.CoreV1().Services(spec.Namespace())
+	serviceClient := k8sClient.CoreV1().Services(spec.Namespace)
 	service, err := serviceClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 
 	switch {
@@ -870,7 +843,7 @@ func getExistingService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score
 }
 
 func getExistingSecret(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Secret, error) {
-	secretClient := k8sClient.CoreV1().Secrets(spec.Namespace())
+	secretClient := k8sClient.CoreV1().Secrets(spec.Namespace)
 	secret, err := secretClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 	switch {
 	case err == nil:
@@ -883,7 +856,7 @@ func getExistingSecret(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.
 }
 
 func getExistingDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
-	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace())
+	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace)
 	deployment, err := deploymentClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 
 	switch {
@@ -897,7 +870,7 @@ func getExistingDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8se
 }
 
 func getExistingIngress(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
-	ingressClient := k8sClient.ExtensionsV1beta1().Ingresses(spec.Namespace())
+	ingressClient := k8sClient.ExtensionsV1beta1().Ingresses(spec.Namespace)
 	ingress, err := ingressClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 
 	switch {
@@ -911,7 +884,7 @@ func getExistingIngress(spec app.Spec, k8sClient kubernetes.Interface) (*k8sexte
 }
 
 func getExistingAutoscaler(spec app.Spec, k8sClient kubernetes.Interface) (*k8sautoscaling.HorizontalPodAutoscaler, error) {
-	autoscalerClient := k8sClient.AutoscalingV1().HorizontalPodAutoscalers(spec.Namespace())
+	autoscalerClient := k8sClient.AutoscalingV1().HorizontalPodAutoscalers(spec.Namespace)
 	autoscaler, err := autoscalerClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 
 	switch {
@@ -1002,10 +975,10 @@ func createIngressAnnotations(manifest NaisManifest) map[string]string {
 }
 
 func generateObjectMeta(spec app.Spec) k8smeta.ObjectMeta {
-	objectMeta := createObjectMeta(spec.ResourceName(), spec.Namespace())
+	objectMeta := createObjectMeta(spec.ResourceName(), spec.Namespace)
 	objectMeta.Labels = map[string]string{
 		"app":         spec.Application,
-		"environment": spec.Environment,
+		"environment": spec.Namespace,
 		"team":        spec.Team,
 	}
 

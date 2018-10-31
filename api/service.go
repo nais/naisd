@@ -13,7 +13,7 @@ func (c clientHolder) redirectOldServiceToNewApp(originalService *v1.Service, sp
 		ObjectMeta: *originalService.ObjectMeta.DeepCopy(),
 		Spec: v1.ServiceSpec{
 			Type:         v1.ServiceTypeExternalName,
-			ExternalName: fmt.Sprintf("%s.%s.svc.nais.local", spec.ResourceName(), spec.Namespace()),
+			ExternalName: fmt.Sprintf("%s.%s.svc.nais.local", spec.ResourceName(), spec.Namespace),
 			Ports:        []v1.ServicePort{{Port: 80}},
 		},
 	}

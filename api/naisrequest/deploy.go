@@ -19,7 +19,6 @@ type Deploy struct {
 	OnBehalfOf            string `json:"onbehalfof,omitempty"`
 	Namespace             string `json:"namespace,omitempty"`
 	Environment           string `json:"environment,omitempty"`
-	ApplicationNamespaced bool   `json:"applicationNamespaced,omitempty"`
 }
 
 func (r Deploy) Validate() []error {
@@ -27,7 +26,7 @@ func (r Deploy) Validate() []error {
 		"application": &r.Application,
 		"version":     &r.Version,
 		"zone":        &r.Zone,
-		"environment": &r.Environment,
+		"namespace":   &r.Namespace,
 	}
 
 	if !r.SkipFasit {

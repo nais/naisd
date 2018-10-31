@@ -65,7 +65,7 @@ func TestValidatePrometheusAlertRules(t *testing.T) {
 }
 
 func TestAddRulesToConfigMap(t *testing.T) {
-	spec := app.Spec{Application: appName, Environment: environment, Team: teamName}
+	spec := app.Spec{Application: appName, Namespace: namespace, Team: teamName}
 	deploymentPrefix := createDeploymentPrefix(spec)
 	rulesGroupFilename := deploymentPrefix + ".yml"
 

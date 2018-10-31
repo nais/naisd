@@ -47,7 +47,7 @@ func TestAnIncorrectPayloadGivesError(t *testing.T) {
 }
 
 func TestDeployStatusHandler(t *testing.T) {
-	req, _ := http.NewRequest("GET", "/deploystatus/deployName/environment", strings.NewReader("whatever"))
+	req, _ := http.NewRequest("GET", "/deploystatus/default/deployName", strings.NewReader("whatever"))
 
 	t.Run("Return 404 if deploy status is not found", func(t *testing.T) {
 		mux := goji.NewMux()
@@ -56,7 +56,7 @@ func TestDeployStatusHandler(t *testing.T) {
 			errToReturn: fmt.Errorf("not Found"),
 		}}
 
-		mux.Handle(pat.Get("/deploystatus/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
+		mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
 
 		rr := httptest.NewRecorder()
 
@@ -92,7 +92,7 @@ func TestDeployStatusHandler(t *testing.T) {
 					deployStatusToReturn: test.deployStatus,
 				},
 			}
-			mux.Handle(pat.Get("/deploystatus/:deployName/:environment"), appHandler(api.deploymentStatusHandler))
+			mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
 
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)
@@ -112,7 +112,7 @@ func TestNoManifestGivesError(t *testing.T) {
 		FasitEnvironment: "",
 		ManifestUrl:      manifestUrl,
 		Zone:             "zone",
-		Environment:      "environment",
+		Namespace:        "default",
 	}
 
 	defer gock.Off()
@@ -142,7 +142,7 @@ func TestNoManifestGivesError(t *testing.T) {
 
 func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	appName := "appname"
-	environment := "environment"
+	namespace := "default"
 	fasitEnvironment := "environmentName"
 	image := "name/Container"
 	version := "123"
@@ -155,13 +155,12 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
 	depReq := naisrequest.Deploy{
-		Application:           appName,
-		Version:               version,
-		FasitEnvironment:      fasitEnvironment,
-		ManifestUrl:           "http://repo.com/app",
-		Zone:                  "zone",
-		Environment:           environment,
-		ApplicationNamespaced: true,
+		Application:      appName,
+		Version:          version,
+		FasitEnvironment: fasitEnvironment,
+		ManifestUrl:      "http://repo.com/app",
+		Zone:             "zone",
+		Namespace:        namespace,
 	}
 
 	manifest := NaisManifest{
@@ -229,12 +228,12 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n- created namespace\n- created serviceaccount\n- created rolebinding\n", string(rr.Body.Bytes()))
+	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n- created serviceaccount\n- created rolebinding\n", string(rr.Body.Bytes()))
 }
 
 func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 	appName := "appname"
-	environment := "environment"
+	namespace := "default"
 	fasitEnvironment := "environmentName"
 	image := "name/Container"
 	version := "123"
@@ -246,13 +245,12 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
 	depReq := naisrequest.Deploy{
-		Application:           appName,
-		Version:               version,
-		FasitEnvironment:      fasitEnvironment,
-		ManifestUrl:           "http://repo.com/app",
-		Zone:                  "zone",
-		Environment:           environment,
-		ApplicationNamespaced: true,
+		Application:      appName,
+		Version:          version,
+		FasitEnvironment: fasitEnvironment,
+		ManifestUrl:      "http://repo.com/app",
+		Zone:             "zone",
+		Namespace:        namespace,
 	}
 
 	manifest := NaisManifest{
@@ -302,12 +300,12 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n- updated alerts configmap (app-rules)\n- created namespace\n- created serviceaccount\n- created rolebinding\n", string(rr.Body.Bytes()))
+	assert.Equal(t, "result: \n- created deployment\n- created secret\n- created service\n- created ingress\n- created autoscaler\n- updated alerts configmap (app-rules)\n- created serviceaccount\n- created rolebinding\n", string(rr.Body.Bytes()))
 }
 
 func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 	appName := "appname"
-	environment := "environment"
+	namespace := "default"
 	image := "name/Container"
 	version := "123"
 	alertName := "alias1"
@@ -318,13 +316,12 @@ func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
 
 	depReq := naisrequest.Deploy{
-		Application:           appName,
-		Version:               version,
-		ManifestUrl:           "http://repo.com/app",
-		SkipFasit:             true,
-		Zone:                  "zone",
-		Environment:           environment,
-		ApplicationNamespaced: true,
+		Application: appName,
+		Version:     version,
+		ManifestUrl: "http://repo.com/app",
+		SkipFasit:   true,
+		Zone:        "zone",
+		Namespace:   namespace,
 	}
 
 	manifest := NaisManifest{
@@ -364,7 +361,7 @@ func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 
 	assert.Equal(t, 200, rr.Code)
 	assert.True(t, gock.IsDone())
-	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n- updated alerts configmap (app-rules)\n- created namespace\n- created serviceaccount\n- created rolebinding\n", string(rr.Body.Bytes()))
+	assert.Equal(t, "result: \n- created deployment\n- created service\n- created ingress\n- created autoscaler\n- updated alerts configmap (app-rules)\n- created serviceaccount\n- created rolebinding\n", string(rr.Body.Bytes()))
 }
 
 func TestMissingResources(t *testing.T) {
@@ -391,7 +388,7 @@ func TestMissingResources(t *testing.T) {
 		Reply(200).
 		BodyString(string(data))
 	gock.New("https://fasit.local").
-		Get("/api/v2/environments/environment").
+		Get("/api/v2/environments/fasitEnvironment").
 		Reply(200).
 		JSON(map[string]string{"environmentclass": "u"})
 	gock.New("https://fasit.local").
@@ -420,10 +417,10 @@ func CreateDefaultDeploymentRequest() string {
 	jsn, _ := json.Marshal(naisrequest.Deploy{
 		Application:      "appname",
 		Version:          "123",
-		FasitEnvironment: "environment",
+		FasitEnvironment: "fasitEnvironment",
 		ManifestUrl:      "http://repo.com/app",
 		Zone:             "zone",
-		Environment:      "environment",
+		Namespace:        "default",
 	})
 
 	return string(jsn)
@@ -436,7 +433,7 @@ func TestValidateDeploymentRequest(t *testing.T) {
 			Version:          "",
 			FasitEnvironment: "",
 			Zone:             "",
-			Environment:      "",
+			Namespace:        "",
 			FasitUsername:    "",
 			FasitPassword:    "",
 		}
@@ -449,7 +446,7 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.Contains(t, err, errors.New("fasitEnvironment is required and is empty"))
 		assert.Contains(t, err, errors.New("zone is required and is empty"))
 		assert.Contains(t, err, errors.New("zone can only be fss, sbs or iapp"))
-		assert.Contains(t, err, errors.New("environment is required and is empty"))
+		assert.Contains(t, err, errors.New("namespace is required and is empty"))
 		assert.Contains(t, err, errors.New("fasitUsername is required and is empty"))
 		assert.Contains(t, err, errors.New("fasitPassword is required and is empty"))
 	})
@@ -459,7 +456,7 @@ func TestValidateDeploymentRequest(t *testing.T) {
 			Application: "",
 			Version:     "",
 			Zone:        "",
-			Environment: "",
+			Namespace:   "",
 			SkipFasit:   true,
 		}
 
@@ -472,62 +469,21 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.Contains(t, err, errors.New("version is required and is empty"))
 		assert.Contains(t, err, errors.New("zone is required and is empty"))
 		assert.Contains(t, err, errors.New("zone can only be fss, sbs or iapp"))
-		assert.Contains(t, err, errors.New("environment is required and is empty"))
+		assert.Contains(t, err, errors.New("namespace is required and is empty"))
 	})
 }
 
 func TestEnsurePropertyCompatibility(t *testing.T) {
-	t.Run("Should warn when specifying only namespace", func(t *testing.T) {
+	t.Run("Should warn when specifying environment", func(t *testing.T) {
 		deploy := naisrequest.Deploy{
 			Application:           "application",
-			Namespace:             "t1",
-			ApplicationNamespaced: true,
+			Environment:           "default",
 		}
 
 		warnings := ensurePropertyCompatibility(&deploy)
 		response := createResponse(DeploymentResult{}, warnings)
 
-		assert.Contains(t, string(response), "Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. Using default environment \"app\" for this deploy.")
-	})
-
-	t.Run("Should warn when deploying to application namespace and specifies namespace", func(t *testing.T) {
-		deploy := naisrequest.Deploy{
-			Application:           "application",
-			Environment:           "t1",
-			ApplicationNamespaced: false,
-		}
-
-		warnings := ensurePropertyCompatibility(&deploy)
-		response := createResponse(DeploymentResult{}, warnings)
-
-		assert.Contains(t, string(response), "Specifying environment when not deploying to app-namespace makes no difference.")
-	})
-
-	t.Run("Should not warn when not deploying to application namespace and specifying namespace", func(t *testing.T) {
-		deploy := naisrequest.Deploy{
-			Application:           "application",
-			Namespace:             "namespace",
-			ApplicationNamespaced: false,
-		}
-
-		warnings := ensurePropertyCompatibility(&deploy)
-		response := createResponse(DeploymentResult{}, warnings)
-
-		assert.NotContains(t, string(response), "Specifying namespace")
-		assert.Len(t, warnings, 0)
-	})
-
-	t.Run("Should not warn when deploying to application namespace and specifying environment", func(t *testing.T) {
-		deploy := naisrequest.Deploy{
-			Application:           "application",
-			Environment:           "t1",
-			ApplicationNamespaced: true,
-		}
-
-		warnings := ensurePropertyCompatibility(&deploy)
-		response := createResponse(DeploymentResult{}, warnings)
-
-		assert.NotContains(t, string(response), "Specifying environment")
-		assert.Len(t, warnings, 0)
+		assert.Contains(t, string(response), "Specifying environment is deprecated, specify namespace instead.")
+		assert.Len(t, warnings, 1)
 	})
 }

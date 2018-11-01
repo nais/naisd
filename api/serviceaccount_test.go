@@ -10,8 +10,8 @@ import (
 )
 
 func TestCreateOrUpdateServiceAccount(t *testing.T) {
-	var name, environment, team = "name", "environment", "team"
-	spec := app.Spec{Application: name, Environment: environment, Team: team}
+	var name, namespace, team = "name", "default", "team"
+	spec := app.Spec{Application: name, Namespace: namespace, Team: team}
 
 	t.Run("If no service account exists one is created", func(t *testing.T) {
 		clientset := fake.NewSimpleClientset()
@@ -21,7 +21,7 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 		assert.NoError(t, e)
 		assert.NotNil(t, serviceAccount)
 
-		sa, err := clientset.CoreV1().ServiceAccounts(spec.Namespace()).Get(spec.ResourceName(), v1.GetOptions{})
+		sa, err := clientset.CoreV1().ServiceAccounts(spec.Namespace).Get(spec.ResourceName(), v1.GetOptions{})
 		assert.NotNil(t, sa)
 		assert.NoError(t, err)
 		assert.Equal(t, spec.ResourceName(), sa.Name)
@@ -41,10 +41,10 @@ func TestCreateOrUpdateServiceAccount(t *testing.T) {
 }
 
 func TestDeleteServiceAccount(t *testing.T) {
-	var name, environment, team = "name", "environment", "team"
-	spec := app.Spec{Application: name, Environment: environment, Team: team}
+	var name, namespace, team = "name", "default", "team"
+	spec := app.Spec{Application: name, Namespace: namespace, Team: team}
 
-	t.Run("Delete a service account given service account name and environment ", func(t *testing.T) {
+	t.Run("Delete a service account given service account name and namespace ", func(t *testing.T) {
 		existingServiceAccount := createServiceAccountDef(spec)
 		existingServiceAccount.SetUID("uuid")
 		clientset := fake.NewSimpleClientset(existingServiceAccount)

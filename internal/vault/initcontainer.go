@@ -143,7 +143,7 @@ func volumeAndMount() (k8score.Volume, k8score.VolumeMount) {
 }
 
 func (c initializer) kvPath() string {
-	return c.config.kvPath + "/" + c.spec.Application + "/" + c.spec.Environment
+	return c.config.kvPath + "/" + c.spec.Application + "/" + c.spec.Namespace
 }
 
 func (c initializer) vaultRole() string {

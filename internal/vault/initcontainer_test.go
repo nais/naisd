@@ -87,7 +87,7 @@ func TestNewInitializer(t *testing.T) {
 }
 
 func TestInitializer_AddInitContainer(t *testing.T) {
-	spec := app.Spec{Application: "app", Environment: "env", Team: "team"}
+	spec := app.Spec{Application: "app", Namespace: "env", Team: "team"}
 	config := config{authPath: "authpath", kvPath: "kvpath", initContainerImage: "image", vaultAddr: "http://localhost"}
 
 	initializer := initializer{spec: spec, config: config}
@@ -151,7 +151,7 @@ func TestVolumeAndMountCreation(t *testing.T) {
 }
 
 func TestInitContainerCreation(t *testing.T) {
-	spec := app.Spec{Application: "app", Environment: "env", Team: "team"}
+	spec := app.Spec{Application: "app", Namespace: "env", Team: "team"}
 	config := config{authPath: "authpath", kvPath: "kvpath", initContainerImage: "image", vaultAddr: "http://localhost"}
 
 	initializer := initializer{spec: spec, config: config}
@@ -187,7 +187,7 @@ func TestKVPath(t *testing.T) {
 			kvPath: "path/kvpath",
 		},
 		spec: app.Spec{
-			Environment: "env",
+			Namespace:   "env",
 			Application: "app",
 		},
 	}

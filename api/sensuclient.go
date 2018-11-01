@@ -24,7 +24,7 @@ type message struct {
 }
 
 func GenerateDeployMessage(spec app.Spec, deploymentRequest *naisrequest.Deploy, clusterName *string) ([]byte, error) {
-	output := fmt.Sprintf("naisd.deployment,application=%s,clusterName=%s,namespace=%s version=\"%s\" %d", spec.Application, *clusterName, spec.Namespace(), deploymentRequest.Version, time.Now().UnixNano())
+	output := fmt.Sprintf("naisd.deployment,application=%s,clusterName=%s,namespace=%s version=\"%s\" %d", spec.Application, *clusterName, spec.Namespace, deploymentRequest.Version, time.Now().UnixNano())
 	m := message{"naisd.deployment", "metric", []string{"events_nano"}, output}
 
 	b, err := json.Marshal(m)

@@ -10,14 +10,14 @@ import (
 
 func TestRedisResource(t *testing.T) {
 	t.Run("Replicas should always be 3", func(t *testing.T) {
-		spec := app.Spec{Application: appName, Environment: environment, Team: "teamBeam"}
+		spec := app.Spec{Application: appName, Namespace: namespace, Team: "teamBeam"}
 		manifest := NaisManifest{Redis: Redis{Enabled: true}}
 		redisFailoverDef := createRedisFailoverDef(spec, manifest.Redis)
 		assert.Equal(t, int32(3), redisFailoverDef.Spec.Redis.Replicas)
 	})
 
 	t.Run("Custom resources", func(t *testing.T) {
-		spec := app.Spec{Application: appName, Environment: environment, Team: "teamBeam"}
+		spec := app.Spec{Application: appName, Team: "teamBeam"}
 		manifest := NaisManifest{
 			Redis: Redis{
 				Enabled: true,
@@ -37,7 +37,7 @@ func TestRedisResource(t *testing.T) {
 	})
 
 	t.Run("REDIS_HOST env var should be set when redis: true", func(t *testing.T) {
-		spec := app.Spec{Application: appName, Environment: environment, Team: "teamBeam"}
+		spec := app.Spec{Application: appName, Namespace: namespace, Team: "teamBeam"}
 		manifest := NaisManifest{Redis: Redis{Enabled: true}}
 		env, err := createEnvironmentVariables(spec, naisrequest.Deploy{}, manifest, []NaisResource{})
 

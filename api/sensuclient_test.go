@@ -12,20 +12,19 @@ func TestSensuClient(t *testing.T) {
 	t.Run("Check generated deploy message", func(t *testing.T) {
 		spec := app.Spec{
 			Application: "TestApp",
-			Environment: "nais",
+			Namespace:   "nais",
 			Team:        "team",
-			ApplicationNamespaced: false,
 		}
 		deploymentRequest := naisrequest.Deploy{
 			Application:      spec.Application,
 			Version:          "42.0.0",
-			FasitEnvironment: "environment",
+			FasitEnvironment: "fasitEnvironment",
 			Zone:             "zone",
 			ManifestUrl:      "manifesturl",
 			FasitUsername:    "username",
 			FasitPassword:    "password",
 			OnBehalfOf:       "onbehalfof",
-			Environment:      spec.Environment,
+			Namespace:        spec.Namespace,
 		}
 		clusterName := "nais-dev"
 

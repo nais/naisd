@@ -7,7 +7,6 @@ import (
 	k8score "k8s.io/api/core/v1"
 	k8sextension "k8s.io/api/extensions/v1beta1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestIsDeploymentStatus(t *testing.T) {
@@ -155,73 +154,4 @@ func TestDeploymentExceededProgressDeadline(t *testing.T) {
 		}))
 	})
 
-}
-
-func TestDeploymentStatusViewerFallbackToOldNamespace(t *testing.T) {
-	oldAppName := "oldApplicationName"
-	oldAppEnvironment := "oldApplicationEnvironment"
-
-	newAppName := "newApplicationName"
-	newAppEnvironment := "newApplicationEnvironment"
-
-	commonDeploymentStatus := k8sextension.DeploymentStatus{
-		ObservedGeneration: 1,
-		UpdatedReplicas:    1,
-		AvailableReplicas:  1,
-		Replicas:           1,
-	}
-	commonDeploymentSpec := k8sextension.DeploymentSpec{
-		Replicas: int32p(1),
-	}
-	oldDeployedApp := &k8sextension.Deployment{
-		ObjectMeta: k8smeta.ObjectMeta{
-			Name:       oldAppName,
-			Namespace:  oldAppEnvironment,
-			Generation: 1,
-		},
-		Spec:   commonDeploymentSpec,
-		Status: commonDeploymentStatus,
-	}
-	newDeployedApp := &k8sextension.Deployment{
-		ObjectMeta: k8smeta.ObjectMeta{
-			// Notice namespace and name are swapped (app-namespace)
-			Name:       newAppEnvironment,
-			Namespace:  newAppName,
-			Generation: 1,
-		},
-		Spec:   commonDeploymentSpec,
-		Status: commonDeploymentStatus,
-	}
-
-	client := fake.NewSimpleClientset(oldDeployedApp, newDeployedApp)
-	d := deploymentStatusViewerImpl{client: client}
-
-	tests := []struct {
-		testDescription      string
-		application          string
-		environment          string
-		expectedDeployStatus DeployStatus
-		expectedError        error
-	}{
-		{
-			testDescription:      "get old deployed app works",
-			application:          oldAppName,
-			environment:          oldAppEnvironment,
-			expectedDeployStatus: Success,
-			expectedError:        nil,
-		},
-		{
-			testDescription:      "get new deployed app works",
-			application:          newAppName,
-			environment:          newAppEnvironment,
-			expectedDeployStatus: Success,
-			expectedError:        nil,
-		},
-	}
-
-	for _, test := range tests {
-		actualDeployStatus, _, actualError := d.DeploymentStatusView(test.environment, test.application)
-		assert.Equal(t, test.expectedDeployStatus, actualDeployStatus, test.testDescription)
-		assert.Equal(t, test.expectedError, actualError, test.testDescription)
-	}
 }

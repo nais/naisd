@@ -78,8 +78,8 @@ func (api Api) Handler() http.Handler {
 	mux.Handle(pat.Post("/deploy"), appHandler(api.deploy))
 	mux.Handle(pat.Get("/metrics"), promhttp.Handler())
 	mux.Handle(pat.Get("/version"), appHandler(api.version))
-	mux.Handle(pat.Get("/deploystatus/:environment/:deployName"), appHandler(api.deploymentStatusHandler))
-	mux.Handle(pat.Delete("/app/:environment/:deployName"), appHandler(api.deleteApplication))
+	mux.Handle(pat.Get("/deploystatus/:namespace/:deployName"), appHandler(api.deploymentStatusHandler))
+	mux.Handle(pat.Delete("/app/:namespace/:deployName"), appHandler(api.deleteApplication))
 	return mux
 }
 
@@ -101,16 +101,12 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	// Warn about deprecated fields in deploymentRequest and set default env if not set
 	warnings := ensurePropertyCompatibility(&deploymentRequest)
-	if len(deploymentRequest.Environment) == 0 {
-		deploymentRequest.Environment = "app"
+	if len(deploymentRequest.Namespace) == 0 {
+		deploymentRequest.Namespace = "app"
 	}
 
 	if len(deploymentRequest.Namespace) == 0 {
 		deploymentRequest.Namespace = "default"
-	}
-
-	if !deploymentRequest.ApplicationNamespaced {
-		deploymentRequest.Environment = deploymentRequest.Namespace
 	}
 
 	if err != nil {
@@ -155,9 +151,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	spec := app.Spec{
 		Application: deploymentRequest.Application,
-		Environment: deploymentRequest.Environment,
+		Namespace:   deploymentRequest.Namespace,
 		Team:        manifest.Team,
-		ApplicationNamespaced: deploymentRequest.ApplicationNamespaced,
 	}
 	deploymentResult, err := createOrUpdateK8sResources(spec, deploymentRequest, manifest, naisResources, api.ClusterSubdomain, api.IstioEnabled, api.Clientset)
 	if err != nil {
@@ -167,7 +162,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	deploys.With(prometheus.Labels{"nais_app": deploymentRequest.Application}).Inc()
 
 	if !deploymentRequest.SkipFasit && hasResources(manifest) {
-		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Environment, deploymentRequest.Namespace, api.ClusterSubdomain, deploymentRequest.ApplicationNamespaced), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
+		if err := updateFasit(fasit, deploymentRequest, naisResources, manifest, createIngressHostname(deploymentRequest.Application, deploymentRequest.Namespace, api.ClusterSubdomain), fasitEnvironmentClass, deploymentRequest.FasitEnvironment, api.ClusterSubdomain); err != nil {
 			return &appError{err, "failed while updating Fasit", http.StatusInternalServerError}
 		}
 	}
@@ -180,10 +175,10 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 }
 
 func (api Api) deploymentStatusHandler(w http.ResponseWriter, r *http.Request) *appError {
-	environment := pat.Param(r, "environment")
+	namespace := pat.Param(r, "namespace")
 	deployName := pat.Param(r, "deployName")
 
-	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(environment, deployName)
+	status, view, err := api.DeploymentStatusViewer.DeploymentStatusView(namespace, deployName)
 
 	if err != nil {
 		return &appError{err, "deployment not found ", http.StatusNotFound}
@@ -224,10 +219,10 @@ func (api Api) version(w http.ResponseWriter, _ *http.Request) *appError {
 }
 
 func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appError {
-	environment := pat.Param(r, "environment")
+	namespace := pat.Param(r, "namespace")
 	application := pat.Param(r, "deployName")
 
-	spec := app.Spec{Application: application, Environment: environment}
+	spec := app.Spec{Application: application, Namespace: namespace}
 	result, err := deleteK8sResouces(spec, api.Clientset)
 
 	response := ""
@@ -242,7 +237,7 @@ func (api Api) deleteApplication(w http.ResponseWriter, r *http.Request) *appErr
 		return &appError{err, fmt.Sprintf("there were errors when trying to delete app: %+v", response), http.StatusInternalServerError}
 	}
 
-	glog.Infof("Deleted application %s in %s\n", application, environment)
+	glog.Infof("Deleted application %s in %s\n", application, namespace)
 
 	w.Write([]byte(response))
 	w.WriteHeader(http.StatusOK)
@@ -270,7 +265,6 @@ func hasResources(manifest NaisManifest) bool {
 }
 
 func createResponse(deploymentResult DeploymentResult, warnings []string) []byte {
-
 	response := "result: \n"
 
 	if deploymentResult.Deployment != nil {
@@ -294,17 +288,11 @@ func createResponse(deploymentResult DeploymentResult, warnings []string) []byte
 	if deploymentResult.Redis != nil {
 		response += "- created redis\n"
 	}
-	if deploymentResult.Namespace != nil {
-		response += "- created namespace\n"
-	}
 	if deploymentResult.ServiceAccount != nil {
 		response += "- created serviceaccount\n"
 	}
 	if deploymentResult.RoleBinding != nil {
 		response += "- created rolebinding\n"
-	}
-	if len(deploymentResult.DeletedOldApp) > 0 {
-		response += "- deleted old app: \n" + deploymentResult.DeletedOldApp
 	}
 
 	if len(warnings) > 0 {
@@ -335,12 +323,8 @@ func unmarshalDeploymentRequest(body io.ReadCloser) (naisrequest.Deploy, error) 
 func ensurePropertyCompatibility(deploy *naisrequest.Deploy) []string {
 	var warnings []string
 
-	if !deploy.ApplicationNamespaced && len(deploy.Environment) > 0 {
-		warnings = append(warnings, "Specifying environment when not deploying to app-namespace makes no difference.")
-	}
-
-	if deploy.ApplicationNamespaced && len(deploy.Namespace) > 0 {
-		warnings = append(warnings, "Specifying namespace is deprecated. Please adapt your pipelines to use the field 'Environment' instead. Using default environment \"app\" for this deploy.")
+	if len(deploy.Environment) > 0 {
+		warnings = append(warnings, "Specifying environment is deprecated, specify namespace instead.")
 	}
 
 	return warnings

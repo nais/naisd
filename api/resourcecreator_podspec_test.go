@@ -20,7 +20,7 @@ var properEnabledVaultEnv = map[string]string{
 func TestPodSpecWithInitContainer(t *testing.T) {
 	spec := app.Spec{
 		Application: "app",
-		Environment: "evn",
+		Namespace:   "evn",
 		Team:        "team",
 	}
 	var naisResources []NaisResource

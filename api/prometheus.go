@@ -46,7 +46,6 @@ func substituteNamespaceVariables(alertRules []PrometheusAlertRule, namespace st
 	return
 }
 
-
 func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 	if teamName != "" {
 		for i := range alertRules {
@@ -62,7 +61,7 @@ func addTeamLabel(alertRules []PrometheusAlertRule, teamName string) {
 }
 
 func createDeploymentPrefix(spec app.Spec) string {
-	return spec.Team + "-" + spec.Application + "-" + spec.Environment
+	return spec.Team + "-" + spec.Application + "-" + spec.Namespace
 }
 
 func addRulesToConfigMap(spec app.Spec, configMap *k8score.ConfigMap, manifest NaisManifest) (*k8score.ConfigMap, error) {
@@ -70,7 +69,7 @@ func addRulesToConfigMap(spec app.Spec, configMap *k8score.ConfigMap, manifest N
 
 	addTeamLabel(manifest.Alerts, manifest.Team)
 	prefixAlertNames(manifest.Alerts, deploymentPrefix)
-	substituteNamespaceVariables(manifest.Alerts, spec.Namespace())
+	substituteNamespaceVariables(manifest.Alerts, spec.Namespace)
 
 	alertGroup := PrometheusAlertGroup{Name: deploymentPrefix, Rules: manifest.Alerts}
 	alertGroups := PrometheusAlertGroups{Groups: []PrometheusAlertGroup{alertGroup}}

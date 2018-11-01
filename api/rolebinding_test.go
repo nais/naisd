@@ -10,8 +10,8 @@ import (
 )
 
 func TestCreateRoleBinding(t *testing.T) {
-	existingSpec := app.Spec{Application: "application", Environment: "environment", Team: "team"}
-	nonExistingSpec := app.Spec{Application: "nonExistingApplication", Environment: "environment", Team: "team"}
+	existingSpec := app.Spec{Application: "application", Namespace: "default", Team: "team"}
+	nonExistingSpec := app.Spec{Application: "nonExistingApplication", Namespace: "default", Team: "team"}
 	roleRef := createRoleRef("clusterrole", "serviceaccount-in-app-namespace")
 
 	fakeClient := fake.NewSimpleClientset(createRoleBindingDef(existingSpec, roleRef))
@@ -34,8 +34,8 @@ func TestCreateRoleBinding(t *testing.T) {
 	})
 
 	t.Run("Ensure deleting RoleBindings give no error and removes resources", func(t *testing.T) {
-		newSpec := app.Spec{Application: appName, Environment: environment, Team: teamName}
-		newNonExistingSpec := app.Spec{Application: "nothing", Environment: environment, Team: teamName}
+		newSpec := app.Spec{Application: appName, Namespace: namespace, Team: teamName}
+		newNonExistingSpec := app.Spec{Application: "nothing", Namespace: namespace, Team: teamName}
 
 		_, err := client.createOrUpdateRoleBinding(newSpec, roleRef)
 		assert.NoError(t, err)
@@ -46,11 +46,11 @@ func TestCreateRoleBinding(t *testing.T) {
 		err = client.deleteRoleBinding(newNonExistingSpec)
 		assert.NoError(t, err)
 
-		rolebinding, err := client.client.RbacV1().RoleBindings(newSpec.Namespace()).Get(newSpec.ResourceName(), v1.GetOptions{})
+		rolebinding, err := client.client.RbacV1().RoleBindings(newSpec.Namespace).Get(newSpec.ResourceName(), v1.GetOptions{})
 		assert.Nil(t, rolebinding)
 		assert.True(t, errors.IsNotFound(err))
 
-		rolebinding, err = client.client.RbacV1().RoleBindings(newNonExistingSpec.Namespace()).Get(newNonExistingSpec.ResourceName(), v1.GetOptions{})
+		rolebinding, err = client.client.RbacV1().RoleBindings(newNonExistingSpec.Namespace).Get(newNonExistingSpec.ResourceName(), v1.GetOptions{})
 		assert.Nil(t, rolebinding)
 		assert.True(t, errors.IsNotFound(err))
 	})

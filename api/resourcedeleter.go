@@ -63,7 +63,7 @@ func deleteK8sResouces(spec app.Spec, k8sClient kubernetes.Interface) (results [
 }
 
 func deleteService(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
-	if err := k8sClient.CoreV1().Services(spec.Namespace()).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{}); err != nil {
+	if err := k8sClient.CoreV1().Services(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{}); err != nil {
 		return filterNotFound(fmt.Sprintf("service: "), err)
 	}
 	return "service: OK", nil
@@ -71,14 +71,14 @@ func deleteService(spec app.Spec, k8sClient kubernetes.Interface) (result string
 
 func deleteDeployment(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	deploymentDeleteOption := k8smeta.DeletePropagationForeground
-	if err := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace()).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
+	if err := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
 		return filterNotFound("deployment: ", err)
 	}
 	return "deployment: OK", nil
 }
 
 func deleteSecret(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
-	if err := k8sClient.CoreV1().Secrets(spec.Namespace()).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{}); err != nil {
+	if err := k8sClient.CoreV1().Secrets(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{}); err != nil {
 		return filterNotFound("secret: ", err)
 	}
 	return "secret: OK", nil
@@ -102,7 +102,7 @@ func deleteConfigMapRules(spec app.Spec, k8sClient kubernetes.Interface) (result
 func deleteAutoscaler(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	autoscaler, err := getExistingAutoscaler(spec, k8sClient)
 	if autoscaler != nil {
-		err = k8sClient.AutoscalingV1().HorizontalPodAutoscalers(spec.Namespace()).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
+		err = k8sClient.AutoscalingV1().HorizontalPodAutoscalers(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
 	}
 
 	if err != nil {
@@ -115,7 +115,7 @@ func deleteAutoscaler(spec app.Spec, k8sClient kubernetes.Interface) (result str
 func deleteIngress(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	ingress, err := getExistingIngress(spec, k8sClient)
 	if ingress != nil {
-		err = k8sClient.ExtensionsV1beta1().Ingresses(spec.Namespace()).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
+		err = k8sClient.ExtensionsV1beta1().Ingresses(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
 	}
 
 	if err != nil {
@@ -142,7 +142,7 @@ func deleteRedisFailover(spec app.Spec, k8sClient kubernetes.Interface) (result 
 		return "redis: FAIL", fmt.Errorf("failed while deleting redis failover: can't create new Redis client for InClusterConfig: %s", err)
 	}
 
-	failoverInterface := redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace())
+	failoverInterface := redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace)
 	failover, err := failoverInterface.Get(spec.ResourceName(), k8smeta.GetOptions{})
 	if failover != nil {
 		err = failoverInterface.Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})

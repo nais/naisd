@@ -261,7 +261,7 @@ func TestUpdateResource(t *testing.T) {
 }
 
 func TestGetLoadBalancerConfig(t *testing.T) {
-	environment := "environment"
+	fasitEnvironment := "fasitEnvironment"
 	application := "application"
 
 	fasit := FasitClient{"https://fasit.local", "", ""}
@@ -271,12 +271,12 @@ func TestGetLoadBalancerConfig(t *testing.T) {
 		defer gock.Off()
 		gock.New("https://fasit.local").
 			Get("/api/v2/resources").
-			MatchParam("environment", environment).
+			MatchParam("environment", fasitEnvironment).
 			MatchParam("application", application).
 			MatchParam("type", "LoadBalancerConfig").
 			Reply(200).File("testdata/fasitLbConfigResponse.json")
 
-		resource, err := fasit.getLoadBalancerConfig("application", "environment")
+		resource, err := fasit.getLoadBalancerConfig("application", "fasitEnvironment")
 
 		assert.NoError(t, err)
 		assert.Equal(t, 5, len(resource.ingresses))

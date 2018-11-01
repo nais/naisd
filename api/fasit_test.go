@@ -271,7 +271,7 @@ func TestGetLoadBalancerConfig(t *testing.T) {
 		defer gock.Off()
 		gock.New("https://fasit.local").
 			Get("/api/v2/resources").
-			MatchParam("fasitEnvironment", fasitEnvironment).
+			MatchParam("environment", fasitEnvironment).
 			MatchParam("application", application).
 			MatchParam("type", "LoadBalancerConfig").
 			Reply(200).File("testdata/fasitLbConfigResponse.json")

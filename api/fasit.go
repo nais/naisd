@@ -203,9 +203,9 @@ func (fasit FasitClient) createApplicationInstance(deploymentRequest naisrequest
 
 func (fasit FasitClient) getLoadBalancerConfig(application string, fasitEnvironment string) (*NaisResource, error) {
 	req, err := fasit.buildRequest("GET", "/api/v2/resources", map[string]string{
-		"fasitEnvironment": fasitEnvironment,
-		"application":      application,
-		"type":             "LoadBalancerConfig",
+		"environment": fasitEnvironment,
+		"application": application,
+		"type":        "LoadBalancerConfig",
 	})
 
 	body, appErr := fasit.doRequest(req)

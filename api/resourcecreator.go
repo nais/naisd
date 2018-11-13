@@ -92,6 +92,7 @@ func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest N
 	}
 
 	if existingDeployment != nil {
+		existingDeployment.ObjectMeta = addLabelsToObjectMeta(existingDeployment.ObjectMeta, spec)
 		existingDeployment.Spec = deploymentSpec
 		return existingDeployment, nil
 	} else {
@@ -527,6 +528,7 @@ func createResourceLimits(requestsCpu string, requestsMemory string, limitsCpu s
 // If existingSecretId is provided, this is included in object so it can be used to update object
 func createSecretDef(spec app.Spec, naisResources []NaisResource, existingSecret *k8score.Secret) *k8score.Secret {
 	if existingSecret != nil {
+		existingSecret.ObjectMeta = addLabelsToObjectMeta(existingSecret.ObjectMeta, spec)
 		existingSecret.Data = createSecretData(naisResources)
 		return existingSecret
 	} else {
@@ -616,6 +618,7 @@ func createIngressRule(serviceName, host, path string) k8sextensions.IngressRule
 // If existingAutoscaler is provided, this is updated with provided parameters
 func createOrUpdateAutoscalerDef(spec app.Spec, min, max, cpuTargetPercentage int, existingAutoscaler *k8sautoscaling.HorizontalPodAutoscaler) *k8sautoscaling.HorizontalPodAutoscaler {
 	if existingAutoscaler != nil {
+		existingAutoscaler.ObjectMeta = addLabelsToObjectMeta(existingAutoscaler.ObjectMeta, spec)
 		existingAutoscaler.Spec = createAutoscalerSpec(min, max, cpuTargetPercentage, spec.ResourceName())
 
 		return existingAutoscaler
@@ -794,6 +797,7 @@ func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8sc
 		service = createServiceDef(spec)
 	}
 
+	service.ObjectMeta = addLabelsToObjectMeta(service.ObjectMeta, spec)
 	fillServiceSpec(spec, &service.Spec)
 	return createOrUpdateServiceResource(service, spec.Namespace, k8sClient)
 }
@@ -976,13 +980,7 @@ func createIngressAnnotations(manifest NaisManifest) map[string]string {
 
 func generateObjectMeta(spec app.Spec) k8smeta.ObjectMeta {
 	objectMeta := createObjectMeta(spec.ResourceName(), spec.Namespace)
-	objectMeta.Labels = map[string]string{
-		"app":         spec.Application,
-		"environment": spec.Namespace,
-		"team":        spec.Team,
-	}
-
-	return objectMeta
+	return addLabelsToObjectMeta(objectMeta, spec)
 }
 
 func createObjectMeta(objectName, namespace string) k8smeta.ObjectMeta {
@@ -997,4 +995,16 @@ func mergeObjectMeta(exisitingObjectMeta, newObjectMeta k8smeta.ObjectMeta) k8sm
 	}
 
 	return exisitingObjectMeta
+}
+
+func addLabelsToObjectMeta(objectMeta k8smeta.ObjectMeta, spec app.Spec) k8smeta.ObjectMeta {
+	if objectMeta.Labels == nil {
+		objectMeta.Labels = make(map[string]string, 3)
+	}
+
+	objectMeta.Labels["app"] = spec.Application
+	objectMeta.Labels["environment"] = spec.Namespace
+	objectMeta.Labels["team"] = spec.Team
+
+	return objectMeta
 }

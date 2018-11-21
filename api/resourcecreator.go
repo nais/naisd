@@ -92,6 +92,7 @@ func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest N
 	}
 
 	if existingDeployment != nil {
+		deploymentSpec.Replicas = existingDeployment.Spec.Replicas
 		existingDeployment.ObjectMeta = addLabelsToObjectMeta(existingDeployment.ObjectMeta, spec)
 		existingDeployment.Spec = deploymentSpec
 		return existingDeployment, nil

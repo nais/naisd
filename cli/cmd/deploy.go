@@ -134,7 +134,7 @@ var deployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		jsonStr, err := json.Marshal(deployRequest)
+		jsonStr, err := json.Marshal(deployRequest.String())
 
 		if err != nil {
 			fmt.Printf("Error while marshalling JSON: %v\n", err)

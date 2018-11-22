@@ -2,13 +2,12 @@ package naisrequest
 
 import (
 	"encoding/json"
-	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestStringMethodInDeployNaisRequestShouldHidePasswordAndUsername(t *testing.T) {
-	deployRequest := naisrequest.Deploy{
+	deployRequest := Deploy{
 		FasitUsername: "username",
 		FasitPassword: "password",
 		Namespace:     "app",
@@ -23,7 +22,7 @@ func TestStringMethodInDeployNaisRequestShouldHidePasswordAndUsername(t *testing
 }
 
 func TestStringMethodInDeployNaisRequestShouldNotHidePasswordAndUsername(t *testing.T) {
-	deployRequest := naisrequest.Deploy{
+	deployRequest := Deploy{
 		FasitUsername: "username",
 		FasitPassword: "password",
 		Namespace:     "app",

@@ -56,7 +56,6 @@ func (r Deploy) Validate() []error {
 func (r Deploy) String() string {
 	r.FasitPassword = "***"
 	r.FasitUsername = "***"
-
 	bytes, err := json.MarshalIndent(r, "", "    ")
 	if err != nil {
 		return fmt.Sprintf("failed to marshal struct: %s", err)

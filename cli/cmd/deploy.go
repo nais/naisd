@@ -142,8 +142,7 @@ var deployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		jsonStrMasked, err := json.Marshal(deployRequest.String())
-		fmt.Println(string(jsonStrMasked))
+		fmt.Println(deployRequest.String())
 
 		resp, err := http.Post(clusterUrl+DeployEndpoint, "application/json", bytes.NewBuffer(jsonStr))
 

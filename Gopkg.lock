@@ -300,24 +300,6 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:6a20b9ec173d9354263376e51eff0e7f2dd9c736e25afe11ba65c8c905371262"
-  name = "github.com/nais/naisd"
-  packages = [
-    "api",
-    "api/app",
-    "api/constant",
-    "api/naisrequest",
-    "api/version",
-    "cli/cmd",
-    "internal/vault",
-    "pkg/test",
-    "proxyopts",
-  ]
-  pruneopts = "UT"
-  revision = "333f4250e8a74ffccef3fdaa3bf8d735128c9343"
-  version = "305.0.0"
-
-[[projects]]
   digest = "1:95741de3af260a92cc5c7f3f3061e85273f5a81b5db20d4bd68da74bd521675e"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
@@ -752,15 +734,6 @@
     "github.com/golang/glog",
     "github.com/hashicorp/go-multierror",
     "github.com/imdario/mergo",
-    "github.com/nais/naisd/api",
-    "github.com/nais/naisd/api/app",
-    "github.com/nais/naisd/api/constant",
-    "github.com/nais/naisd/api/naisrequest",
-    "github.com/nais/naisd/api/version",
-    "github.com/nais/naisd/cli/cmd",
-    "github.com/nais/naisd/internal/vault",
-    "github.com/nais/naisd/pkg/test",
-    "github.com/nais/naisd/proxyopts",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/spf13/cobra",

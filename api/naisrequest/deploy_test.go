@@ -14,12 +14,9 @@ func TestStringMethodInDeployNaisRequestShouldHidePasswordAndUsername(t *testing
 		Namespace:     "app",
 	}
 
-	jsonValue, err := json.Marshal(deployRequest.String())
-	if err != nil {
-		panic(err)
-	}
-	assert.Contains(t, string(jsonValue), "***")
-	assert.Contains(t, string(jsonValue), "fasitPassword")
+	var jsonValue = deployRequest.String()
+	assert.Contains(t, jsonValue, "***")
+	assert.Contains(t, jsonValue, "fasitPassword")
 }
 
 func TestStringMethodInDeployNaisRequestShouldNotHidePasswordAndUsername(t *testing.T) {

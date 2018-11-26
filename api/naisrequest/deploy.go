@@ -45,7 +45,7 @@ func (r Deploy) Validate() []error {
 	illegalNamespaces := []string{"kube-system", "istio-system", "k8s-dashboard", "kubernetes-dashboard", "nais-rook", "tpa", "reboot-coordinator"}
 	for _, illegalNamespace := range illegalNamespaces {
 		if r.Namespace == illegalNamespace {
-			errs = append(errs, fmt.Errorf("Deploying to system namespaces disallowed"))
+			errs = append(errs, fmt.Errorf("deploying to system namespaces disallowed"))
 		}
 	}
 

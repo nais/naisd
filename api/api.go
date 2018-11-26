@@ -15,6 +15,8 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
+	"net/url"
+	"os"
 )
 
 type Api struct {
@@ -23,8 +25,15 @@ type Api struct {
 	ClusterSubdomain       string
 	ClusterName            string
 	IstioEnabled           bool
+	AuthencicationEnabled  bool
 	DeploymentStatusViewer DeploymentStatusViewer
 }
+
+var (
+	clientId     = os.Getenv("AZURE_AD_SERVICE_PRINCIPAL_APP_ID")
+	clientSecret = os.Getenv("AZURE_AD_SERVICE_PRINCIPAL_PASSWORD")
+	tenantId     = os.Getenv("AZURE_AD_SERVICE_PRINCIPAL_TENANT")
+)
 
 type AppError interface {
 	error
@@ -83,21 +92,48 @@ func (api Api) Handler() http.Handler {
 	return mux
 }
 
-func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName string, istioEnabled bool, d DeploymentStatusViewer) Api {
+func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName string, istioEnabled bool, authenticationEnabled bool, d DeploymentStatusViewer) Api {
 	return Api{
 		Clientset:              clientset,
 		FasitUrl:               fasitUrl,
 		ClusterSubdomain:       clusterDomain,
 		ClusterName:            clusterName,
 		IstioEnabled:           istioEnabled,
+		AuthencicationEnabled:  authenticationEnabled,
 		DeploymentStatusViewer: d,
 	}
+}
+func authenticate(username, password string) *appError {
+	authUrl := fmt.Sprintf("https://login.microsoftonline.com/authority/%s/oauth2/token", tenantId)
+	content := url.Values{}
+	content.Add("grant_type", "password")
+	content.Add("username", username)
+	content.Add("password", password)
+	content.Add("client_id", clientId)
+	content.Add("client_secret", clientSecret)
+	content.Add("resource", clientId)
+
+	res, err := http.PostForm(authUrl, content)
+	if err != nil {
+		return &appError{err, "Failed during authentication", 500}
+	}
+	if res.StatusCode != 200 {
+		return &appError{err, "Authentication failure", 401}
+	}
+	return nil
 }
 
 func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
-
 	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
+
+	if api.AuthencicationEnabled {
+		username, password, _ := r.BasicAuth()
+		appErr := authenticate(username, password)
+		if appErr != nil {
+			return appErr
+		}
+	}
 
 	// Warn about deprecated fields in deploymentRequest and set default env if not set
 	warnings := ensurePropertyCompatibility(&deploymentRequest)

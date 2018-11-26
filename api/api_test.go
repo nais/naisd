@@ -152,7 +152,7 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, false, nil}
 
 	depReq := naisrequest.Deploy{
 		Application:      appName,
@@ -242,7 +242,7 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, false, nil}
 
 	depReq := naisrequest.Deploy{
 		Application:      appName,
@@ -313,7 +313,7 @@ func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, nil}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false,false, nil}
 
 	depReq := naisrequest.Deploy{
 		Application: appName,
@@ -402,7 +402,7 @@ func TestMissingResources(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/deploy", strings.NewReader(CreateDefaultDeploymentRequest()))
 
 	rr := httptest.NewRecorder()
-	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", "clustername", false, nil}
+	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", "clustername", false, false, nil}
 	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)
@@ -484,7 +484,7 @@ func TestValidateDeploymentRequest(t *testing.T) {
 
 		assert.NotNil(t, err)
 		assert.Len(t, err, 1)
-		assert.Contains(t, err, errors.New("Deploying to system namespaces disallowed"))
+		assert.Contains(t, err, errors.New("deploying to system namespaces disallowed"))
 	})
 }
 

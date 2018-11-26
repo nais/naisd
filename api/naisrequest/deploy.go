@@ -42,6 +42,13 @@ func (r Deploy) Validate() []error {
 		}
 	}
 
+	illegalNamespaces := []string{"kube-system", "istio-system", "k8s-dashboard", "kubernetes-dashboard", "nais-rook", "tpa", "reboot-coordinator"}
+	for _, illegalNamespace := range illegalNamespaces {
+		if r.Namespace == illegalNamespace {
+			errs = append(errs, fmt.Errorf("deploying to system namespaces disallowed"))
+		}
+	}
+
 	if r.Zone != constant.ZONE_FSS && r.Zone != constant.ZONE_SBS && r.Zone != constant.ZONE_IAPP {
 		errs = append(errs, fmt.Errorf("zone can only be fss, sbs or iapp"))
 	}

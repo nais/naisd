@@ -39,6 +39,9 @@ spec:
           httpGet:
             path: /isalive
             port: http
+        envFrom:
+        - secretRef:
+          name: {{ template "naisd.fullname" . }}
         env:
           - name: fasit_url
             value: "{{ .Values.fasitUrl }}"
@@ -62,6 +65,7 @@ spec:
             value: "{{ .Values.podHttpProxy }}"
           - name: NAIS_POD_NO_PROXY
             value: "{{ .Values.podNoProxy }}"
+
 {{ if .skipProxy }}
 {{ else }}
           - name: https_proxy

@@ -21,18 +21,18 @@ import (
 
 type Api struct {
 	Clientset              kubernetes.Interface
-	FasitUrl               string
+	FasitURL               string
 	ClusterSubdomain       string
 	ClusterName            string
 	IstioEnabled           bool
-	AuthencicationEnabled  bool
+	AuthenticationEnabled  bool
 	DeploymentStatusViewer DeploymentStatusViewer
 }
 
 var (
-	clientId     = os.Getenv("AZURE_AD_SERVICE_PRINCIPAL_APP_ID")
+	clientID     = os.Getenv("AZURE_AD_SERVICE_PRINCIPAL_APP_ID")
 	clientSecret = os.Getenv("AZURE_AD_SERVICE_PRINCIPAL_PASSWORD")
-	tenantId     = os.Getenv("AZURE_AD_SERVICE_PRINCIPAL_TENANT")
+	tenantID     = os.Getenv("AZURE_AD_SERVICE_PRINCIPAL_TENANT")
 )
 
 type AppError interface {
@@ -95,25 +95,25 @@ func (api Api) Handler() http.Handler {
 func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName string, istioEnabled bool, authenticationEnabled bool, d DeploymentStatusViewer) Api {
 	return Api{
 		Clientset:              clientset,
-		FasitUrl:               fasitUrl,
+		FasitURL:               fasitUrl,
 		ClusterSubdomain:       clusterDomain,
 		ClusterName:            clusterName,
 		IstioEnabled:           istioEnabled,
-		AuthencicationEnabled:  authenticationEnabled,
+		AuthenticationEnabled:  authenticationEnabled,
 		DeploymentStatusViewer: d,
 	}
 }
 func authenticate(username, password string) *appError {
-	authUrl := fmt.Sprintf("https://login.microsoftonline.com/authority/%s/oauth2/token", tenantId)
+	authURL := fmt.Sprintf("https://login.microsoftonline.com/authority/%s/oauth2/token", tenantID)
 	content := url.Values{}
 	content.Add("grant_type", "password")
 	content.Add("username", username)
 	content.Add("password", password)
-	content.Add("client_id", clientId)
+	content.Add("client_id", clientID)
 	content.Add("client_secret", clientSecret)
-	content.Add("resource", clientId)
+	content.Add("resource", clientID)
 
-	res, err := http.PostForm(authUrl, content)
+	res, err := http.PostForm(authURL, content)
 	if err != nil {
 		return &appError{err, "Failed during authentication", 500}
 	}
@@ -127,8 +127,11 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	requests.With(prometheus.Labels{"path": "deploy"}).Inc()
 	deploymentRequest, err := unmarshalDeploymentRequest(r.Body)
 
-	if api.AuthencicationEnabled {
+	if api.AuthenticationEnabled {
 		username, password, _ := r.BasicAuth()
+		if clientID == "" || tenantID == "" || clientSecret == ""  {
+			return &appError{ fmt.Errorf("missing Azure AD configuration"), "", 500}
+		}
 		appErr := authenticate(username, password)
 		if appErr != nil {
 			return appErr
@@ -150,7 +153,7 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	}
 	glog.Infof("Received deployment request: %s", deploymentRequest)
 
-	fasit := FasitClient{api.FasitUrl, deploymentRequest.FasitUsername, deploymentRequest.FasitPassword}
+	fasit := FasitClient{api.FasitURL, deploymentRequest.FasitUsername, deploymentRequest.FasitPassword}
 
 	glog.Infof("Starting deployment. Deploying %s:%s to %s\n", deploymentRequest.Application, deploymentRequest.Version, deploymentRequest.FasitEnvironment)
 

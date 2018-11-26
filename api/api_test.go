@@ -471,6 +471,21 @@ func TestValidateDeploymentRequest(t *testing.T) {
 		assert.Contains(t, err, errors.New("zone can only be fss, sbs or iapp"))
 		assert.Contains(t, err, errors.New("namespace is required and is empty"))
 	})
+	t.Run("Error generated when attempting to deploy to illegal namespace", func(t *testing.T) {
+		illegal := naisrequest.Deploy{
+			Application: "x",
+			Version:     "1",
+			Zone:        "fss",
+			Namespace:   "kube-system",
+			SkipFasit:   true,
+		}
+
+		err := illegal.Validate()
+
+		assert.NotNil(t, err)
+		assert.Len(t, err, 1)
+		assert.Contains(t, err, errors.New("Deploying to system namespaces disallowed"))
+	})
 }
 
 func TestEnsurePropertyCompatibility(t *testing.T) {

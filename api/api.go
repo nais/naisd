@@ -129,8 +129,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	if api.AuthenticationEnabled {
 		username, password, _ := r.BasicAuth()
-		if clientID == "" || tenantID == "" || clientSecret == ""  {
-			return &appError{ fmt.Errorf("missing Azure AD configuration"), "", 500}
+		if clientID == "" || tenantID == "" || clientSecret == "" {
+			return &appError{fmt.Errorf("missing Azure AD configuration"), "", 500}
 		}
 		appErr := authenticate(username, password)
 		if appErr != nil {

@@ -49,6 +49,8 @@ spec:
             value: "{{ .Values.clusterSubdomain }}"
           - name: clustername
             value: "{{ .Values.clusterName }}"
+          - name: authentication_enabled
+            value: "{{ .Values.authenticationEnabled }}"
           - name: istio_enabled
             value: "{{ .Values.istioEnabled }}"
           - name: NAISD_VAULT_ADDR

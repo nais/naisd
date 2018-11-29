@@ -104,7 +104,7 @@ func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName
 	}
 }
 func authenticate(username, password string) *appError {
-	authURL := fmt.Sprintf("https://login.microsoftonline.com/authority/%s/oauth2/token", tenantID)
+	authURL := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/token", tenantID)
 	content := url.Values{}
 	content.Add("grant_type", "password")
 	content.Add("username", username)

@@ -1,4 +1,4 @@
 apiVersion: v1
 description: NAIS daemon
 name: naisd
-version: 314.0.0
+version: 315.0.0

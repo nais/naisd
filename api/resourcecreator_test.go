@@ -301,7 +301,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, int32(20), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.InitialDelaySeconds)
 		assert.Equal(t, int32(3), deployment.Spec.Template.Spec.Containers[0].LivenessProbe.TimeoutSeconds)
 		assert.Equal(t, int32(2), deployment.Spec.Template.Spec.Containers[0].ReadinessProbe.TimeoutSeconds)
-		assert.Equal(t, k8score.Lifecycle{}, *deployment.Spec.Template.Spec.Containers[0].Lifecycle)
+		assert.Equal(t, []string{"sleep", "5"}, deployment.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.Exec.Command)
 
 		ptr := func(p resource.Quantity) *resource.Quantity {
 			return &p

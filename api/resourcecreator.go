@@ -274,7 +274,13 @@ func createLifeCycle(path string) *k8score.Lifecycle {
 		}
 	}
 
-	return &k8score.Lifecycle{}
+	return &k8score.Lifecycle{
+		PreStop: &k8score.Handler{
+			Exec: &k8score.ExecAction{
+				Command: []string{"sleep","5"},
+			},
+		},
+	}
 }
 
 func hasCertificate(naisResources []NaisResource) bool {

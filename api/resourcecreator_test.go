@@ -319,7 +319,7 @@ func TestDeployment(t *testing.T) {
 		}, deployment.Spec.Template.Annotations)
 
 		env := container.Env
-		assert.Equal(t, 14, len(env))
+		assert.Equal(t, 16, len(env))
 		assert.Equal(t, "APP_NAME", env[0].Name)
 		assert.Equal(t, otherAppName, env[0].Value)
 		assert.Equal(t, "APP_VERSION", env[1].Name)
@@ -327,18 +327,18 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, namespace, env[2].Value)
 		assert.Equal(t, "FASIT_ENVIRONMENT_NAME", env[3].Name)
 		assert.Equal(t, fasitEnvironment, env[3].Value)
-		assert.Equal(t, resource2KeyMapping, env[6].Name)
-		assert.Equal(t, "value2", env[6].Value)
+		assert.Equal(t, resource2KeyMapping, env[8].Name)
+		assert.Equal(t, "value2", env[8].Value)
 
-		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[7].Name)
-		assert.Equal(t, createSecretRef(otherSpec.ResourceName(), secret2Key, resource2Name), env[7].ValueFrom)
+		assert.Equal(t, strings.ToUpper(resource2Name+"_"+secret2Key), env[9].Name)
+		assert.Equal(t, createSecretRef(otherSpec.ResourceName(), secret2Key, resource2Name), env[9].ValueFrom)
 
-		assert.Equal(t, "KEY1", env[8].Name)
-		assert.Equal(t, "KEY2_PROPERTY", env[9].Name)
-		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[10].Name)
-		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[11].Name)
-		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[12].Name)
-		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[13].Name)
+		assert.Equal(t, "KEY1", env[10].Name)
+		assert.Equal(t, "KEY2_PROPERTY", env[11].Name)
+		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_KEY", env[12].Name)
+		assert.Equal(t, "DOTS_ARE_NOT_ALLOWED_SECRETKEY", env[13].Name)
+		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_KEY", env[14].Name)
+		assert.Equal(t, "COLON_ARE_NOT_ALLOWED_SECRETKEY", env[15].Name)
 		assert.False(t, manifest.LeaderElection, "LeaderElection should default to false")
 		assert.False(t, manifest.Redis.Enabled, "Redis should default to false")
 	})
@@ -357,7 +357,7 @@ func TestDeployment(t *testing.T) {
 		container := containers[0]
 
 		env := container.Env
-		assert.Equal(t, 3, len(env))
+		assert.Equal(t, 5, len(env))
 		assert.Equal(t, "APP_NAME", env[0].Name)
 		assert.Equal(t, appName, env[0].Value)
 		assert.Equal(t, "APP_VERSION", env[1].Name)
@@ -489,11 +489,11 @@ func TestDeployment(t *testing.T) {
 
 		envVars := deployment.Spec.Template.Spec.Containers[0].Env
 
-		assert.Equal(t, 10, len(envVars))
-		assert.Equal(t, "R1_CERT1KEY", envVars[6].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/r1_cert1key", envVars[6].Value)
-		assert.Equal(t, "R2_CERT2KEY", envVars[9].Name)
-		assert.Equal(t, "/var/run/secrets/naisd.io/r2_cert2key", envVars[9].Value)
+		assert.Equal(t, 12, len(envVars))
+		assert.Equal(t, "R1_CERT1KEY", envVars[8].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/r1_cert1key", envVars[8].Value)
+		assert.Equal(t, "R2_CERT2KEY", envVars[11].Name)
+		assert.Equal(t, "/var/run/secrets/naisd.io/r2_cert2key", envVars[11].Value)
 
 	})
 

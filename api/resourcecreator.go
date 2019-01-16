@@ -500,19 +500,11 @@ func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.En
 			Value: request.Application,
 		},
 		{
-			Name:  "NAIS_APP_NAME",
-			Value: request.Application,
-		},
-		{
 			Name:  "APP_VERSION",
 			Value: request.Version,
 		},
 		{
 			Name:  "APP_ENVIRONMENT",
-			Value: request.Namespace,
-		},
-		{
-			Name:  "NAIS_NAMESPACE",
 			Value: request.Namespace,
 		},
 	}
@@ -523,6 +515,15 @@ func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.En
 			Value: request.FasitEnvironment,
 		})
 	}
+
+	envVars = append(envVars,
+		k8score.EnvVar{
+			Name:  "NAIS_NAMESPACE",
+			Value: request.Namespace,
+		}, k8score.EnvVar{
+			Name:  "NAIS_APP_NAME",
+			Value: request.Application,
+		})
 
 	return envVars
 }

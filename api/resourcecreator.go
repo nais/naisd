@@ -277,7 +277,7 @@ func createLifeCycle(path string) *k8score.Lifecycle {
 	return &k8score.Lifecycle{
 		PreStop: &k8score.Handler{
 			Exec: &k8score.ExecAction{
-				Command: []string{"sleep","5"},
+				Command: []string{"sleep", "5"},
 			},
 		},
 	}
@@ -365,6 +365,7 @@ func createEnvVar(key, value string) k8score.EnvVar {
 }
 
 func createEnvironmentVariables(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource) ([]k8score.EnvVar, error) {
+
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
 	if manifest.Redis.Enabled {
@@ -499,11 +500,19 @@ func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.En
 			Value: request.Application,
 		},
 		{
+			Name:  "NAIS_APP_NAME",
+			Value: request.Application,
+		},
+		{
 			Name:  "APP_VERSION",
 			Value: request.Version,
 		},
 		{
 			Name:  "APP_ENVIRONMENT",
+			Value: request.Namespace,
+		},
+		{
+			Name:  "NAIS_NAMESPACE",
 			Value: request.Namespace,
 		},
 	}

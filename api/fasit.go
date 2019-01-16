@@ -681,7 +681,7 @@ func resolveSecret(secrets map[string]map[string]string, username string, passwo
 	if resp.StatusCode > 299 {
 		errorCounter.WithLabelValues("error_fasit").Inc()
 		if requestDump, e := httputil.DumpRequest(req, false); e == nil {
-			glog.Error("Fasit request: ", requestDump)
+			glog.Error("Fasit request: ", string(requestDump))
 		}
 		return map[string]string{}, fmt.Errorf("fasit gave error message when resolving secret: %s (HTTP %v)", body, strconv.Itoa(resp.StatusCode))
 	}

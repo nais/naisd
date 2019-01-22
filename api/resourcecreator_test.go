@@ -11,7 +11,7 @@ import (
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	k8score "k8s.io/api/core/v1"
-    k8sextensions "k8s.io/api/extensions/v1beta1"
+	k8sextensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"

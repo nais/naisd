@@ -116,12 +116,13 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 		return k8sextensions.DeploymentSpec{}, err
 	}
 
-	return k8sextensions.DeploymentSpec{
-		Replicas: int32p(1),
-		Selector: &k8smeta.LabelSelector{
-			MatchLabels: createPodSelector(spec),
-		},
-		Strategy: k8sextensions.DeploymentStrategy{
+	var strategy k8sextensions.DeploymentStrategy
+	if manifest.DeploymentStrategy == DeploymentStrategyRecreate {
+		strategy = k8sextensions.DeploymentStrategy{
+			Type: k8sextensions.RecreateDeploymentStrategyType,
+		}
+	} else if manifest.DeploymentStrategy == DeploymentStrategyRollingUpdate {
+		strategy = k8sextensions.DeploymentStrategy{
 			Type: k8sextensions.RollingUpdateDeploymentStrategyType,
 			RollingUpdate: &k8sextensions.RollingUpdateDeployment{
 				MaxUnavailable: &intstr.IntOrString{
@@ -133,7 +134,15 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 					IntVal: int32(1),
 				},
 			},
+		}
+	}
+
+	return k8sextensions.DeploymentSpec{
+		Replicas: int32p(1),
+		Selector: &k8smeta.LabelSelector{
+			MatchLabels: createPodSelector(spec),
 		},
+		Strategy:                strategy,
 		ProgressDeadlineSeconds: int32p(300),
 		RevisionHistoryLimit:    int32p(10),
 		Template: k8score.PodTemplateSpec{

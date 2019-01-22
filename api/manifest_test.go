@@ -22,6 +22,7 @@ func TestManifestUnmarshal(t *testing.T) {
 
 	assert.Equal(t, "teamName", manifest.Team)
 	assert.Equal(t, 799, manifest.Port)
+	assert.Equal(t, "RollingUpdate", manifest.DeploymentStrategy)
 	assert.Equal(t, "/api", manifest.FasitResources.Exposed[0].Path)
 	assert.Equal(t, "datasource", manifest.FasitResources.Used[0].ResourceType)
 	assert.Equal(t, "DB_USER", manifest.FasitResources.Used[0].PropertyMap["username"])
@@ -76,6 +77,7 @@ func TestManifestUsesDefaultValues(t *testing.T) {
 	assert.Equal(t, "aura", manifest.Team)
 	assert.Equal(t, "docker.adeo.no:5000/", manifest.Image)
 	assert.Equal(t, 8080, manifest.Port)
+	assert.Equal(t, "RollingUpdate", manifest.DeploymentStrategy)
 	assert.Equal(t, "isAlive", manifest.Healthcheck.Liveness.Path)
 	assert.Equal(t, "isReady", manifest.Healthcheck.Readiness.Path)
 	assert.Equal(t, 0, len(manifest.FasitResources.Exposed))
@@ -221,7 +223,7 @@ func TestMultipleInvalidManifestFields(t *testing.T) {
 	}
 	errors := ValidateManifest(invalidConfig)
 
-	assert.Equal(t, 7, len(errors.Errors))
+	assert.Equal(t, 8, len(errors.Errors))
 	assert.Equal(t, "Image cannot contain tag", errors.Errors[0].ErrorMessage)
 	assert.Equal(t, "Replicas.Min is larger than Replicas.Max.", errors.Errors[1].ErrorMessage)
 	assert.Equal(t, "CpuThreshold must be between 10 and 90.", errors.Errors[2].ErrorMessage)

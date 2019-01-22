@@ -49,24 +49,25 @@ type IstioConfig struct {
 }
 
 type NaisManifest struct {
-	Team            string
-	Image           string
-	Port            int
-	Healthcheck     Healthcheck
-	PreStopHookPath string `yaml:"preStopHookPath"`
-	Prometheus      PrometheusConfig
-	Istio           IstioConfig
-	Replicas        Replicas
-	Ingress         Ingress
-	Resources       ResourceRequirements
-	FasitResources  FasitResources `yaml:"fasitResources"`
-	LeaderElection  bool           `yaml:"leaderElection"`
-	Redis           Redis          `yaml:"redis"`
-	Alerts          []PrometheusAlertRule
-	Logformat       string
-	Logtransform    string
-	Secrets         bool `yaml:"secrets"`
-	Webproxy        bool `yaml:"webproxy"`
+	Team               string
+	Image              string
+	Port               int
+	DeploymentStrategy string
+	Healthcheck        Healthcheck
+	PreStopHookPath    string `yaml:"preStopHookPath"`
+	Prometheus         PrometheusConfig
+	Istio              IstioConfig
+	Replicas           Replicas
+	Ingress            Ingress
+	Resources          ResourceRequirements
+	FasitResources     FasitResources `yaml:"fasitResources"`
+	LeaderElection     bool           `yaml:"leaderElection"`
+	Redis              Redis          `yaml:"redis"`
+	Alerts             []PrometheusAlertRule
+	Logformat          string
+	Logtransform       string
+	Secrets            bool `yaml:"secrets"`
+	Webproxy           bool `yaml:"webproxy"`
 }
 
 type Ingress struct {
@@ -214,6 +215,7 @@ func ValidateManifest(manifest NaisManifest) ValidationErrors {
 		validateLimitsCpuQuantity,
 		validateResources,
 		validateAlertRules,
+		validateDeploymentStrategy,
 	}
 
 	var validationErrors ValidationErrors
@@ -355,4 +357,17 @@ func (errors ValidationErrors) Error() (s string) {
 		}
 	}
 	return s
+}
+
+func validateDeploymentStrategy(manifest NaisManifest) *ValidationError {
+	if !(manifest.DeploymentStrategy == DeploymentStrategyRollingUpdate ||
+		manifest.DeploymentStrategy == DeploymentStrategyRecreate) {
+		validationError := new(ValidationError)
+		validationError.ErrorMessage = "Not valid DeploymentStrategy, use RollingUpdate or Recreate"
+		validationError.Fields = make(map[string]string)
+		validationError.Fields["DeploymentStrategy"] = manifest.DeploymentStrategy
+		return validationError
+	}
+
+	return nil
 }

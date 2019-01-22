@@ -11,6 +11,7 @@ import (
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
 	k8score "k8s.io/api/core/v1"
+	k8sextensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
@@ -40,6 +41,7 @@ func newDefaultManifest() NaisManifest {
 	manifest := NaisManifest{
 		Image: image,
 		Port:  port,
+		DeploymentStrategy: DeploymentStrategyRollingUpdate,
 		Healthcheck: Healthcheck{
 			Readiness: Probe{
 				Path:             readinessPath,
@@ -292,6 +294,7 @@ func TestDeployment(t *testing.T) {
 		assert.Equal(t, otherAppName, container.Name)
 		assert.Equal(t, image+":"+version, container.Image)
 		assert.Equal(t, int32(port), container.Ports[0].ContainerPort)
+		assert.Equal(t, k8sextensions.RollingUpdateDeploymentStrategyType, k8sextensions.DeploymentStrategyType(deployment.Spec.Strategy.Type))
 		assert.Equal(t, DefaultPortName, container.Ports[0].Name)
 		assert.Equal(t, livenessPath, container.LivenessProbe.HTTPGet.Path)
 		assert.Equal(t, readinessPath, container.ReadinessProbe.HTTPGet.Path)
@@ -390,6 +393,15 @@ func TestDeployment(t *testing.T) {
 
 		container := getSidecarContainer(containers, "elector")
 		assert.NotNil(t, container)
+	})
+
+	t.Run("when deploymentStrategy is set, it is used", func(t *testing.T) {
+		manifest := newDefaultManifest()
+		manifest.DeploymentStrategy = DeploymentStrategyRecreate
+		deployment, err := createOrUpdateDeployment(spec, naisrequest.Deploy{Namespace: namespace, Application: appName, Version: version}, manifest, naisResources, false, clientset)
+		assert.NoError(t, err)
+
+		assert.Equal(t, k8sextensions.RecreateDeploymentStrategyType, k8sextensions.DeploymentStrategyType(deployment.Spec.Strategy.Type))
 	})
 
 	t.Run("Prometheus annotations are updated on an existing deployment", func(t *testing.T) {

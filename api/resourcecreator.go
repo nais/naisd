@@ -137,13 +137,12 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 		}
 	}
 
-
 	return k8sextensions.DeploymentSpec{
 		Replicas: int32p(1),
 		Selector: &k8smeta.LabelSelector{
 			MatchLabels: createPodSelector(spec),
 		},
-		Strategy: strategy,
+		Strategy:                strategy,
 		ProgressDeadlineSeconds: int32p(300),
 		RevisionHistoryLimit:    int32p(10),
 		Template: k8score.PodTemplateSpec{

@@ -3,6 +3,8 @@ package api
 const (
 	DefaultPortName         = "http"
 	NavTruststoreFasitAlias = "nav_truststore"
+	DeploymentStrategyRollingUpdate = "RollingUpdate"
+	DeploymentStrategyRecreate = "Recreate"
 )
 
 func DefaultResourceRequests() []ResourceRequest {
@@ -24,6 +26,7 @@ func GetDefaultManifest(application string) NaisManifest {
 			CpuThresholdPercentage: 50,
 		},
 		Port: 8080,
+		DeploymentStrategy: DeploymentStrategyRollingUpdate,
 		Prometheus: PrometheusConfig{
 			Enabled: false,
 			Port:    DefaultPortName,

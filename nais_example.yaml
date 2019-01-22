@@ -5,6 +5,7 @@ replicas: # set min = max to disable autoscaling
   max: 4 # maximum number of replicas
   cpuThresholdPercentage: 50 # total cpu percentage threshold on deployment, at which point it will increase number of pods if current < max
 port: 8080 # the port number which is exposed by the container and should receive traffic
+deploymentStrategy: RollingUpdate # Specifies the strategy used to replace old Pods by new ones
 healthcheck: #Optional
   liveness:
     path: isalive

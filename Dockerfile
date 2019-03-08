@@ -1,5 +1,4 @@
-FROM alpine:3.8
-MAINTAINER Johnny Horvi <johnny.horvi@nav.no>
+FROM alpine:3.9
 
 COPY webproxy.nav.no.cer /usr/local/share/ca-certificates/
 RUN  apk add --no-cache ca-certificates

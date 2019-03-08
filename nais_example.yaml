@@ -23,6 +23,7 @@ leaderElection: false # if true, a http endpoint will be available at $ELECTOR_P
                       # Compare this value with the $HOSTNAME to see if the current instance is the leader
 redis:
   enabled: false # if true, will add Redis sentinels that can be reach on rfs-<your-app-name> with port 26379, and mymaster as the name of the master
+  hardAntiAffinity: false # if true, will force the Redis instances to be spread on different nodes
   # For most users; limits, requests are not needed to be set
   limits:
     cpu: 100m # app will have its cpu usage throttled if exceeding this limit

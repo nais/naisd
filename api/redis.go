@@ -12,9 +12,10 @@ import (
 
 // Redis yaml-object to enable and set resources
 type Redis struct {
-	Enabled  bool
-	Limits   ResourceList
-	Requests ResourceList
+	Enabled          bool
+	HardAntiAffinity bool
+	Limits           ResourceList
+	Requests         ResourceList
 }
 
 func createRedisFailoverDef(spec app.Spec, redis Redis) *redisapi.RedisFailover {
@@ -54,6 +55,10 @@ func createRedisFailoverDef(spec app.Spec, redis Redis) *redisapi.RedisFailover 
 			Resources: resources,
 			Exporter:  true,
 		},
+	}
+
+	if redis.HardAntiAffinity {
+		redisSpec.HardAntiAffinity = true
 	}
 
 	meta := generateObjectMeta(spec)

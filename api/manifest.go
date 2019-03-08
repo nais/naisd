@@ -377,33 +377,41 @@ func validateDeploymentStrategy(manifest NaisManifest) *ValidationError {
 }
 
 func validateRedisRequestMemoryQuantity(manifest NaisManifest) *ValidationError {
-	_, err := k8sapi.ParseQuantity(manifest.Redis.Requests.Memory)
-	if err != nil {
-		return createQuanitityValidationError("Resources.Requests.Memory", manifest.Redis.Requests.Memory, err)
+	if manifest.Redis.Requests != *new(ResourceList) {
+		_, err := k8sapi.ParseQuantity(manifest.Redis.Requests.Memory)
+		if err != nil {
+			return createQuanitityValidationError("Redis.Requests.Memory", manifest.Redis.Requests.Memory, err)
+		}
 	}
 	return nil
 }
 
 func validateRedisLimitsMemoryQuantity(manifest NaisManifest) *ValidationError {
-	_, err := k8sapi.ParseQuantity(manifest.Redis.Limits.Memory)
-	if err != nil {
-		return createQuanitityValidationError("Resources.Limits.Memory", manifest.Redis.Limits.Memory, err)
+	if manifest.Redis.Requests != *new(ResourceList) {
+		_, err := k8sapi.ParseQuantity(manifest.Redis.Limits.Memory)
+		if err != nil {
+			return createQuanitityValidationError("Redis.Limits.Memory", manifest.Redis.Limits.Memory, err)
+		}
 	}
 	return nil
 }
 
 func validateRedisRequestCpuQuantity(manifest NaisManifest) *ValidationError {
-	_, err := k8sapi.ParseQuantity(manifest.Redis.Requests.Cpu)
-	if err != nil {
-		return createQuanitityValidationError("Resources.Request.Cpu", manifest.Redis.Requests.Cpu, err)
+	if manifest.Redis.Limits != *new(ResourceList) {
+		_, err := k8sapi.ParseQuantity(manifest.Redis.Requests.Cpu)
+		if err != nil {
+			return createQuanitityValidationError("Redis.Request.Cpu", manifest.Redis.Requests.Cpu, err)
+		}
 	}
 	return nil
 }
 
 func validateRedisLimitsCpuQuantity(manifest NaisManifest) *ValidationError {
-	_, err := k8sapi.ParseQuantity(manifest.Redis.Limits.Cpu)
-	if err != nil {
-		return createQuanitityValidationError("Resources.Limits.Cpu", manifest.Redis.Limits.Cpu, err)
+	if manifest.Redis.Limits != *new(ResourceList) {
+		_, err := k8sapi.ParseQuantity(manifest.Redis.Limits.Cpu)
+		if err != nil {
+			return createQuanitityValidationError("Redis.Limits.Cpu", manifest.Redis.Limits.Cpu, err)
+		}
 	}
 	return nil
 }

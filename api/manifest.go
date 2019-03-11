@@ -377,7 +377,7 @@ func validateDeploymentStrategy(manifest NaisManifest) *ValidationError {
 }
 
 func validateRedisRequestMemoryQuantity(manifest NaisManifest) *ValidationError {
-	if manifest.Redis.Requests != *new(ResourceList) {
+	if manifest.Redis.Requests != *new(ResourceList) && manifest.Redis.Requests.Memory != "" {
 		_, err := k8sapi.ParseQuantity(manifest.Redis.Requests.Memory)
 		if err != nil {
 			return createQuanitityValidationError("Redis.Requests.Memory", manifest.Redis.Requests.Memory, err)
@@ -387,7 +387,7 @@ func validateRedisRequestMemoryQuantity(manifest NaisManifest) *ValidationError 
 }
 
 func validateRedisLimitsMemoryQuantity(manifest NaisManifest) *ValidationError {
-	if manifest.Redis.Requests != *new(ResourceList) {
+	if manifest.Redis.Requests != *new(ResourceList) && manifest.Redis.Limits.Memory != "" {
 		_, err := k8sapi.ParseQuantity(manifest.Redis.Limits.Memory)
 		if err != nil {
 			return createQuanitityValidationError("Redis.Limits.Memory", manifest.Redis.Limits.Memory, err)
@@ -397,7 +397,7 @@ func validateRedisLimitsMemoryQuantity(manifest NaisManifest) *ValidationError {
 }
 
 func validateRedisRequestCpuQuantity(manifest NaisManifest) *ValidationError {
-	if manifest.Redis.Limits != *new(ResourceList) {
+	if manifest.Redis.Limits != *new(ResourceList) && manifest.Redis.Requests.Cpu != "" {
 		_, err := k8sapi.ParseQuantity(manifest.Redis.Requests.Cpu)
 		if err != nil {
 			return createQuanitityValidationError("Redis.Request.Cpu", manifest.Redis.Requests.Cpu, err)
@@ -407,7 +407,7 @@ func validateRedisRequestCpuQuantity(manifest NaisManifest) *ValidationError {
 }
 
 func validateRedisLimitsCpuQuantity(manifest NaisManifest) *ValidationError {
-	if manifest.Redis.Limits != *new(ResourceList) {
+	if manifest.Redis.Limits != *new(ResourceList) && manifest.Redis.Limits.Cpu != "" {
 		_, err := k8sapi.ParseQuantity(manifest.Redis.Limits.Cpu)
 		if err != nil {
 			return createQuanitityValidationError("Redis.Limits.Cpu", manifest.Redis.Limits.Cpu, err)

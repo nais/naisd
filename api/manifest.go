@@ -48,6 +48,11 @@ type IstioConfig struct {
 	Enabled bool
 }
 
+type Vault struct {
+	Enabled bool
+	Sidecar bool
+}
+
 type NaisManifest struct {
 	Team               string
 	Image              string
@@ -66,8 +71,9 @@ type NaisManifest struct {
 	Alerts             []PrometheusAlertRule
 	Logformat          string
 	Logtransform       string
-	Secrets            bool `yaml:"secrets"`
-	Webproxy           bool `yaml:"webproxy"`
+	Secrets            bool  `yaml:"secrets"`
+	Vault              Vault
+	Webproxy           bool  `yaml:"webproxy"`
 }
 
 type Ingress struct {

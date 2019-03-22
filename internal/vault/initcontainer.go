@@ -2,6 +2,7 @@ package vault
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/nais/naisd/api/app"
@@ -28,6 +29,7 @@ type config struct {
 	initContainerImage string
 	authPath           string
 	kvPath             string
+	sidecar            bool
 }
 
 func (c config) validate() (bool, error) {
@@ -73,7 +75,7 @@ type initializer struct {
 
 //Initializer adds init containers
 type Initializer interface {
-	AddInitContainer(podSpec *k8score.PodSpec) k8score.PodSpec
+	AddVaultContainers(podSpec *k8score.PodSpec) k8score.PodSpec
 }
 
 //Enabled checks if this Initalizer is enabled
@@ -82,12 +84,13 @@ func Enabled() bool {
 }
 
 //NewInitializer creates a new Initializer. Err if required env variables are not set.
-func NewInitializer(spec app.Spec) (Initializer, error) {
+func NewInitializer(spec app.Spec, sidecar bool) (Initializer, error) {
 	config := config{
 		vaultAddr:          viper.GetString(EnvVaultAddr),
 		initContainerImage: viper.GetString(EnvInitContainerImage),
 		authPath:           viper.GetString(EnvVaultAuthPath),
 		kvPath:             viper.GetString(EnvVaultKVPath),
+		sidecar:            sidecar,
 	}
 
 	if ok, err := config.validate(); !ok {
@@ -101,7 +104,7 @@ func NewInitializer(spec app.Spec) (Initializer, error) {
 }
 
 //Add init container to pod spec.
-func (c initializer) AddInitContainer(podSpec *k8score.PodSpec) k8score.PodSpec {
+func (c initializer) AddVaultContainers(podSpec *k8score.PodSpec) k8score.PodSpec {
 	volume, mount := volumeAndMount()
 
 	//Add shared volume to pod
@@ -118,7 +121,10 @@ func (c initializer) AddInitContainer(podSpec *k8score.PodSpec) k8score.PodSpec 
 	podSpec.Containers = mutatedContainers
 
 	//Finally add init container which also gets the shared volume mounted.
-	podSpec.InitContainers = append(podSpec.InitContainers, c.initContainer(mount))
+	podSpec.InitContainers = append(podSpec.InitContainers, c.vaultContainer(mount))
+	if c.config.sidecar {
+		podSpec.Containers = append(podSpec.Containers, c.vaultContainer(mount))
+	}
 
 	return *podSpec
 }
@@ -150,7 +156,7 @@ func (c initializer) vaultRole() string {
 	return c.spec.Application
 }
 
-func (c initializer) initContainer(mount k8score.VolumeMount) k8score.Container {
+func (c initializer) vaultContainer(mount k8score.VolumeMount) k8score.Container {
 	return k8score.Container{
 		Name:         "vks",
 		VolumeMounts: []k8score.VolumeMount{mount},
@@ -175,6 +181,10 @@ func (c initializer) initContainer(mount k8score.VolumeMount) k8score.Container 
 			{
 				Name:  "VKS_SECRET_DEST_PATH",
 				Value: mountPath,
+			},
+			{
+				Name:  "VKS_IS_SIDECAR",
+				Value: strconv.FormatBool(c.config.sidecar),
 			},
 		},
 	}

@@ -64,7 +64,7 @@ func TestNewInitializer(t *testing.T) {
 
 	t.Run("Initializer is configured through environment variables", test.EnvWrapper(envVars, func(t *testing.T) {
 
-		aInitializer, e := NewInitializer(app.Spec{})
+		aInitializer, e := NewInitializer(app.Spec{}, false)
 		assert.NoError(t, e)
 		assert.NotNil(t, aInitializer)
 
@@ -81,7 +81,7 @@ func TestNewInitializer(t *testing.T) {
 	}))
 
 	t.Run("Fail initializer creation if config validation fails", func(t *testing.T) {
-		_, err := NewInitializer(app.Spec{})
+		_, err := NewInitializer(app.Spec{}, false)
 		assert.Error(t, err)
 	})
 }
@@ -92,7 +92,7 @@ func TestInitializer_AddInitContainer(t *testing.T) {
 
 	initializer := initializer{spec: spec, config: config}
 	expectedVolume, expectedMount := volumeAndMount()
-	expectedInitContainer := initializer.initContainer(expectedMount)
+	expectedInitContainer := initializer.vaultContainer(expectedMount)
 
 	t.Run("Add init container to pod spec", func(t *testing.T) {
 		podSpec := &v1.PodSpec{
@@ -102,7 +102,7 @@ func TestInitializer_AddInitContainer(t *testing.T) {
 				},
 			},
 		}
-		actualPodSpec := initializer.AddInitContainer(podSpec)
+		actualPodSpec := initializer.AddVaultContainers(podSpec)
 
 		assert.Equal(t, 1, len(actualPodSpec.InitContainers))
 		assert.Equal(t, expectedInitContainer, actualPodSpec.InitContainers[0])
@@ -127,7 +127,7 @@ func TestInitializer_AddInitContainer(t *testing.T) {
 			},
 		}
 
-		actualPodSpec := initializer.AddInitContainer(podSpec)
+		actualPodSpec := initializer.AddVaultContainers(podSpec)
 
 		assert.Equal(t, 2, len(actualPodSpec.Containers))
 
@@ -156,12 +156,12 @@ func TestInitContainerCreation(t *testing.T) {
 
 	initializer := initializer{spec: spec, config: config}
 	_, expectedMount := volumeAndMount()
-	actualContainer := initializer.initContainer(expectedMount)
+	actualContainer := initializer.vaultContainer(expectedMount)
 
 	assert.Equal(t, 1, len(actualContainer.VolumeMounts))
 	assert.Equal(t, expectedMount, actualContainer.VolumeMounts[0])
 	assert.Equal(t, config.initContainerImage, actualContainer.Image)
-	assert.Equal(t, 5, len(actualContainer.Env))
+	assert.Equal(t, 6, len(actualContainer.Env))
 
 	for _, envVar := range actualContainer.Env {
 		switch envVar.Name {
@@ -175,6 +175,8 @@ func TestInitContainerCreation(t *testing.T) {
 			assert.Equal(t, initializer.kvPath(), envVar.Value)
 		case "VKS_VAULT_ROLE":
 			assert.Equal(t, initializer.vaultRole(), envVar.Value)
+		case "VKS_IS_SIDECAR":
+			assert.Equal(t, "false", envVar.Value)
 		default:
 			t.Errorf("Illegal envvar %s", envVar)
 		}

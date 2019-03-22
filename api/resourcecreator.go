@@ -243,11 +243,11 @@ func createPodSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest
 		container.VolumeMounts = append(container.VolumeMounts, createCertificateVolumeMount(spec, naisResources))
 	}
 
-	if manifest.Secrets && vault.Enabled() {
-		if initializer, initializerErr := vault.NewInitializer(spec); initializerErr != nil {
+	if vault.Enabled() && (manifest.Secrets || manifest.Vault.Enabled) {
+		if initializer, initializerErr := vault.NewInitializer(spec, manifest.Vault.Sidecar); initializerErr != nil {
 			return k8score.PodSpec{}, initializerErr
 		} else {
-			podSpec = initializer.AddInitContainer(&podSpec)
+			podSpec = initializer.AddVaultContainers(&podSpec)
 		}
 	}
 

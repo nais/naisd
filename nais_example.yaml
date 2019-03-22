@@ -73,4 +73,7 @@ alerts:
 logformat: accesslog # Optional. The format of the logs from the container if the logs should be handled differently than plain text or json
 logtransform: dns_loglevel # Optional. The transformation of the logs, if they should be handled differently than plain text or json
 secrets: false # Optional. If set to true fetch secrets from Secret Service and inject into the pods. todo link to doc.
+vault:
+  enabled: false # Optional. If set to true, fetch secrets from Secret Service and inject into the pods.
+  sidecar: false # Optional. If set to true, will extend tokens time to live
 webproxy: false # Optional. Automatically populates the HTTP_PROXY, HTTPS_PROXY, NO_PROXY and JAVA_PROXY_OPTIONS environment variables.

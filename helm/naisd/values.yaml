@@ -22,4 +22,4 @@ vaultInitContainerImage: navikt/vks:29
 AzureAdServicePrincipalAppId: "386c9be4-a762-457e-9fd6-b48fe773f333"
 AzureAdServicePrincipalPassword: ""
 AzureAdServicePrincipalTenant: "62366534-1ec3-4962-8869-9b5535279d0b"
-version: 320.0.0
+version: 321.0.0

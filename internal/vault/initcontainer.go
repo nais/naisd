@@ -121,9 +121,9 @@ func (c initializer) AddVaultContainers(podSpec *k8score.PodSpec) k8score.PodSpe
 	podSpec.Containers = mutatedContainers
 
 	//Finally add init container which also gets the shared volume mounted.
-	podSpec.InitContainers = append(podSpec.InitContainers, c.vaultContainer(mount))
+	podSpec.InitContainers = append(podSpec.InitContainers, c.vaultContainer(mount, "init"))
 	if c.config.sidecar {
-		podSpec.Containers = append(podSpec.Containers, c.vaultContainer(mount))
+		podSpec.Containers = append(podSpec.Containers, c.vaultContainer(mount, "sidecar"))
 	}
 
 	return *podSpec
@@ -156,9 +156,9 @@ func (c initializer) vaultRole() string {
 	return c.spec.Application
 }
 
-func (c initializer) vaultContainer(mount k8score.VolumeMount) k8score.Container {
+func (c initializer) vaultContainer(mount k8score.VolumeMount, name string) k8score.Container {
 	return k8score.Container{
-		Name:         "vks",
+		Name:         fmt.Sprintf("vks-%s", name),
 		VolumeMounts: []k8score.VolumeMount{mount},
 		Image:        c.config.initContainerImage,
 		Env: []k8score.EnvVar{

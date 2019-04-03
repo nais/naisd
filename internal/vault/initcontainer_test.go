@@ -92,7 +92,7 @@ func TestInitializer_AddInitContainer(t *testing.T) {
 
 	initializer := initializer{spec: spec, config: config}
 	expectedVolume, expectedMount := volumeAndMount()
-	expectedInitContainer := initializer.vaultContainer(expectedMount)
+	expectedInitContainer := initializer.vaultContainer(expectedMount, "init")
 
 	t.Run("Add init container to pod spec", func(t *testing.T) {
 		podSpec := &v1.PodSpec{
@@ -156,7 +156,7 @@ func TestInitContainerCreation(t *testing.T) {
 
 	initializer := initializer{spec: spec, config: config}
 	_, expectedMount := volumeAndMount()
-	actualContainer := initializer.vaultContainer(expectedMount)
+	actualContainer := initializer.vaultContainer(expectedMount, "init")
 
 	assert.Equal(t, 1, len(actualContainer.VolumeMounts))
 	assert.Equal(t, expectedMount, actualContainer.VolumeMounts[0])

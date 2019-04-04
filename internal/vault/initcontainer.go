@@ -2,12 +2,11 @@ package vault
 
 import (
 	"fmt"
-	"strconv"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/nais/naisd/api/app"
 	"github.com/spf13/viper"
 	k8score "k8s.io/api/core/v1"
+	"strconv"
 )
 
 const (
@@ -121,9 +120,9 @@ func (c initializer) AddVaultContainers(podSpec *k8score.PodSpec) k8score.PodSpe
 	podSpec.Containers = mutatedContainers
 
 	//Finally add init container which also gets the shared volume mounted.
-	podSpec.InitContainers = append(podSpec.InitContainers, c.vaultContainer(mount, "init"))
+	podSpec.InitContainers = append(podSpec.InitContainers, c.vaultContainer(mount, false))
 	if c.config.sidecar {
-		podSpec.Containers = append(podSpec.Containers, c.vaultContainer(mount, "sidecar"))
+		podSpec.Containers = append(podSpec.Containers, c.vaultContainer(mount, true))
 	}
 
 	return *podSpec
@@ -156,9 +155,14 @@ func (c initializer) vaultRole() string {
 	return c.spec.Application
 }
 
-func (c initializer) vaultContainer(mount k8score.VolumeMount, name string) k8score.Container {
+func (c initializer) vaultContainer(mount k8score.VolumeMount, sidecar bool) k8score.Container {
+	var name = "vks-init"
+	if sidecar {
+		name = "vks-sidecar"
+	}
+
 	return k8score.Container{
-		Name:         fmt.Sprintf("vks-%s", name),
+		Name:         name,
 		VolumeMounts: []k8score.VolumeMount{mount},
 		Image:        c.config.initContainerImage,
 		Env: []k8score.EnvVar{
@@ -184,9 +188,8 @@ func (c initializer) vaultContainer(mount k8score.VolumeMount, name string) k8sc
 			},
 			{
 				Name:  "VKS_IS_SIDECAR",
-				Value: strconv.FormatBool(c.config.sidecar),
+				Value: strconv.FormatBool(sidecar),
 			},
 		},
 	}
-
 }

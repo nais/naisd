@@ -22,6 +22,11 @@ install:
 test:
 	go test ./... --coverprofile=cover.out
 
+linux-cli:
+	CGO_ENABLED=0 \
+	GOOS=linux \
+	go build -a -installsuffix cgo -o nais cli/nais.go
+
 cli:
 	go build -ldflags='$(LDFLAGS)' -o nais ./cli
 

@@ -12,7 +12,7 @@ before_script:
 script:
 - make install test
 - /bin/bash bump.sh $GH_TOKEN
-- make linux cli-dist
+- make linux linux-cli cli-dist
 - git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags https://$GH_TOKEN@github.com/nais/naisd
 - make docker-build push-dockerhub
 - docker run -v $(pwd):/naisd -w /naisd/helm/naisd navikt/helm dependency update

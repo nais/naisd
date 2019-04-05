@@ -12,7 +12,8 @@ func TestRedisResource(t *testing.T) {
 	t.Run("Replicas should always be 3", func(t *testing.T) {
 		spec := app.Spec{Application: appName, Namespace: namespace, Team: "teamBeam"}
 		manifest := NaisManifest{Redis: Redis{Enabled: true}}
-		redisFailoverDef := createRedisFailoverDef(spec, manifest.Redis)
+		redisFailoverDef, err := createRedisFailoverDef(spec, manifest.Redis)
+		assert.NoError(t, err)
 		assert.Equal(t, int32(3), redisFailoverDef.Spec.Redis.Replicas)
 	})
 
@@ -29,7 +30,8 @@ func TestRedisResource(t *testing.T) {
 				},
 			},
 		}
-		redisFailoverDef := createRedisFailoverDef(spec, manifest.Redis)
+		redisFailoverDef, err := createRedisFailoverDef(spec, manifest.Redis)
+		assert.NoError(t, err)
 		assert.Equal(t, "1337m", redisFailoverDef.Spec.Redis.Resources.Limits.CPU)
 		assert.Equal(t, "128Mi", redisFailoverDef.Spec.Redis.Resources.Limits.Memory)
 		assert.Equal(t, "100m", redisFailoverDef.Spec.Redis.Resources.Requests.CPU)

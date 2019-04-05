@@ -49,7 +49,7 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec // indirect
 	github.com/spf13/pflag v1.0.0 // indirect
 	github.com/spf13/viper v1.0.2
-	github.com/spotahome/redis-operator v0.0.0-20180219161210-6509f1d9acf1
+	github.com/spotahome/redis-operator v0.0.0-20190326151313-d322a43aca27
 	github.com/stretchr/testify v1.2.1
 	goji.io v2.0.0+incompatible
 	golang.org/x/crypto v0.0.0-20180306223934-85f98707c97e

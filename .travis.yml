@@ -1,9 +1,11 @@
+language: go
+go:
+  - "1.12"
 sudo: required
 services:
 - docker
 before_script:
-- docker pull navikt/dep:1.0.0
-- docker pull golang:1.9
+- docker pull golang:1.12
 - docker pull navikt/helm:2.0.0
 - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
 - git clone https://github.com/nais/charts
@@ -13,8 +15,6 @@ script:
 - make linux cli-dist
 - git tag -a $(/bin/cat ./version) -m "auto-tag from Makefile [skip ci]" && git push --tags https://$GH_TOKEN@github.com/nais/naisd
 - make docker-build push-dockerhub
-# unstable endpoint, disabling for now
-#- docker run --entrypoint=/bin/bash -w /helm -v $(pwd)/helm/naisd:/helm navikt/helm -c "/bin/helm registry login quay.io -u nais+travis -p $QUAY_TOKEN && /bin/helm registry push --namespace nais --channel stable quay.io"
 - docker run -v $(pwd):/naisd -w /naisd/helm/naisd navikt/helm dependency update
 - cd charts
 - docker run -v $(pwd):/charts -v $(pwd)/../:/naisd -w /charts navikt/helm package /naisd/helm/naisd

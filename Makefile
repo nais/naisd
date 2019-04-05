@@ -53,7 +53,7 @@ linux:
 
 docker-build:
 	docker image build -t ${NAME}:$(shell /bin/cat ./version) -t naisd -t ${NAME} -t ${LATEST} -f Dockerfile .
-	docker image build -t navikt/nais:$(shell /bin/cat ./version) -t navikt/nais:latest  -f Dockerfile_cli .
+	docker image build -t navikt/nais:$(shell /bin/cat ./version) -t navikt/nais:latest  -f Dockerfile.cli .
 
 push-dockerhub:
 	docker image push ${NAME}:$(shell /bin/cat ./version)

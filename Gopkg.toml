@@ -48,7 +48,7 @@
 
 [[constraint]]
   name = "github.com/spotahome/redis-operator"
-  version = "0.2.0"
+  version = "0.5.8"
 
 [prune]
   go-tests = true

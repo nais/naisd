@@ -427,7 +427,7 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:34b8e9323578c6e31515eb18f84e20e26bc31c9f13a9520b3d3d1024ae6b1def"
+  digest = "1:3df623f4f2d90dada36526948ff98821399280ecf67b9730b38fc4ddb27d74f9"
   name = "github.com/spotahome/redis-operator"
   packages = [
     "api/redisfailover",
@@ -436,8 +436,8 @@
     "client/k8s/clientset/versioned/typed/redisfailover/v1alpha2",
   ]
   pruneopts = "UT"
-  revision = "6509f1d9acf1c0de5b8be68b6d2c973ac3285315"
-  version = "0.2.0"
+  revision = "d322a43aca27e324030a4880b1a8529cb73c783c"
+  version = "0.5.8"
 
 [[projects]]
   digest = "1:f85e109eda8f6080877185d1c39e98dd8795e1780c08beca28304b87fd855a1c"

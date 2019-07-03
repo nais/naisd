@@ -815,7 +815,7 @@ func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clu
 }
 
 func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	service, err := getExistingService(spec, k8sClient)
+	service, err := getExistingAppService(spec, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing service: %s", err)
@@ -829,7 +829,7 @@ func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8sc
 }
 
 func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
-	existingDeployment, err := getExistingDeployment(spec, k8sClient)
+	existingDeployment, err := getExistingAppDeployment(spec, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing deployment: %s", err)
@@ -858,9 +858,13 @@ func createOrUpdateSecret(spec app.Spec, naisResources []NaisResource, k8sClient
 	}
 }
 
-func getExistingService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	serviceClient := k8sClient.CoreV1().Services(spec.Namespace)
-	service, err := serviceClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
+func getExistingAppService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+	return getExistingService(spec.ResourceName(), spec.Namespace, k8sClient)
+}
+
+func getExistingService(resourceName, namespace string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+	serviceClient := k8sClient.CoreV1().Services(namespace)
+	service, err := serviceClient.Get(resourceName, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -885,9 +889,13 @@ func getExistingSecret(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.
 	}
 }
 
-func getExistingDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
-	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace)
-	deployment, err := deploymentClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
+func getExistingAppDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+	return getExistingDeployment(spec.ResourceName(), spec.Namespace, k8sClient)
+}
+
+func getExistingDeployment(resourceName, namespace string, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(namespace)
+	deployment, err := deploymentClient.Get(resourceName, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:

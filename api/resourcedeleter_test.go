@@ -58,11 +58,11 @@ func TestDeleteK8sResouces(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, result)
 
-		deployment, err := getExistingDeployment(spec, clientset)
+		deployment, err := getExistingAppDeployment(spec, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, deployment)
 
-		svc, err := getExistingService(spec, clientset)
+		svc, err := getExistingAppService(spec, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, svc)
 

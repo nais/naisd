@@ -91,13 +91,13 @@ func TestService(t *testing.T) {
 
 	t.Run("Fetching nonexistant service yields nil and no error", func(t *testing.T) {
 		nonExistingSpec := app.Spec{Application: "nonexisting", Namespace: namespace, Team: teamName}
-		nonExistantService, err := getExistingService(nonExistingSpec, clientset)
+		nonExistantService, err := getExistingAppService(nonExistingSpec, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nonExistantService)
 	})
 
 	t.Run("Fetching an existing service yields service and no error", func(t *testing.T) {
-		existingService, err := getExistingService(spec, clientset)
+		existingService, err := getExistingAppService(spec, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, service, existingService)
 	})
@@ -263,13 +263,13 @@ func TestDeployment(t *testing.T) {
 
 	t.Run("Nonexistant deployment yields empty string and no error", func(t *testing.T) {
 		nonExistingSpec := app.Spec{Application: "nonexisting", Namespace: namespace, Team: teamName}
-		nilValue, err := getExistingDeployment(nonExistingSpec, clientset)
+		nilValue, err := getExistingAppDeployment(nonExistingSpec, clientset)
 		assert.NoError(t, err)
 		assert.Nil(t, nilValue)
 	})
 
 	t.Run("Existing deployment yields def and no error", func(t *testing.T) {
-		id, err := getExistingDeployment(spec, clientset)
+		id, err := getExistingAppDeployment(spec, clientset)
 		assert.NoError(t, err)
 		assert.Equal(t, resourceVersion, id.ObjectMeta.ResourceVersion)
 	})

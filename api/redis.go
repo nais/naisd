@@ -35,7 +35,7 @@ func updateDefaultRedisValues(redis Redis) Redis {
 		redis.Limits.Memory = "128Mi"
 	}
 	if len(redis.Requests.Cpu) == 0 {
-		redis.Requests.Cpu= "100m"
+		redis.Requests.Cpu = "100m"
 	}
 	if len(redis.Requests.Memory) == 0 {
 		redis.Requests.Memory = "128Mi"

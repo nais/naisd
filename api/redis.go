@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	DefaultRedisPort          = 6379
-	DefaultRedisExporterPort  = 9121
-	DefaultRedisExporterImage = "oliver006/redis_exporter:1.0.3"
-	DefaultRedisImage         = "redis:5-alpine"
+	defaultRedisPort          = 6379
+	defaultRedisExporterPort  = 9121
+	defaultRedisExporterImage = "oliver006/redis_exporter:1.0.3"
+	defaultRedisImage         = "redis:5-alpine"
 )
 
 type Redis struct {
@@ -26,7 +26,7 @@ type Redis struct {
 
 func updateDefaultRedisValues(redis Redis) Redis {
 	if redis.Image == "" {
-		redis.Image = DefaultRedisImage
+		redis.Image = defaultRedisImage
 	}
 	if len(redis.Limits.Cpu) == 0 {
 		redis.Limits.Cpu = "100m"
@@ -54,7 +54,7 @@ func createRedisPodSpec(redis Redis) v1.PodSpec {
 				ImagePullPolicy: v1.PullIfNotPresent,
 				Ports: []v1.ContainerPort{
 					{
-						ContainerPort: int32(DefaultRedisPort),
+						ContainerPort: int32(defaultRedisPort),
 						Name:          DefaultPortName,
 						Protocol:      v1.ProtocolTCP,
 					},
@@ -62,13 +62,13 @@ func createRedisPodSpec(redis Redis) v1.PodSpec {
 			},
 			{
 				Name:  "exporter",
-				Image: DefaultRedisExporterImage,
+				Image: defaultRedisExporterImage,
 				Resources: createResourceLimits("100m", "100Mi",
 					"100m", "100Mi"),
 				ImagePullPolicy: v1.PullIfNotPresent,
 				Ports: []v1.ContainerPort{
 					{
-						ContainerPort: int32(DefaultRedisExporterPort),
+						ContainerPort: int32(defaultRedisExporterPort),
 						Name:          DefaultPortName,
 						Protocol:      v1.ProtocolTCP,
 					},
@@ -83,7 +83,7 @@ func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) 
 	objectMeta.Name = resourceName
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": "true",
-		"prometheus.io/port":   string(DefaultRedisExporterPort),
+		"prometheus.io/port":   string(defaultRedisExporterPort),
 		"prometheus.io/path":   "/metrics",
 	}
 

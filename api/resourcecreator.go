@@ -13,7 +13,6 @@ import (
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/nais/naisd/internal/vault"
-	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
 	k8sextensions "k8s.io/api/extensions/v1beta1"
@@ -36,7 +35,8 @@ type DeploymentResult struct {
 	Deployment      *k8sextensions.Deployment
 	Secret          *k8score.Secret
 	Service         *k8score.Service
-	Redis           *redisapi.RedisFailover
+	Redis           *k8sextensions.Deployment
+	RedisService    *k8score.Service
 	AlertsConfigMap *k8score.ConfigMap
 	ServiceAccount  *k8score.ServiceAccount
 	RoleBinding     *rbacv1.RoleBinding
@@ -378,7 +378,7 @@ func createEnvironmentVariables(spec app.Spec, deploymentRequest naisrequest.Dep
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
 	if manifest.Redis.Enabled {
-		envVars = append(envVars, createEnvVar("REDIS_HOST", fmt.Sprintf("rfs-%s", spec.ResourceName())))
+		envVars = append(envVars, createEnvVar("REDIS_HOST", fmt.Sprintf("%s-redis", spec.ResourceName())))
 	}
 
 	for _, res := range naisResources {
@@ -698,11 +698,18 @@ func createOrUpdateK8sResources(spec app.Spec, deploymentRequest naisrequest.Dep
 	deploymentResult.Service = service
 
 	if manifest.Redis.Enabled {
-		redis, err := updateOrCreateRedisSentinelCluster(spec, manifest.Redis)
+		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
+		redis, err := createOrUpdateRedisInstance(spec, manifest.Redis, k8sClient)
 		if err != nil {
-			return deploymentResult, fmt.Errorf("failed while creating or updating Redis sentinel cluster: %s", err)
+			return deploymentResult, fmt.Errorf("failed while creating or updating Redis instance: %s", err)
 		}
 		deploymentResult.Redis = redis
+
+		redisService, err := createOrUpdateRedisService(spec, k8sClient)
+		if err != nil {
+			return deploymentResult, fmt.Errorf("failed while creating or updating Redis service: %s", err)
+		}
+		deploymentResult.RedisService = redisService
 	}
 
 	deployment, err := createOrUpdateDeployment(spec, deploymentRequest, manifest, resources, istioEnabled, k8sClient)

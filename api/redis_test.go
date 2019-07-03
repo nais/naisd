@@ -1,24 +1,28 @@
 package api
 
 import (
+	"fmt"
 	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"testing"
 )
 
 func TestRedisResource(t *testing.T) {
-	t.Run("Replicas should always be 3", func(t *testing.T) {
+	redisName := fmt.Sprintf("%s-redis", appName)
+
+	t.Run("Replicas should always be 1", func(t *testing.T) {
 		spec := app.Spec{Application: appName, Namespace: namespace, Team: "teamBeam"}
 		manifest := NaisManifest{Redis: Redis{Enabled: true}}
-		redisFailoverDef, err := createRedisFailoverDef(spec, manifest.Redis)
+		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
+		deploymentSpec, err := createRedisDeploymentSpec(redisName, spec, manifest.Redis)
 		assert.NoError(t, err)
-		assert.Equal(t, int32(3), redisFailoverDef.Spec.Redis.Replicas)
+		expectedReplicas := int32(1)
+		assert.Equal(t, &expectedReplicas, deploymentSpec.Replicas)
 	})
 
 	t.Run("Custom resources", func(t *testing.T) {
-		spec := app.Spec{Application: appName, Team: "teamBeam"}
 		manifest := NaisManifest{
 			Redis: Redis{
 				Enabled: true,
@@ -30,20 +34,25 @@ func TestRedisResource(t *testing.T) {
 				},
 			},
 		}
-		redisFailoverDef, err := createRedisFailoverDef(spec, manifest.Redis)
-		assert.NoError(t, err)
-		assert.Equal(t, "1337m", redisFailoverDef.Spec.Redis.Resources.Limits.CPU)
-		assert.Equal(t, "128Mi", redisFailoverDef.Spec.Redis.Resources.Limits.Memory)
-		assert.Equal(t, "100m", redisFailoverDef.Spec.Redis.Resources.Requests.CPU)
-		assert.Equal(t, "512Mi", redisFailoverDef.Spec.Redis.Resources.Requests.Memory)
+		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
+
+		podSpec := createRedisPodSpec(manifest.Redis)
+		container := podSpec.Containers[0]
+		assert.Equal(t, "redis", container.Name)
+		resources := container.Resources
+		assert.Equal(t, "1337m", resources.Limits.Cpu().String())
+		assert.Equal(t, "128Mi", resources.Limits.Memory().String())
+		assert.Equal(t, "100m", resources.Requests.Cpu().String())
+		assert.Equal(t, "512Mi", resources.Requests.Memory().String())
 	})
 
 	t.Run("REDIS_HOST env var should be set when redis: true", func(t *testing.T) {
 		spec := app.Spec{Application: appName, Namespace: namespace, Team: "teamBeam"}
 		manifest := NaisManifest{Redis: Redis{Enabled: true}}
+		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
 		env, err := createEnvironmentVariables(spec, naisrequest.Deploy{}, manifest, []NaisResource{})
 
 		assert.NoError(t, err)
-		assert.Contains(t, env, v1.EnvVar{Name: "REDIS_HOST", Value: "rfs-" + spec.ResourceName()})
+		assert.Contains(t, env, v1.EnvVar{Name: "REDIS_HOST", Value: redisName})
 	})
 }

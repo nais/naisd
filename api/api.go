@@ -327,6 +327,9 @@ func createResponse(deploymentResult DeploymentResult, warnings []string) []byte
 	if deploymentResult.Redis != nil {
 		response += "- created redis\n"
 	}
+	if deploymentResult.RedisService != nil {
+		response += "- created redis service\n"
+	}
 	if deploymentResult.ServiceAccount != nil {
 		response += "- created serviceaccount\n"
 	}

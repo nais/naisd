@@ -3,11 +3,9 @@ package api
 import (
 	"fmt"
 	"github.com/nais/naisd/api/app"
-	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 func deleteK8sResouces(spec app.Spec, k8sClient kubernetes.Interface) (results []string, e error) {
@@ -23,7 +21,13 @@ func deleteK8sResouces(spec app.Spec, k8sClient kubernetes.Interface) (results [
 		return results, err
 	}
 
-	res, err = deleteRedisFailover(spec, k8sClient)
+	res, err = deleteRedisDeployment(spec, k8sClient)
+	results = append(results, res)
+	if err != nil {
+		results = append(results, err.Error())
+	}
+
+	res, err = deleteRedisService(spec, k8sClient)
 	results = append(results, res)
 	if err != nil {
 		results = append(results, err.Error())
@@ -125,34 +129,21 @@ func deleteIngress(spec app.Spec, k8sClient kubernetes.Interface) (result string
 	return "ingress OK", nil
 }
 
-func deleteRedisFailover(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
-
-	svc, err := getExistingAppService(spec, k8sClient)
-	if svc == nil {
-		return "redis: N/A", nil
+func deleteRedisDeployment(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
+	resourceName := fmt.Sprintf("%s-redis", spec.ResourceName())
+	deploymentDeleteOption := k8smeta.DeletePropagationForeground
+	if err := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace).Delete(resourceName, &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
+		return filterNotFound("deployment: ", err)
 	}
+	return "deployment: OK", nil
+}
 
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return "redis: FAIL", fmt.Errorf("failed while deleting redis failover: can't create InClusterConfig: %s", err)
+func deleteRedisService(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
+	resourceName := fmt.Sprintf("%s-redis", spec.ResourceName())
+	if err := k8sClient.CoreV1().Services(spec.Namespace).Delete(resourceName, &k8smeta.DeleteOptions{}); err != nil {
+		return filterNotFound(fmt.Sprintf("service: "), err)
 	}
-
-	client, err := redisclient.NewForConfig(config)
-	if err != nil {
-		return "redis: FAIL", fmt.Errorf("failed while deleting redis failover: can't create new Redis client for InClusterConfig: %s", err)
-	}
-
-	failoverInterface := redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace)
-	failover, err := failoverInterface.Get(spec.ResourceName(), k8smeta.GetOptions{})
-	if failover != nil {
-		err = failoverInterface.Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
-	}
-
-	if err != nil {
-		return "redis: FAIL", fmt.Errorf("failed while deleting Redis failover: %s", err)
-	}
-
-	return "redis: OK", nil
+	return "service: OK", nil
 }
 
 func filterNotFound(resultMessage string, err error) (result string, e error) {

@@ -16,8 +16,7 @@ func TestRedisResource(t *testing.T) {
 		spec := app.Spec{Application: appName, Namespace: namespace, Team: "teamBeam"}
 		manifest := NaisManifest{Redis: Redis{Enabled: true}}
 		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
-		deploymentSpec, err := createRedisDeploymentSpec(redisName, spec, manifest.Redis)
-		assert.NoError(t, err)
+		deploymentSpec := createRedisDeploymentSpec(redisName, spec, manifest.Redis)
 		expectedReplicas := int32(1)
 		assert.Equal(t, &expectedReplicas, deploymentSpec.Replicas)
 	})

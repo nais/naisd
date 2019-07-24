@@ -78,7 +78,7 @@ func createRedisPodSpec(redis Redis) v1.PodSpec {
 	}
 }
 
-func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) (k8sextensions.DeploymentSpec, error) {
+func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) k8sextensions.DeploymentSpec {
 	objectMeta := generateObjectMeta(spec)
 	objectMeta.Name = resourceName
 	objectMeta.Annotations = map[string]string{
@@ -101,12 +101,12 @@ func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) 
 			ObjectMeta: objectMeta,
 			Spec:       createRedisPodSpec(redis),
 		},
-	}, nil
+	}
 }
 
-func createRedisDeploymentDef(resourceName string, spec app.Spec, redis Redis, existingDeployment *k8sextensions.Deployment) (*k8sextensions.Deployment, error) {
-	existingDeployment.Spec, _ = createRedisDeploymentSpec(resourceName, spec, redis)
-	return existingDeployment, nil
+func createRedisDeploymentDef(resourceName string, spec app.Spec, redis Redis, existingDeployment *k8sextensions.Deployment) *k8sextensions.Deployment {
+	existingDeployment.Spec = createRedisDeploymentSpec(resourceName, spec, redis)
+	return existingDeployment
 }
 
 func createOrUpdateRedisInstance(spec app.Spec, redis Redis, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
@@ -117,11 +117,7 @@ func createOrUpdateRedisInstance(spec app.Spec, redis Redis, k8sClient kubernete
 		return nil, fmt.Errorf("unable to get existing deployment: %s", err)
 	}
 
-	deploymentDef, err := createRedisDeploymentDef(redisName, spec, redis, existingDeployment)
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to create deployment: %s", err)
-	}
+	deploymentDef := createRedisDeploymentDef(redisName, spec, redis, existingDeployment)
 
 	return createOrUpdateDeploymentResource(deploymentDef, spec.Namespace, k8sClient)
 }

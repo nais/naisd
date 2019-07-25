@@ -105,8 +105,21 @@ func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) 
 }
 
 func createRedisDeploymentDef(resourceName string, spec app.Spec, redis Redis, existingDeployment *k8sextensions.Deployment) *k8sextensions.Deployment {
-	existingDeployment.Spec = createRedisDeploymentSpec(resourceName, spec, redis)
-	return existingDeployment
+	deploymentSpec := createRedisDeploymentSpec(resourceName, spec, redis)
+	if existingDeployment != nil {
+		existingDeployment.ObjectMeta = addLabelsToObjectMeta(existingDeployment.ObjectMeta, spec)
+		existingDeployment.Spec = deploymentSpec
+		return existingDeployment
+	} else {
+		return &k8sextensions.Deployment{
+			TypeMeta: k8smeta.TypeMeta{
+				Kind:       "Deployment",
+				APIVersion: "apps/v1beta1",
+			},
+			ObjectMeta: generateObjectMeta(spec),
+			Spec:       deploymentSpec,
+		}
+	}
 }
 
 func createOrUpdateRedisInstance(spec app.Spec, redis Redis, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {

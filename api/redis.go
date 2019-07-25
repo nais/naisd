@@ -118,6 +118,7 @@ func createOrUpdateRedisInstance(spec app.Spec, redis Redis, k8sClient kubernete
 	}
 
 	deploymentDef := createRedisDeploymentDef(redisName, spec, redis, existingDeployment)
+	deploymentDef.Name = fmt.Sprintf("%s-redis", spec.ResourceName())
 
 	return createOrUpdateDeploymentResource(deploymentDef, spec.Namespace, k8sClient)
 }

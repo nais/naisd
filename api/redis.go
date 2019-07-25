@@ -148,13 +148,14 @@ func createRedisServiceDef(spec app.Spec) *v1.Service {
 }
 
 func createOrUpdateRedisService(spec app.Spec, k8sClient kubernetes.Interface) (*v1.Service, error) {
-	service, err := getExistingService(spec.ResourceName(), spec.Namespace, k8sClient)
+	redisName := fmt.Sprintf("%s-redis", spec.ResourceName())
+	service, err := getExistingService(redisName, spec.Namespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing service: %s", err)
 	} else if service == nil {
 		service = createRedisServiceDef(spec)
-		service.Name = fmt.Sprintf("%s-redis", spec.ResourceName())
+		service.Name = redisName
 	}
 
 	service.ObjectMeta = addLabelsToObjectMeta(service.ObjectMeta, spec)

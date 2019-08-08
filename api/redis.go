@@ -13,7 +13,7 @@ import (
 const (
 	defaultRedisPort          = 6379
 	defaultRedisExporterPort  = 9121
-	defaultRedisExporterImage = "oliver006/redis_exporter:v1.0.3-alpine"
+	defaultRedisExporterImage = "oliver006/redis_exporter:v1.0.4-alpine"
 	defaultRedisImage         = "redis:5-alpine"
 )
 

@@ -119,7 +119,7 @@ func deleteAutoscaler(spec app.Spec, k8sClient kubernetes.Interface) (result str
 func deleteIngress(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	ingress, err := getExistingIngress(spec, k8sClient)
 	if ingress != nil {
-		err = k8sClient.ExtensionsV1beta1().Ingresses(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
+		err = k8sClient.NetworkingV1beta1().Ingresses(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
 	}
 
 	if err != nil {

@@ -9,13 +9,13 @@ import (
 	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/proxyopts"
 	rbacv1 "k8s.io/api/rbac/v1"
-
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/nais/naisd/internal/vault"
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
 	k8sextensions "k8s.io/api/extensions/v1beta1"
+	k8snetworkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +31,7 @@ const (
 
 type DeploymentResult struct {
 	Autoscaler      *k8sautoscaling.HorizontalPodAutoscaler
-	Ingress         *k8sextensions.Ingress
+	Ingress         *k8snetworkingv1beta1.Ingress
 	Deployment      *k8sextensions.Deployment
 	Secret          *k8score.Secret
 	Service         *k8score.Service
@@ -593,14 +593,14 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 }
 
 // Creates a Kubernetes Ingress object
-func createIngressDef(spec app.Spec) *k8sextensions.Ingress {
-	return &k8sextensions.Ingress{
+func createIngressDef(spec app.Spec) *k8snetworkingv1beta1.Ingress {
+	return &k8snetworkingv1beta1.Ingress{
 		TypeMeta: k8smeta.TypeMeta{
 			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 		ObjectMeta: generateObjectMeta(spec),
-		Spec:       k8sextensions.IngressSpec{},
+		Spec:       k8snetworkingv1beta1.IngressSpec{},
 	}
 }
 
@@ -621,14 +621,14 @@ func createSBSPublicHostname(request naisrequest.Deploy) string {
 	}
 }
 
-func createIngressRule(serviceName, host, path string) k8sextensions.IngressRule {
-	return k8sextensions.IngressRule{
+func createIngressRule(serviceName, host, path string) k8snetworkingv1beta1.IngressRule {
+	return k8snetworkingv1beta1.IngressRule{
 		Host: host,
-		IngressRuleValue: k8sextensions.IngressRuleValue{
-			HTTP: &k8sextensions.HTTPIngressRuleValue{
-				Paths: []k8sextensions.HTTPIngressPath{
+		IngressRuleValue: k8snetworkingv1beta1.IngressRuleValue{
+			HTTP: &k8snetworkingv1beta1.HTTPIngressRuleValue{
+				Paths: []k8snetworkingv1beta1.HTTPIngressPath{
 					{
-						Backend: k8sextensions.IngressBackend{
+						Backend: k8snetworkingv1beta1.IngressBackend{
 							ServiceName: serviceName,
 							ServicePort: intstr.IntOrString{IntVal: 80},
 						},
@@ -783,7 +783,7 @@ func createOrUpdateAutoscaler(spec app.Spec, manifest NaisManifest, k8sClient ku
 }
 
 // Returns nil,nil if ingress already exists. No reason to do update, as nothing can change
-func createOrUpdateIngress(spec app.Spec, manifest NaisManifest, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
+func createOrUpdateIngress(spec app.Spec, manifest NaisManifest, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8snetworkingv1beta1.Ingress, error) {
 	ingress, err := getExistingIngress(spec, k8sClient)
 
 	if err != nil {
@@ -800,8 +800,8 @@ func createOrUpdateIngress(spec app.Spec, manifest NaisManifest, deploymentReque
 	return createOrUpdateIngressResource(ingress, spec.Namespace, k8sClient)
 }
 
-func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource) []k8sextensions.IngressRule {
-	var ingressRules []k8sextensions.IngressRule
+func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource) []k8snetworkingv1beta1.IngressRule {
+	var ingressRules []k8snetworkingv1beta1.IngressRule
 
 	defaultIngressRule := createIngressRule(spec.ResourceName(), createIngressHostname(spec.Application, deploymentRequest.Namespace, clusterSubdomain), "")
 	ingressRules = append(ingressRules, defaultIngressRule)
@@ -914,8 +914,8 @@ func getExistingDeployment(resourceName, namespace string, k8sClient kubernetes.
 	}
 }
 
-func getExistingIngress(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
-	ingressClient := k8sClient.ExtensionsV1beta1().Ingresses(spec.Namespace)
+func getExistingIngress(spec app.Spec, k8sClient kubernetes.Interface) (*k8snetworkingv1beta1.Ingress, error) {
+	ingressClient := k8sClient.NetworkingV1beta1().Ingresses(spec.Namespace)
 	ingress, err := ingressClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 
 	switch {
@@ -964,11 +964,11 @@ func createOrUpdateAutoscalerResource(autoscalerSpec *k8sautoscaling.HorizontalP
 	}
 }
 
-func createOrUpdateIngressResource(ingressSpec *k8sextensions.Ingress, namespace string, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
+func createOrUpdateIngressResource(ingressSpec *k8snetworkingv1beta1.Ingress, namespace string, k8sClient kubernetes.Interface) (*k8snetworkingv1beta1.Ingress, error) {
 	if ingressSpec.ObjectMeta.ResourceVersion != "" {
-		return k8sClient.ExtensionsV1beta1().Ingresses(namespace).Update(ingressSpec)
+		return k8sClient.NetworkingV1beta1().Ingresses(namespace).Update(ingressSpec)
 	} else {
-		return k8sClient.ExtensionsV1beta1().Ingresses(namespace).Create(ingressSpec)
+		return k8sClient.NetworkingV1beta1().Ingresses(namespace).Create(ingressSpec)
 	}
 }
 

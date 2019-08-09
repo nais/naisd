@@ -15,7 +15,7 @@ import (
 	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
-	k8sextensions "k8s.io/api/extensions/v1beta1"
+	k8sapps "k8s.io/api/apps/v1"
 	k8snetworkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8sresource "k8s.io/apimachinery/pkg/api/resource"
@@ -33,7 +33,7 @@ const (
 type DeploymentResult struct {
 	Autoscaler      *k8sautoscaling.HorizontalPodAutoscaler
 	Ingress         *k8snetworkingv1beta1.Ingress
-	Deployment      *k8sextensions.Deployment
+	Deployment      *k8sapps.Deployment
 	Secret          *k8score.Secret
 	Service         *k8score.Service
 	Redis           *redisapi.RedisFailover
@@ -84,7 +84,7 @@ func validLabelName(str string) string {
 
 // Creates a Kubernetes Deployment object
 // If existingDeployment is provided, this is updated with modifiable fields
-func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest NaisManifest, deploymentRequest naisrequest.Deploy, existingDeployment *k8sextensions.Deployment, istioEnabled bool) (*k8sextensions.Deployment, error) {
+func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest NaisManifest, deploymentRequest naisrequest.Deploy, existingDeployment *k8sapps.Deployment, istioEnabled bool) (*k8sapps.Deployment, error) {
 	deploymentSpec, err := createDeploymentSpec(spec, deploymentRequest, manifest, naisResources, istioEnabled)
 
 	if err != nil {
@@ -97,7 +97,7 @@ func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest N
 		existingDeployment.Spec = deploymentSpec
 		return existingDeployment, nil
 	} else {
-		deployment := &k8sextensions.Deployment{
+		deployment := &k8sapps.Deployment{
 			TypeMeta: k8smeta.TypeMeta{
 				Kind:       "Deployment",
 				APIVersion: "apps/v1beta1",
@@ -109,22 +109,22 @@ func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest N
 	}
 }
 
-func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool) (k8sextensions.DeploymentSpec, error) {
+func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool) (k8sapps.DeploymentSpec, error) {
 	podSpec, err := createPodSpec(spec, deploymentRequest, manifest, naisResources)
 
 	if err != nil {
-		return k8sextensions.DeploymentSpec{}, err
+		return k8sapps.DeploymentSpec{}, err
 	}
 
-	var strategy k8sextensions.DeploymentStrategy
+	var strategy k8sapps.DeploymentStrategy
 	if manifest.DeploymentStrategy == DeploymentStrategyRecreate {
-		strategy = k8sextensions.DeploymentStrategy{
-			Type: k8sextensions.RecreateDeploymentStrategyType,
+		strategy = k8sapps.DeploymentStrategy{
+			Type: k8sapps.RecreateDeploymentStrategyType,
 		}
 	} else if manifest.DeploymentStrategy == DeploymentStrategyRollingUpdate {
-		strategy = k8sextensions.DeploymentStrategy{
-			Type: k8sextensions.RollingUpdateDeploymentStrategyType,
-			RollingUpdate: &k8sextensions.RollingUpdateDeployment{
+		strategy = k8sapps.DeploymentStrategy{
+			Type: k8sapps.RollingUpdateDeploymentStrategyType,
+			RollingUpdate: &k8sapps.RollingUpdateDeployment{
 				MaxUnavailable: &intstr.IntOrString{
 					Type:   intstr.Int,
 					IntVal: int32(0),
@@ -137,7 +137,7 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 		}
 	}
 
-	return k8sextensions.DeploymentSpec{
+	return k8sapps.DeploymentSpec{
 		Replicas: int32p(1),
 		Selector: &k8smeta.LabelSelector{
 			MatchLabels: createPodSelector(spec),
@@ -828,7 +828,7 @@ func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8sc
 	return createOrUpdateServiceResource(service, spec.Namespace, k8sClient)
 }
 
-func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
 	existingDeployment, err := getExistingDeployment(spec, k8sClient)
 
 	if err != nil {
@@ -885,8 +885,8 @@ func getExistingSecret(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.
 	}
 }
 
-func getExistingDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
-	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace)
+func getExistingDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
+	deploymentClient := k8sClient.AppsV1().Deployments(spec.Namespace)
 	deployment, err := deploymentClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 
 	switch {
@@ -957,11 +957,11 @@ func createOrUpdateIngressResource(ingressSpec *k8snetworkingv1beta1.Ingress, na
 	}
 }
 
-func createOrUpdateDeploymentResource(deploymentSpec *k8sextensions.Deployment, namespace string, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+func createOrUpdateDeploymentResource(deploymentSpec *k8sapps.Deployment, namespace string, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
 	if deploymentSpec.ObjectMeta.ResourceVersion != "" {
-		return k8sClient.ExtensionsV1beta1().Deployments(namespace).Update(deploymentSpec)
+		return k8sClient.AppsV1().Deployments(namespace).Update(deploymentSpec)
 	} else {
-		return k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(deploymentSpec)
+		return k8sClient.AppsV1().Deployments(namespace).Create(deploymentSpec)
 	}
 }
 

@@ -71,7 +71,7 @@ func deleteService(spec app.Spec, k8sClient kubernetes.Interface) (result string
 
 func deleteDeployment(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	deploymentDeleteOption := k8smeta.DeletePropagationForeground
-	if err := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
+	if err := k8sClient.AppsV1().Deployments(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
 		return filterNotFound("deployment: ", err)
 	}
 	return "deployment: OK", nil

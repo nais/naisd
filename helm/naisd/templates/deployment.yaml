@@ -1,4 +1,4 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -28,6 +28,13 @@ spec:
       containers:
       - name: naisd
         image: "{{ .Values.repository }}:{{ .Values.version }}"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["all"]
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: {{ .Values.runAsUser }}
         resources:
           requests:
             memory: "{{ .Values.request.memory }}"

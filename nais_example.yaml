@@ -22,13 +22,14 @@ healthcheck: #Optional
 leaderElection: false # if true, a http endpoint will be available at $ELECTOR_PATH that return the current leader
                       # Compare this value with the $HOSTNAME to see if the current instance is the leader
 redis:
-  enabled: false # if true, will add Redis sentinels that can be reach on rfs-<your-app-name> with port 26379, and mymaster as the name of the master
-  hardAntiAffinity: false # if true, will force the Redis instances to be spread on different nodes
+  enabled: false # if true, will start a single Redis instance that can be reach through
+                 # <your-app-name>-redis.<namespace>.svc.nais.local:6379 or <your-app-name>-redis:6379 if same namespace
+  image: redis:5-alpine # optional
   # For most users; limits, requests are not needed to be set
-  limits:
+  limits: # Optional.
     cpu: 100m # app will have its cpu usage throttled if exceeding this limit
     memory: 128Mi  # app will be killed if exceeding these limits
-  requests: # App is guaranteed the requested resources and  will be scheduled on nodes with at least this amount of resources available
+  requests: # Optional. App is guaranteed the requested resources and  will be scheduled on nodes with at least this amount of resources available
     cpu: 100m
     memory: 128Mi
 #Optional. Defaults to NONE.

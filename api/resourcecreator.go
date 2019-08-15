@@ -12,7 +12,6 @@ import (
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/nais/naisd/internal/vault"
-	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
 	k8sapps "k8s.io/api/apps/v1"
@@ -36,7 +35,8 @@ type DeploymentResult struct {
 	Deployment      *k8sapps.Deployment
 	Secret          *k8score.Secret
 	Service         *k8score.Service
-	Redis           *redisapi.RedisFailover
+	Redis           *k8sapps.Deployment
+	RedisService    *k8score.Service
 	AlertsConfigMap *k8score.ConfigMap
 	ServiceAccount  *k8score.ServiceAccount
 	RoleBinding     *rbacv1.RoleBinding
@@ -698,11 +698,18 @@ func createOrUpdateK8sResources(spec app.Spec, deploymentRequest naisrequest.Dep
 	deploymentResult.Service = service
 
 	if manifest.Redis.Enabled {
-		redis, err := updateOrCreateRedisSentinelCluster(spec, manifest.Redis)
+		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
+		redis, err := createOrUpdateRedisInstance(spec, manifest.Redis, k8sClient)
 		if err != nil {
-			return deploymentResult, fmt.Errorf("failed while creating or updating Redis sentinel cluster: %s", err)
+			return deploymentResult, fmt.Errorf("failed while creating or updating Redis instance: %s", err)
 		}
 		deploymentResult.Redis = redis
+
+		redisService, err := createOrUpdateRedisService(spec, k8sClient)
+		if err != nil {
+			return deploymentResult, fmt.Errorf("failed while creating or updating Redis service: %s", err)
+		}
+		deploymentResult.RedisService = redisService
 	}
 
 	deployment, err := createOrUpdateDeployment(spec, deploymentRequest, manifest, resources, istioEnabled, k8sClient)
@@ -815,7 +822,7 @@ func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clu
 }
 
 func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	service, err := getExistingService(spec, k8sClient)
+	service, err := getExistingAppService(spec, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing service: %s", err)
@@ -829,7 +836,7 @@ func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8sc
 }
 
 func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
-	existingDeployment, err := getExistingDeployment(spec, k8sClient)
+	existingDeployment, err := getExistingAppDeployment(spec, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing deployment: %s", err)
@@ -858,9 +865,13 @@ func createOrUpdateSecret(spec app.Spec, naisResources []NaisResource, k8sClient
 	}
 }
 
-func getExistingService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
-	serviceClient := k8sClient.CoreV1().Services(spec.Namespace)
-	service, err := serviceClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
+func getExistingAppService(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+	return getExistingService(spec.ResourceName(), spec.Namespace, k8sClient)
+}
+
+func getExistingService(resourceName, namespace string, k8sClient kubernetes.Interface) (*k8score.Service, error) {
+	serviceClient := k8sClient.CoreV1().Services(namespace)
+	service, err := serviceClient.Get(resourceName, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -885,9 +896,13 @@ func getExistingSecret(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.
 	}
 }
 
-func getExistingDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
-	deploymentClient := k8sClient.AppsV1().Deployments(spec.Namespace)
-	deployment, err := deploymentClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
+func getExistingAppDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
+	return getExistingDeployment(spec.ResourceName(), spec.Namespace, k8sClient)
+}
+
+func getExistingDeployment(resourceName, namespace string, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
+	deploymentClient := k8sClient.AppsV1().Deployments(namespace)
+	deployment, err := deploymentClient.Get(resourceName, k8smeta.GetOptions{})
 
 	switch {
 	case err == nil:

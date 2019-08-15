@@ -3,150 +3,175 @@ package api
 import (
 	"fmt"
 	"github.com/nais/naisd/api/app"
-	redisapi "github.com/spotahome/redis-operator/api/redisfailover/v1alpha2"
-	redisclient "github.com/spotahome/redis-operator/client/k8s/clientset/versioned/typed/redisfailover/v1alpha2"
-	"k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
+	v1 "k8s.io/api/core/v1"
+	k8sapps "k8s.io/api/apps/v1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8srest "k8s.io/client-go/rest"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
 )
 
-type Persistent struct {
-	Enabled bool
-	Storage string
-}
+const (
+	defaultRedisPort          = 6379
+	defaultRedisExporterPort  = 9121
+	defaultRedisExporterImage = "oliver006/redis_exporter:v1.0.4-alpine"
+	defaultRedisImage         = "redis:5-alpine"
+)
 
 type Redis struct {
-	Enabled          bool
-	HardAntiAffinity bool
-	Limits           ResourceList
-	Requests         ResourceList
-	Persistent       Persistent
-	Image            string
-	Version          string
+	Enabled  bool
+	Image    string
+	Limits   ResourceList
+	Requests ResourceList
 }
 
-func createRedisFailoverDef(spec app.Spec, redis Redis) (*redisapi.RedisFailover, error) {
-	replicas := int32(3)
-	resources := redisapi.RedisFailoverResources{
-		Limits: redisapi.CPUAndMem{
-			CPU:    "100m",
-			Memory: "128Mi",
-		},
-		Requests: redisapi.CPUAndMem{
-			CPU:    "100m",
-			Memory: "128Mi",
-		},
+func updateDefaultRedisValues(redis Redis) Redis {
+	if redis.Image == "" {
+		redis.Image = defaultRedisImage
 	}
+	if len(redis.Limits.Cpu) == 0 {
+		redis.Limits.Cpu = "100m"
+	}
+	if len(redis.Limits.Memory) == 0 {
+		redis.Limits.Memory = "128Mi"
+	}
+	if len(redis.Requests.Cpu) == 0 {
+		redis.Requests.Cpu = "100m"
+	}
+	if len(redis.Requests.Memory) == 0 {
+		redis.Requests.Memory = "128Mi"
+	}
+	return redis
+}
 
-	if len(redis.Limits.Cpu) != 0 {
-		resources.Limits.CPU = redis.Limits.Cpu
-	}
-	if len(redis.Limits.Memory) != 0 {
-		resources.Limits.Memory = redis.Limits.Memory
-	}
-	if len(redis.Requests.Cpu) != 0 {
-		resources.Requests.CPU = redis.Requests.Cpu
-	}
-	if len(redis.Requests.Memory) != 0 {
-		resources.Requests.Memory = redis.Requests.Memory
-	}
-
-	redisSpec := redisapi.RedisFailoverSpec{
-		HardAntiAffinity: false,
-		Sentinel: redisapi.SentinelSettings{
-			Replicas:  replicas,
-			Resources: resources,
-		},
-		Redis: redisapi.RedisSettings{
-			Replicas:  replicas,
-			Resources: resources,
-			Exporter:  true,
-			Image:     "redis",
-			Version:   "3.2-alpine",
-		},
-	}
-
-	if redis.Image != "" {
-		redisSpec.Redis.Image = redis.Image
-	}
-	if redis.Version != "" {
-		redisSpec.Redis.Version = redis.Version
-	}
-
-	if redis.HardAntiAffinity {
-		redisSpec.HardAntiAffinity = true
-	}
-
-	if redis.Persistent.Enabled {
-		quantity, err := resource.ParseQuantity(redis.Persistent.Storage)
-		if err != nil {
-			return nil, err
-		}
-
-		redisSpec.Redis.Storage = redisapi.RedisStorage{
-			PersistentVolumeClaim: &v1.PersistentVolumeClaim{
-				ObjectMeta: k8smeta.ObjectMeta{
-					Name: fmt.Sprintf("rf-%s", spec.Application),
-				},
-				Spec: v1.PersistentVolumeClaimSpec{
-					AccessModes: []v1.PersistentVolumeAccessMode{
-						v1.ReadWriteOnce,
-					},
-					Resources: v1.ResourceRequirements{
-						Requests: map[v1.ResourceName]resource.Quantity{
-							"storage": quantity,
-						},
+func createRedisPodSpec(redis Redis) v1.PodSpec {
+	return v1.PodSpec{
+		Containers: []v1.Container{
+			{
+				Name:  "redis",
+				Image: redis.Image,
+				Resources: createResourceLimits(redis.Requests.Cpu, redis.Requests.Memory,
+					redis.Limits.Cpu, redis.Limits.Memory),
+				ImagePullPolicy: v1.PullIfNotPresent,
+				Ports: []v1.ContainerPort{
+					{
+						ContainerPort: int32(defaultRedisPort),
+						Name:          DefaultPortName,
+						Protocol:      v1.ProtocolTCP,
 					},
 				},
 			},
+			{
+				Name:  "exporter",
+				Image: defaultRedisExporterImage,
+				Resources: createResourceLimits("100m", "100Mi",
+					"100m", "100Mi"),
+				ImagePullPolicy: v1.PullIfNotPresent,
+				Ports: []v1.ContainerPort{
+					{
+						ContainerPort: int32(defaultRedisExporterPort),
+						Name:          DefaultPortName,
+						Protocol:      v1.ProtocolTCP,
+					},
+				},
+			},
+		},
+	}
+}
+
+func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) k8sapps.DeploymentSpec {
+	objectMeta := generateObjectMeta(spec)
+	objectMeta.Name = resourceName
+	objectMeta.Annotations = map[string]string{
+		"prometheus.io/scrape": "true",
+		"prometheus.io/port":   string(defaultRedisExporterPort),
+		"prometheus.io/path":   "/metrics",
+	}
+
+	return k8sapps.DeploymentSpec{
+		Replicas: int32p(1),
+		Selector: &k8smeta.LabelSelector{
+			MatchLabels: createPodSelector(spec),
+		},
+		Strategy: k8sapps.DeploymentStrategy{
+			Type: k8sapps.RecreateDeploymentStrategyType,
+		},
+		ProgressDeadlineSeconds: int32p(300),
+		RevisionHistoryLimit:    int32p(10),
+		Template: v1.PodTemplateSpec{
+			ObjectMeta: objectMeta,
+			Spec:       createRedisPodSpec(redis),
+		},
+	}
+}
+
+func createRedisDeploymentDef(resourceName string, spec app.Spec, redis Redis, existingDeployment *k8sapps.Deployment) *k8sapps.Deployment {
+	deploymentSpec := createRedisDeploymentSpec(resourceName, spec, redis)
+	if existingDeployment != nil {
+		existingDeployment.ObjectMeta = addLabelsToObjectMeta(existingDeployment.ObjectMeta, spec)
+		existingDeployment.Spec = deploymentSpec
+		return existingDeployment
+	} else {
+		return &k8sapps.Deployment{
+			TypeMeta: k8smeta.TypeMeta{
+				Kind:       "Deployment",
+				APIVersion: "apps/v1beta1",
+			},
+			ObjectMeta: generateObjectMeta(spec),
+			Spec:       deploymentSpec,
 		}
 	}
-
-	meta := generateObjectMeta(spec)
-	return &redisapi.RedisFailover{Spec: redisSpec, ObjectMeta: meta}, nil
 }
 
-func getExistingFailover(failoverInterface redisclient.RedisFailoverInterface, resourceName string) (*redisapi.RedisFailover, error) {
-	failover, err := failoverInterface.Get(resourceName, k8smeta.GetOptions{})
+func createOrUpdateRedisInstance(spec app.Spec, redis Redis, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
+	redisName := fmt.Sprintf("%s-redis", spec.ResourceName())
+	existingDeployment, err := getExistingDeployment(redisName, spec.Namespace, k8sClient)
 
-	switch {
-	case err == nil:
-		return failover, err
-	case k8serrors.IsNotFound(err):
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("unexpected error: %s", err)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get existing deployment: %s", err)
+	}
+
+	deploymentDef := createRedisDeploymentDef(redisName, spec, redis, existingDeployment)
+	deploymentDef.Name = fmt.Sprintf("%s-redis", spec.ResourceName())
+
+	return createOrUpdateDeploymentResource(deploymentDef, spec.Namespace, k8sClient)
+}
+
+func createRedisServiceDef(spec app.Spec) *v1.Service {
+	return &v1.Service{
+		TypeMeta: k8smeta.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: generateObjectMeta(spec),
+		Spec: v1.ServiceSpec{
+			Type:     v1.ServiceTypeClusterIP,
+			Selector: createPodSelector(spec),
+			Ports: []v1.ServicePort{
+				{
+					Name:     DefaultPortName,
+					Protocol: v1.ProtocolTCP,
+					Port:     6379,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: DefaultPortName,
+					},
+				},
+			},
+		},
 	}
 }
 
-func updateOrCreateRedisSentinelCluster(spec app.Spec, redis Redis) (*redisapi.RedisFailover, error) {
-	newFailover, err := createRedisFailoverDef(spec, redis)
+func createOrUpdateRedisService(spec app.Spec, k8sClient kubernetes.Interface) (*v1.Service, error) {
+	redisName := fmt.Sprintf("%s-redis", spec.ResourceName())
+	service, err := getExistingService(redisName, spec.Namespace, k8sClient)
+
 	if err != nil {
-		return nil, fmt.Errorf("can't create RedisFailoverSpec: %s", err)
+		return nil, fmt.Errorf("unable to get existing service: %s", err)
+	} else if service == nil {
+		service = createRedisServiceDef(spec)
+		service.Name = redisName
 	}
 
-	config, err := k8srest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("can't create InClusterConfig: %s", err)
-	}
-
-	client, err := redisclient.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("can't create new Redis client for InClusterConfig: %s", err)
-	}
-
-	existingFailover, err := getExistingFailover(redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace), spec.ResourceName())
-	if err != nil {
-		return nil, fmt.Errorf("unable to get existing redis failover: %s", err)
-	}
-
-	if existingFailover != nil {
-		existingFailover.Spec = newFailover.Spec
-		existingFailover.ObjectMeta = mergeObjectMeta(existingFailover.ObjectMeta, newFailover.ObjectMeta)
-		return redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace).Update(existingFailover)
-	}
-
-	return redisclient.RedisFailoversGetter(client).RedisFailovers(spec.Namespace).Create(newFailover)
+	service.ObjectMeta = addLabelsToObjectMeta(service.ObjectMeta, spec)
+	return createOrUpdateServiceResource(service, spec.Namespace, k8sClient)
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	k8score "k8s.io/api/core/v1"
-	k8sextension "k8s.io/api/extensions/v1beta1"
+	k8sapps "k8s.io/api/apps/v1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -14,32 +14,32 @@ func TestIsDeploymentStatus(t *testing.T) {
 	var wantedReplicas int32 = 2
 	var deploymentGeneration int64 = 2
 
-	deployment := &k8sextension.Deployment{
+	deployment := &k8sapps.Deployment{
 		ObjectMeta: k8smeta.ObjectMeta{
 			Name:       "appname",
 			Namespace:  "default",
 			Generation: deploymentGeneration,
 		},
-		Spec: k8sextension.DeploymentSpec{
+		Spec: k8sapps.DeploymentSpec{
 			Replicas: int32p(wantedReplicas),
 		},
 	}
 
 	tests := []struct {
 		testDescription string
-		deployStatus    k8sextension.DeploymentStatus
+		deployStatus    k8sapps.DeploymentStatus
 		expectedStatus  DeployStatus
 	}{
 		{
 			testDescription: "Deploy is in progress when observed generation is less than spec generation.",
-			deployStatus: k8sextension.DeploymentStatus{
+			deployStatus: k8sapps.DeploymentStatus{
 				ObservedGeneration: deploymentGeneration - 1,
 			},
 			expectedStatus: InProgress,
 		},
 		{
 			testDescription: "Deploy is in progress when updated replicas are less than wanted replicas",
-			deployStatus: k8sextension.DeploymentStatus{
+			deployStatus: k8sapps.DeploymentStatus{
 				ObservedGeneration: deploymentGeneration,
 				UpdatedReplicas:    wantedReplicas - 1,
 				AvailableReplicas:  wantedReplicas,
@@ -48,7 +48,7 @@ func TestIsDeploymentStatus(t *testing.T) {
 		},
 		{
 			testDescription: "Deploy is in progress when there are more replicas  than wanted replicas",
-			deployStatus: k8sextension.DeploymentStatus{
+			deployStatus: k8sapps.DeploymentStatus{
 				ObservedGeneration: deploymentGeneration,
 				UpdatedReplicas:    wantedReplicas,
 				AvailableReplicas:  wantedReplicas,
@@ -59,7 +59,7 @@ func TestIsDeploymentStatus(t *testing.T) {
 		{
 
 			testDescription: "Deploy is in progress when there are less available replicas than wanted replicas",
-			deployStatus: k8sextension.DeploymentStatus{
+			deployStatus: k8sapps.DeploymentStatus{
 				ObservedGeneration: deploymentGeneration,
 				UpdatedReplicas:    wantedReplicas,
 				AvailableReplicas:  wantedReplicas - 1,
@@ -70,7 +70,7 @@ func TestIsDeploymentStatus(t *testing.T) {
 		{
 
 			testDescription: "Deploy is finished when the number of replicas, available, updated and wanted replicas are equal",
-			deployStatus: k8sextension.DeploymentStatus{
+			deployStatus: k8sapps.DeploymentStatus{
 				ObservedGeneration: deploymentGeneration,
 				UpdatedReplicas:    wantedReplicas,
 				AvailableReplicas:  wantedReplicas,
@@ -91,12 +91,12 @@ func TestIsDeploymentStatus(t *testing.T) {
 }
 
 func TestDeploymentStatusViewFrom(t *testing.T) {
-	deployment := k8sextension.Deployment{
+	deployment := k8sapps.Deployment{
 		ObjectMeta: k8smeta.ObjectMeta{
 			Name:      "appname",
 			Namespace: "default",
 		},
-		Spec: k8sextension.DeploymentSpec{
+		Spec: k8sapps.DeploymentSpec{
 			Replicas: int32p(4),
 			Template: k8score.PodTemplateSpec{
 				Spec: k8score.PodSpec{
@@ -110,7 +110,7 @@ func TestDeploymentStatusViewFrom(t *testing.T) {
 			},
 		},
 
-		Status: k8sextension.DeploymentStatus{
+		Status: k8sapps.DeploymentStatus{
 			Replicas:          3,
 			UpdatedReplicas:   2,
 			AvailableReplicas: 2,
@@ -133,10 +133,10 @@ func TestDeploymentStatusViewFrom(t *testing.T) {
 func TestDeploymentExceededProgressDeadline(t *testing.T) {
 
 	t.Run("True if a condition is progress dead line exceeded", func(t *testing.T) {
-		assert.True(t, deploymentExceededProgressDeadline(k8sextension.DeploymentStatus{
-			Conditions: []k8sextension.DeploymentCondition{
+		assert.True(t, deploymentExceededProgressDeadline(k8sapps.DeploymentStatus{
+			Conditions: []k8sapps.DeploymentCondition{
 				{
-					Type:   k8sextension.DeploymentProgressing,
+					Type:   k8sapps.DeploymentProgressing,
 					Reason: "ProgressDeadlineExceeded",
 				},
 			},
@@ -144,10 +144,10 @@ func TestDeploymentExceededProgressDeadline(t *testing.T) {
 	})
 
 	t.Run("False if no condition is progress dead line exceeded", func(t *testing.T) {
-		assert.False(t, deploymentExceededProgressDeadline(k8sextension.DeploymentStatus{
-			Conditions: []k8sextension.DeploymentCondition{
+		assert.False(t, deploymentExceededProgressDeadline(k8sapps.DeploymentStatus{
+			Conditions: []k8sapps.DeploymentCondition{
 				{
-					Type:   k8sextension.DeploymentProgressing,
+					Type:   k8sapps.DeploymentProgressing,
 					Reason: "Other reason",
 				},
 			},

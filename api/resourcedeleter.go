@@ -75,7 +75,7 @@ func deleteService(spec app.Spec, k8sClient kubernetes.Interface) (result string
 
 func deleteDeployment(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	deploymentDeleteOption := k8smeta.DeletePropagationForeground
-	if err := k8sClient.ExtensionsV1beta1().Deployments(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
+	if err := k8sClient.AppsV1().Deployments(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{PropagationPolicy: &deploymentDeleteOption}); err != nil {
 		return filterNotFound("deployment: ", err)
 	}
 	return "deployment: OK", nil
@@ -119,7 +119,7 @@ func deleteAutoscaler(spec app.Spec, k8sClient kubernetes.Interface) (result str
 func deleteIngress(spec app.Spec, k8sClient kubernetes.Interface) (result string, e error) {
 	ingress, err := getExistingIngress(spec, k8sClient)
 	if ingress != nil {
-		err = k8sClient.ExtensionsV1beta1().Ingresses(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
+		err = k8sClient.NetworkingV1beta1().Ingresses(spec.Namespace).Delete(spec.ResourceName(), &k8smeta.DeleteOptions{})
 	}
 
 	if err != nil {

@@ -9,13 +9,13 @@ import (
 	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/proxyopts"
 	rbacv1 "k8s.io/api/rbac/v1"
-
 	"github.com/nais/naisd/api/constant"
 	"github.com/nais/naisd/api/naisrequest"
 	"github.com/nais/naisd/internal/vault"
 	k8sautoscaling "k8s.io/api/autoscaling/v1"
 	k8score "k8s.io/api/core/v1"
-	k8sextensions "k8s.io/api/extensions/v1beta1"
+	k8sapps "k8s.io/api/apps/v1"
+	k8snetworkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,8 +31,8 @@ const (
 
 type DeploymentResult struct {
 	Autoscaler      *k8sautoscaling.HorizontalPodAutoscaler
-	Ingress         *k8sextensions.Ingress
-	Deployment      *k8sextensions.Deployment
+	Ingress         *k8snetworkingv1beta1.Ingress
+	Deployment      *k8sapps.Deployment
 	Secret          *k8score.Secret
 	Service         *k8score.Service
 	Redis           *k8sextensions.Deployment
@@ -84,7 +84,7 @@ func validLabelName(str string) string {
 
 // Creates a Kubernetes Deployment object
 // If existingDeployment is provided, this is updated with modifiable fields
-func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest NaisManifest, deploymentRequest naisrequest.Deploy, existingDeployment *k8sextensions.Deployment, istioEnabled bool) (*k8sextensions.Deployment, error) {
+func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest NaisManifest, deploymentRequest naisrequest.Deploy, existingDeployment *k8sapps.Deployment, istioEnabled bool) (*k8sapps.Deployment, error) {
 	deploymentSpec, err := createDeploymentSpec(spec, deploymentRequest, manifest, naisResources, istioEnabled)
 
 	if err != nil {
@@ -97,7 +97,7 @@ func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest N
 		existingDeployment.Spec = deploymentSpec
 		return existingDeployment, nil
 	} else {
-		deployment := &k8sextensions.Deployment{
+		deployment := &k8sapps.Deployment{
 			TypeMeta: k8smeta.TypeMeta{
 				Kind:       "Deployment",
 				APIVersion: "apps/v1beta1",
@@ -109,22 +109,22 @@ func createDeploymentDef(spec app.Spec, naisResources []NaisResource, manifest N
 	}
 }
 
-func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool) (k8sextensions.DeploymentSpec, error) {
+func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool) (k8sapps.DeploymentSpec, error) {
 	podSpec, err := createPodSpec(spec, deploymentRequest, manifest, naisResources)
 
 	if err != nil {
-		return k8sextensions.DeploymentSpec{}, err
+		return k8sapps.DeploymentSpec{}, err
 	}
 
-	var strategy k8sextensions.DeploymentStrategy
+	var strategy k8sapps.DeploymentStrategy
 	if manifest.DeploymentStrategy == DeploymentStrategyRecreate {
-		strategy = k8sextensions.DeploymentStrategy{
-			Type: k8sextensions.RecreateDeploymentStrategyType,
+		strategy = k8sapps.DeploymentStrategy{
+			Type: k8sapps.RecreateDeploymentStrategyType,
 		}
 	} else if manifest.DeploymentStrategy == DeploymentStrategyRollingUpdate {
-		strategy = k8sextensions.DeploymentStrategy{
-			Type: k8sextensions.RollingUpdateDeploymentStrategyType,
-			RollingUpdate: &k8sextensions.RollingUpdateDeployment{
+		strategy = k8sapps.DeploymentStrategy{
+			Type: k8sapps.RollingUpdateDeploymentStrategyType,
+			RollingUpdate: &k8sapps.RollingUpdateDeployment{
 				MaxUnavailable: &intstr.IntOrString{
 					Type:   intstr.Int,
 					IntVal: int32(0),
@@ -137,7 +137,7 @@ func createDeploymentSpec(spec app.Spec, deploymentRequest naisrequest.Deploy, m
 		}
 	}
 
-	return k8sextensions.DeploymentSpec{
+	return k8sapps.DeploymentSpec{
 		Replicas: int32p(1),
 		Selector: &k8smeta.LabelSelector{
 			MatchLabels: createPodSelector(spec),
@@ -593,14 +593,14 @@ func createSecretData(naisResources []NaisResource) map[string][]byte {
 }
 
 // Creates a Kubernetes Ingress object
-func createIngressDef(spec app.Spec) *k8sextensions.Ingress {
-	return &k8sextensions.Ingress{
+func createIngressDef(spec app.Spec) *k8snetworkingv1beta1.Ingress {
+	return &k8snetworkingv1beta1.Ingress{
 		TypeMeta: k8smeta.TypeMeta{
 			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 		ObjectMeta: generateObjectMeta(spec),
-		Spec:       k8sextensions.IngressSpec{},
+		Spec:       k8snetworkingv1beta1.IngressSpec{},
 	}
 }
 
@@ -621,14 +621,14 @@ func createSBSPublicHostname(request naisrequest.Deploy) string {
 	}
 }
 
-func createIngressRule(serviceName, host, path string) k8sextensions.IngressRule {
-	return k8sextensions.IngressRule{
+func createIngressRule(serviceName, host, path string) k8snetworkingv1beta1.IngressRule {
+	return k8snetworkingv1beta1.IngressRule{
 		Host: host,
-		IngressRuleValue: k8sextensions.IngressRuleValue{
-			HTTP: &k8sextensions.HTTPIngressRuleValue{
-				Paths: []k8sextensions.HTTPIngressPath{
+		IngressRuleValue: k8snetworkingv1beta1.IngressRuleValue{
+			HTTP: &k8snetworkingv1beta1.HTTPIngressRuleValue{
+				Paths: []k8snetworkingv1beta1.HTTPIngressPath{
 					{
-						Backend: k8sextensions.IngressBackend{
+						Backend: k8snetworkingv1beta1.IngressBackend{
 							ServiceName: serviceName,
 							ServicePort: intstr.IntOrString{IntVal: 80},
 						},
@@ -783,7 +783,7 @@ func createOrUpdateAutoscaler(spec app.Spec, manifest NaisManifest, k8sClient ku
 }
 
 // Returns nil,nil if ingress already exists. No reason to do update, as nothing can change
-func createOrUpdateIngress(spec app.Spec, manifest NaisManifest, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
+func createOrUpdateIngress(spec app.Spec, manifest NaisManifest, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource, k8sClient kubernetes.Interface) (*k8snetworkingv1beta1.Ingress, error) {
 	ingress, err := getExistingIngress(spec, k8sClient)
 
 	if err != nil {
@@ -800,8 +800,8 @@ func createOrUpdateIngress(spec app.Spec, manifest NaisManifest, deploymentReque
 	return createOrUpdateIngressResource(ingress, spec.Namespace, k8sClient)
 }
 
-func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource) []k8sextensions.IngressRule {
-	var ingressRules []k8sextensions.IngressRule
+func createIngressRules(spec app.Spec, deploymentRequest naisrequest.Deploy, clusterSubdomain string, naisResources []NaisResource) []k8snetworkingv1beta1.IngressRule {
+	var ingressRules []k8snetworkingv1beta1.IngressRule
 
 	defaultIngressRule := createIngressRule(spec.ResourceName(), createIngressHostname(spec.Application, deploymentRequest.Namespace, clusterSubdomain), "")
 	ingressRules = append(ingressRules, defaultIngressRule)
@@ -835,7 +835,7 @@ func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8sc
 	return createOrUpdateServiceResource(service, spec.Namespace, k8sClient)
 }
 
-func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8apps.Deployment, error) {
 	existingDeployment, err := getExistingAppDeployment(spec, k8sClient)
 
 	if err != nil {
@@ -896,12 +896,12 @@ func getExistingSecret(spec app.Spec, k8sClient kubernetes.Interface) (*k8score.
 	}
 }
 
-func getExistingAppDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+func getExistingAppDeployment(spec app.Spec, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
 	return getExistingDeployment(spec.ResourceName(), spec.Namespace, k8sClient)
 }
 
-func getExistingDeployment(resourceName, namespace string, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
-	deploymentClient := k8sClient.ExtensionsV1beta1().Deployments(namespace)
+func getExistingDeployment(resourceName, namespace string, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
+	deploymentClient := k8sClient.AppsV1().Deployments(namespace)
 	deployment, err := deploymentClient.Get(resourceName, k8smeta.GetOptions{})
 
 	switch {
@@ -914,8 +914,8 @@ func getExistingDeployment(resourceName, namespace string, k8sClient kubernetes.
 	}
 }
 
-func getExistingIngress(spec app.Spec, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
-	ingressClient := k8sClient.ExtensionsV1beta1().Ingresses(spec.Namespace)
+func getExistingIngress(spec app.Spec, k8sClient kubernetes.Interface) (*k8snetworkingv1beta1.Ingress, error) {
+	ingressClient := k8sClient.NetworkingV1beta1().Ingresses(spec.Namespace)
 	ingress, err := ingressClient.Get(spec.ResourceName(), k8smeta.GetOptions{})
 
 	switch {
@@ -964,19 +964,19 @@ func createOrUpdateAutoscalerResource(autoscalerSpec *k8sautoscaling.HorizontalP
 	}
 }
 
-func createOrUpdateIngressResource(ingressSpec *k8sextensions.Ingress, namespace string, k8sClient kubernetes.Interface) (*k8sextensions.Ingress, error) {
+func createOrUpdateIngressResource(ingressSpec *k8snetworkingv1beta1.Ingress, namespace string, k8sClient kubernetes.Interface) (*k8snetworkingv1beta1.Ingress, error) {
 	if ingressSpec.ObjectMeta.ResourceVersion != "" {
-		return k8sClient.ExtensionsV1beta1().Ingresses(namespace).Update(ingressSpec)
+		return k8sClient.NetworkingV1beta1().Ingresses(namespace).Update(ingressSpec)
 	} else {
-		return k8sClient.ExtensionsV1beta1().Ingresses(namespace).Create(ingressSpec)
+		return k8sClient.NetworkingV1beta1().Ingresses(namespace).Create(ingressSpec)
 	}
 }
 
-func createOrUpdateDeploymentResource(deploymentSpec *k8sextensions.Deployment, namespace string, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+func createOrUpdateDeploymentResource(deploymentSpec *k8sapps.Deployment, namespace string, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
 	if deploymentSpec.ObjectMeta.ResourceVersion != "" {
-		return k8sClient.ExtensionsV1beta1().Deployments(namespace).Update(deploymentSpec)
+		return k8sClient.AppsV1().Deployments(namespace).Update(deploymentSpec)
 	} else {
-		return k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(deploymentSpec)
+		return k8sClient.AppsV1().Deployments(namespace).Create(deploymentSpec)
 	}
 }
 

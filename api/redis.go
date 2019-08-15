@@ -146,7 +146,9 @@ func createRedisServiceDef(spec app.Spec) *v1.Service {
 		ObjectMeta: generateObjectMeta(spec),
 		Spec: v1.ServiceSpec{
 			Type:     v1.ServiceTypeClusterIP,
-			Selector: createPodSelector(spec),
+			Selector: map[string]string{
+		                "app": fmt.Sprintf("%s-redis", spec.ResourceName()),
+                        },
 			Ports: []v1.ServicePort{
 				{
 					Name:     DefaultPortName,

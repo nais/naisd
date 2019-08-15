@@ -22,8 +22,8 @@ healthcheck: #Optional
 leaderElection: false # if true, a http endpoint will be available at $ELECTOR_PATH that return the current leader
                       # Compare this value with the $HOSTNAME to see if the current instance is the leader
 redis:
-  enabled: false # if true, will start a single Redis instance that can be reach through env var REDIS_HOST or
-                 # <your-app-name>-redis.<namespace>.svc.nais.local:6379
+  enabled: false # if true, will start a single Redis instance that can be reach through
+                 # <your-app-name>-redis.<namespace>.svc.nais.local:6379 or <your-app-name>-redis:6379 if same namespace
   image: redis:5-alpine # optional
   # For most users; limits, requests are not needed to be set
   limits: # Optional.

@@ -378,7 +378,7 @@ func createEnvironmentVariables(spec app.Spec, deploymentRequest naisrequest.Dep
 	envVars := createDefaultEnvironmentVariables(&deploymentRequest)
 
 	if manifest.Redis.Enabled {
-		envVars = append(envVars, createEnvVar("REDIS_HOST", fmt.Sprintf("%s-redis", spec.ResourceName())))
+		envVars = append(envVars, createEnvVar("REDIS_HOST", fmt.Sprintf("rfs-%s", spec.ResourceName())))
 	}
 
 	for _, res := range naisResources {

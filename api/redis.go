@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 	"github.com/nais/naisd/api/app"
-	v1 "k8s.io/api/core/v1"
 	k8sapps "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -79,9 +79,8 @@ func createRedisPodSpec(redis Redis) v1.PodSpec {
 	}
 }
 
-func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) k8sapps.DeploymentSpec {
-	objectMeta := generateObjectMeta(spec)
-	objectMeta.Name = resourceName
+func createRedisDeploymentSpec(redisSpec app.Spec, redis Redis) k8sapps.DeploymentSpec {
+	objectMeta := generateObjectMeta(redisSpec)
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": "true",
 		"prometheus.io/port":   strconv.Itoa(defaultRedisExporterPort),
@@ -91,7 +90,7 @@ func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) 
 	return k8sapps.DeploymentSpec{
 		Replicas: int32p(1),
 		Selector: &k8smeta.LabelSelector{
-			MatchLabels: createPodSelector(spec),
+			MatchLabels: createPodSelector(redisSpec),
 		},
 		Strategy: k8sapps.DeploymentStrategy{
 			Type: k8sapps.RecreateDeploymentStrategyType,
@@ -105,50 +104,53 @@ func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) 
 	}
 }
 
-func createRedisDeploymentDef(resourceName string, spec app.Spec, redis Redis, existingDeployment *k8sapps.Deployment) *k8sapps.Deployment {
-	deploymentSpec := createRedisDeploymentSpec(resourceName, spec, redis)
+func createRedisDeploymentDef(redisSpec app.Spec, redis Redis, existingDeployment *k8sapps.Deployment) *k8sapps.Deployment {
+	deploymentSpec := createRedisDeploymentSpec(redisSpec, redis)
 	if existingDeployment != nil {
-		existingDeployment.ObjectMeta = addLabelsToObjectMeta(existingDeployment.ObjectMeta, spec)
+		existingDeployment.ObjectMeta = addLabelsToObjectMeta(existingDeployment.ObjectMeta, redisSpec)
 		existingDeployment.Spec = deploymentSpec
 		return existingDeployment
 	} else {
 		return &k8sapps.Deployment{
 			TypeMeta: k8smeta.TypeMeta{
 				Kind:       "Deployment",
-				APIVersion: "apps/v1beta1",
+				APIVersion: "apps/v1",
 			},
-			ObjectMeta: generateObjectMeta(spec),
+			ObjectMeta: generateObjectMeta(redisSpec),
 			Spec:       deploymentSpec,
 		}
 	}
 }
 
 func createOrUpdateRedisInstance(spec app.Spec, redis Redis, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
-	redisName := fmt.Sprintf("%s-redis", spec.ResourceName())
-	existingDeployment, err := getExistingDeployment(redisName, spec.Namespace, k8sClient)
+	redisSpec := app.Spec{
+		Application: fmt.Sprintf("%s-redis", spec.ResourceName()),
+		Namespace:   spec.Namespace,
+		Team:        spec.Team,
+	}
+	existingDeployment, err := getExistingDeployment(redisSpec.ResourceName(), redisSpec.Namespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing deployment: %s", err)
 	}
 
-	deploymentDef := createRedisDeploymentDef(redisName, spec, redis, existingDeployment)
-	deploymentDef.Name = fmt.Sprintf("%s-redis", spec.ResourceName())
+	deploymentDef := createRedisDeploymentDef(redisSpec, redis, existingDeployment)
 
-	return createOrUpdateDeploymentResource(deploymentDef, spec.Namespace, k8sClient)
+	return createOrUpdateDeploymentResource(deploymentDef, redisSpec.Namespace, k8sClient)
 }
 
-func createRedisServiceDef(spec app.Spec) *v1.Service {
+func createRedisServiceDef(redisSpec app.Spec) *v1.Service {
 	return &v1.Service{
 		TypeMeta: k8smeta.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
-		ObjectMeta: generateObjectMeta(spec),
+		ObjectMeta: generateObjectMeta(redisSpec),
 		Spec: v1.ServiceSpec{
-			Type:     v1.ServiceTypeClusterIP,
+			Type: v1.ServiceTypeClusterIP,
 			Selector: map[string]string{
-		                "app": fmt.Sprintf("%s-redis", spec.ResourceName()),
-                        },
+				"app": redisSpec.ResourceName(),
+			},
 			Ports: []v1.ServicePort{
 				{
 					Name:     DefaultPortName,
@@ -165,16 +167,19 @@ func createRedisServiceDef(spec app.Spec) *v1.Service {
 }
 
 func createOrUpdateRedisService(spec app.Spec, k8sClient kubernetes.Interface) (*v1.Service, error) {
-	redisName := fmt.Sprintf("%s-redis", spec.ResourceName())
-	service, err := getExistingService(redisName, spec.Namespace, k8sClient)
+	redisSpec := app.Spec{
+		Application: fmt.Sprintf("%s-redis", spec.ResourceName()),
+		Namespace:   spec.Namespace,
+		Team:        spec.Team,
+	}
+	service, err := getExistingService(redisSpec.ResourceName(), redisSpec.Namespace, k8sClient)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get existing service: %s", err)
 	} else if service == nil {
-		service = createRedisServiceDef(spec)
-		service.Name = redisName
+		service = createRedisServiceDef(redisSpec)
 	}
 
-	service.ObjectMeta = addLabelsToObjectMeta(service.ObjectMeta, spec)
-	return createOrUpdateServiceResource(service, spec.Namespace, k8sClient)
+	service.ObjectMeta = addLabelsToObjectMeta(service.ObjectMeta, redisSpec)
+	return createOrUpdateServiceResource(service, redisSpec.Namespace, k8sClient)
 }

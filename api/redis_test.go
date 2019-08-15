@@ -13,12 +13,32 @@ func TestRedisResource(t *testing.T) {
 	redisName := fmt.Sprintf("%s-redis", appName)
 
 	t.Run("Replicas should always be 1", func(t *testing.T) {
-		spec := app.Spec{Application: appName, Namespace: namespace, Team: "teamBeam"}
+		redisSpec := app.Spec{Application: redisName, Namespace: namespace, Team: "teamBeam"}
 		manifest := NaisManifest{Redis: Redis{Enabled: true}}
 		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
-		deploymentSpec := createRedisDeploymentSpec(redisName, spec, manifest.Redis)
+		deploymentSpec := createRedisDeploymentSpec(redisSpec, manifest.Redis)
 		expectedReplicas := int32(1)
 		assert.Equal(t, &expectedReplicas, deploymentSpec.Replicas)
+	})
+
+	t.Run("redis service should select app with redis resource name", func(t *testing.T) {
+		redisSpec := app.Spec{Application: redisName, Namespace: namespace, Team: "teamBeam"}
+		manifest := NaisManifest{Redis: Redis{Enabled: true}}
+		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
+		serviceSpec := createRedisServiceDef(redisSpec).Spec
+
+		expectedabel := redisName
+		assert.Equal(t, expectedabel, serviceSpec.Selector["app"])
+	})
+
+	t.Run("redis pod template should have app label with value of redis resource name", func(t *testing.T) {
+		redisSpec := app.Spec{Application: redisName, Namespace: namespace, Team: "teamBeam"}
+		manifest := NaisManifest{Redis: Redis{Enabled: true}}
+		manifest.Redis = updateDefaultRedisValues(manifest.Redis)
+		deploymentSpec := createRedisDeploymentSpec(redisSpec, manifest.Redis)
+
+		expectedabel := redisName
+		assert.Equal(t, expectedabel, deploymentSpec.Template.Labels["app"])
 	})
 
 	t.Run("Custom resources", func(t *testing.T) {

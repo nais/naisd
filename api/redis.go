@@ -8,6 +8,7 @@ import (
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"strconv"
 )
 
 const (
@@ -83,7 +84,7 @@ func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) 
 	objectMeta.Name = resourceName
 	objectMeta.Annotations = map[string]string{
 		"prometheus.io/scrape": "true",
-		"prometheus.io/port":   string(defaultRedisExporterPort),
+		"prometheus.io/port":   strconv.Itoa(defaultRedisExporterPort),
 		"prometheus.io/path":   "/metrics",
 	}
 

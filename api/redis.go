@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/nais/naisd/api/app"
 	v1 "k8s.io/api/core/v1"
-	k8sextensions "k8s.io/api/extensions/v1beta1"
+	k8sapps "k8s.io/api/apps/v1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -78,7 +78,7 @@ func createRedisPodSpec(redis Redis) v1.PodSpec {
 	}
 }
 
-func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) k8sextensions.DeploymentSpec {
+func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) k8sapps.DeploymentSpec {
 	objectMeta := generateObjectMeta(spec)
 	objectMeta.Name = resourceName
 	objectMeta.Annotations = map[string]string{
@@ -87,13 +87,13 @@ func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) 
 		"prometheus.io/path":   "/metrics",
 	}
 
-	return k8sextensions.DeploymentSpec{
+	return k8sapps.DeploymentSpec{
 		Replicas: int32p(1),
 		Selector: &k8smeta.LabelSelector{
 			MatchLabels: createPodSelector(spec),
 		},
-		Strategy: k8sextensions.DeploymentStrategy{
-			Type: k8sextensions.RecreateDeploymentStrategyType,
+		Strategy: k8sapps.DeploymentStrategy{
+			Type: k8sapps.RecreateDeploymentStrategyType,
 		},
 		ProgressDeadlineSeconds: int32p(300),
 		RevisionHistoryLimit:    int32p(10),
@@ -104,14 +104,14 @@ func createRedisDeploymentSpec(resourceName string, spec app.Spec, redis Redis) 
 	}
 }
 
-func createRedisDeploymentDef(resourceName string, spec app.Spec, redis Redis, existingDeployment *k8sextensions.Deployment) *k8sextensions.Deployment {
+func createRedisDeploymentDef(resourceName string, spec app.Spec, redis Redis, existingDeployment *k8sapps.Deployment) *k8sapps.Deployment {
 	deploymentSpec := createRedisDeploymentSpec(resourceName, spec, redis)
 	if existingDeployment != nil {
 		existingDeployment.ObjectMeta = addLabelsToObjectMeta(existingDeployment.ObjectMeta, spec)
 		existingDeployment.Spec = deploymentSpec
 		return existingDeployment
 	} else {
-		return &k8sextensions.Deployment{
+		return &k8sapps.Deployment{
 			TypeMeta: k8smeta.TypeMeta{
 				Kind:       "Deployment",
 				APIVersion: "apps/v1beta1",
@@ -122,7 +122,7 @@ func createRedisDeploymentDef(resourceName string, spec app.Spec, redis Redis, e
 	}
 }
 
-func createOrUpdateRedisInstance(spec app.Spec, redis Redis, k8sClient kubernetes.Interface) (*k8sextensions.Deployment, error) {
+func createOrUpdateRedisInstance(spec app.Spec, redis Redis, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
 	redisName := fmt.Sprintf("%s-redis", spec.ResourceName())
 	existingDeployment, err := getExistingDeployment(redisName, spec.Namespace, k8sClient)
 

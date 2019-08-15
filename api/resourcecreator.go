@@ -35,7 +35,7 @@ type DeploymentResult struct {
 	Deployment      *k8sapps.Deployment
 	Secret          *k8score.Secret
 	Service         *k8score.Service
-	Redis           *k8sextensions.Deployment
+	Redis           *k8sapps.Deployment
 	RedisService    *k8score.Service
 	AlertsConfigMap *k8score.ConfigMap
 	ServiceAccount  *k8score.ServiceAccount
@@ -835,7 +835,7 @@ func createOrUpdateService(spec app.Spec, k8sClient kubernetes.Interface) (*k8sc
 	return createOrUpdateServiceResource(service, spec.Namespace, k8sClient)
 }
 
-func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8apps.Deployment, error) {
+func createOrUpdateDeployment(spec app.Spec, deploymentRequest naisrequest.Deploy, manifest NaisManifest, naisResources []NaisResource, istioEnabled bool, k8sClient kubernetes.Interface) (*k8sapps.Deployment, error) {
 	existingDeployment, err := getExistingAppDeployment(spec, k8sClient)
 
 	if err != nil {

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"strings"
@@ -12,7 +11,7 @@ import (
 	docker "github.com/novln/docker-parser"
 )
 
-func NewDeploymentEvent(spec app.Spec, request naisrequest.Deploy, manifest NaisManifest, clusterName string) deployment.Event {
+func NewDeploymentEvent(request naisrequest.Deploy, manifest NaisManifest, clusterName string) deployment.Event {
 	image := ContainerImage(manifest.Image)
 	ts := convertTimestamp(time.Now())
 	id := uuid.NewUUID()
@@ -32,7 +31,7 @@ func NewDeploymentEvent(spec app.Spec, request naisrequest.Deploy, manifest Nais
 		SkyaEnvironment: request.FasitEnvironment,
 		Namespace:       request.Namespace,
 		Cluster:         clusterName,
-		Application:     spec.Application,
+		Application:     request.Application,
 		Version:         image.GetTag(),
 		Image:           &image,
 		Timestamp:       &ts,

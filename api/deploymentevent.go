@@ -11,7 +11,7 @@ import (
 	docker "github.com/novln/docker-parser"
 )
 
-// Create a new deployment event based on a naisd deployment request along with its manifest and cluster name.
+// NewDeploymentEvent creates a new deployment event based on a naisd deployment request along with its manifest and cluster name.
 func NewDeploymentEvent(request naisrequest.Deploy, manifest NaisManifest, clusterName string) deployment.Event {
 	image := ContainerImage(manifest.Image)
 	ts := convertTimestamp(time.Now())
@@ -60,7 +60,7 @@ func hashtag(t string) (hash, tag string) {
 	return "", t
 }
 
-// Parse a Docker image name and return it as structured data.
+// ContainerImage parses a Docker image name and return it as structured data.
 func ContainerImage(imageName string) deployment.ContainerImage {
 	ref, err := docker.Parse(imageName)
 	if err != nil {

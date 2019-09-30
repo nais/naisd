@@ -208,6 +208,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	NotifySensuAboutDeploy(spec, &deploymentRequest, &api.ClusterName)
 
+	// TODO: send deployment event on Kafka
+	_ = NewDeploymentEvent(spec, deploymentRequest, manifest, api.ClusterName)
+
 	w.WriteHeader(200)
 	w.Write(createResponse(deploymentResult, warnings))
 	return nil

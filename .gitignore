@@ -8,3 +8,4 @@ naisd.iml
 naisd-service-nodeport.yaml
 *.swp
 cover.out
+go.sum

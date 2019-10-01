@@ -27,7 +27,7 @@ func NewDeploymentEvent(request naisrequest.Deploy, manifest NaisManifest, clust
 			Ident: request.FasitUsername,
 		},
 		Team:            manifest.Team,
-		RolloutStatus:   deployment.RolloutStatus_unknown,
+		RolloutStatus:   deployment.RolloutStatus_complete,
 		Environment:     environment(request),
 		SkyaEnvironment: request.FasitEnvironment,
 		Namespace:       request.Namespace,

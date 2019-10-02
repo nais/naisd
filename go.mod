@@ -28,6 +28,8 @@ require (
 	github.com/stretchr/testify v1.3.0
 	goji.io v2.0.0+incompatible
 	golang.org/x/crypto v0.0.0-20190404164418-38d8ce5564a5
+	golang.org/x/lint v0.0.0-20190930215403-16217165b5de // indirect
+	golang.org/x/tools v0.0.0-20191001184121-329c8d646ebe // indirect
 	gopkg.in/h2non/gock.v1 v1.0.8
 	gopkg.in/yaml.v2 v2.2.1
 	k8s.io/api v0.0.0-20190805141119-fdd30b57c827

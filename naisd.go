@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/Shopify/sarama"
 	"github.com/golang/glog"
@@ -57,7 +58,13 @@ func main() {
 	deploymentEventHandler := func(event deployment.Event) {}
 
 	if kafkaConfig.Enabled {
-		glog.Infof("kafka enabled = %t", kafkaConfig.Enabled)
+		kafkaConfig.Brokers = strings.Split(kafkaBrokers, ",")
+		glog.Infof("kafka brokers = %v", kafkaConfig.Brokers)
+		glog.Infof("kafka topic = %s", kafkaConfig.Topic)
+		glog.Infof("kafka tls enabled = %t", kafkaConfig.TLS.Enabled)
+		if kafkaConfig.SASL.Enabled {
+			glog.Infof("kafka username = %s", kafkaConfig.SASL.Username)
+		}
 		kafkaLogger := log.New(os.Stdout, "kafka] ", log.LstdFlags)
 		sarama.Logger = kafkaLogger
 		kafkaClient, err := kafka.NewClient(&kafkaConfig)

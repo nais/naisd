@@ -11,14 +11,16 @@ import (
 )
 
 var (
-	// Send deployment events here to dispatch them to Kafka.
+	// Events - send deployment events here to dispatch them to Kafka.
 	Events = make(chan deployment.Event, 4096)
 )
 
+// Send sends a message to Kafka
 func Send(event deployment.Event) {
 	Events <- event
 }
 
+// ProducerLoop sends messages from the event queue in perpetuity
 func (client *Client) ProducerLoop() {
 	for message := range Events {
 		if err := client.send(message); err != nil {

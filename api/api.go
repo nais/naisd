@@ -20,7 +20,7 @@ import (
 	"os"
 )
 
-type DeploymentEventHandler func(deployment.Event)
+type deploymentEventHandler func(deployment.Event)
 
 type Api struct {
 	Clientset              kubernetes.Interface
@@ -30,7 +30,7 @@ type Api struct {
 	IstioEnabled           bool
 	AuthenticationEnabled  bool
 	DeploymentStatusViewer DeploymentStatusViewer
-	DeploymentEventHandler DeploymentEventHandler
+	DeploymentEventHandler deploymentEventHandler
 }
 
 var (
@@ -96,10 +96,11 @@ func (api Api) Handler() http.Handler {
 	return mux
 }
 
-func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName string, istioEnabled bool, authenticationEnabled bool, d DeploymentStatusViewer, deploymentEventHandler DeploymentEventHandler) Api {
+// NewApi returns a new nais daemon.
+func NewApi(clientset kubernetes.Interface, fasitURL, clusterDomain, clusterName string, istioEnabled bool, authenticationEnabled bool, d DeploymentStatusViewer, deploymentEventHandler deploymentEventHandler) Api {
 	return Api{
 		Clientset:              clientset,
-		FasitURL:               fasitUrl,
+		FasitURL:               fasitURL,
 		ClusterSubdomain:       clusterDomain,
 		ClusterName:            clusterName,
 		IstioEnabled:           istioEnabled,

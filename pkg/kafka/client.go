@@ -7,6 +7,7 @@ import (
 	"github.com/Shopify/sarama"
 )
 
+// Client is a Kafka client
 type Client struct {
 	RecvQ         chan sarama.ConsumerMessage
 	Producer      sarama.SyncProducer
@@ -19,6 +20,7 @@ func tlsConfig(t TLS) *tls.Config {
 	}
 }
 
+// NewClient takes a Kafka config object and returns a new client, or an error if the config is invalid.
 func NewClient(cfg *Config) (*Client, error) {
 	var err error
 	client := &Client{}

@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/Jeffail/gabs v1.0.0
+	github.com/Shopify/sarama v1.23.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.2
 	github.com/googleapis/gnostic v0.1.0 // indirect
@@ -24,10 +25,11 @@ require (
 	github.com/spf13/cobra v0.0.0-20180319062004-c439c4fa0937
 	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec // indirect
 	github.com/spf13/viper v1.0.2
-	github.com/stretchr/testify v1.2.2
+	github.com/stretchr/testify v1.3.0
 	goji.io v2.0.0+incompatible
-	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
-	golang.org/x/net v0.0.0-20190311183353-d8887717615a // indirect
+	golang.org/x/crypto v0.0.0-20190404164418-38d8ce5564a5
+	golang.org/x/lint v0.0.0-20190930215403-16217165b5de // indirect
+	golang.org/x/tools v0.0.0-20191001184121-329c8d646ebe // indirect
 	gopkg.in/h2non/gock.v1 v1.0.8
 	gopkg.in/yaml.v2 v2.2.1
 	k8s.io/api v0.0.0-20190805141119-fdd30b57c827

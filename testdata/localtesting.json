@@ -1,0 +1,11 @@
+{
+  "application": "k8s-testapp",
+  "namespace": "default",
+  "version": "42.0.0",
+  "manifestUrl": "https://raw.githubusercontent.com/nais/naisd/master/api/testdata/nais.yaml",
+  "username": "user",
+  "password": "pw",
+  "zone": "fss",
+  "skipFasit": true,
+  "fasitEnvironment": "q"
+}

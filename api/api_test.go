@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/nais/naisd/api/naisrequest"
+	"github.com/nais/naisd/pkg/event"
 	"github.com/stretchr/testify/assert"
 	"goji.io"
 	"goji.io/pat"
@@ -15,6 +16,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+)
+
+var (
+	fakeDeploymentHandler = func(event deployment.Event) {}
 )
 
 type FakeDeployStatusViewer struct {
@@ -152,7 +157,7 @@ func TestValidDeploymentRequestAndManifestCreateResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, false, nil}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, false, nil, fakeDeploymentHandler}
 
 	depReq := naisrequest.Deploy{
 		Application:      appName,
@@ -242,7 +247,7 @@ func TestValidDeploymentRequestAndManifestCreateAlerts(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, false, nil}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, false, nil, fakeDeploymentHandler}
 
 	depReq := naisrequest.Deploy{
 		Application:      appName,
@@ -313,7 +318,7 @@ func TestThatFasitIsSkippedOnValidDeployment(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false,false, nil}
+	api := Api{clientset, "https://fasit.local", "nais.example.tk", "test-cluster", false, false, nil, fakeDeploymentHandler}
 
 	depReq := naisrequest.Deploy{
 		Application: appName,
@@ -402,7 +407,7 @@ func TestMissingResources(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/deploy", strings.NewReader(CreateDefaultDeploymentRequest()))
 
 	rr := httptest.NewRecorder()
-	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", "clustername", false, false, nil}
+	api := Api{fake.NewSimpleClientset(), "https://fasit.local", "nais.example.tk", "clustername", false, false, nil, fakeDeploymentHandler}
 	handler := http.Handler(appHandler(api.deploy))
 
 	handler.ServeHTTP(rr, req)

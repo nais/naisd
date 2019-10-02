@@ -8,4 +8,4 @@ WORKDIR /app
 
 COPY naisd .
 
-CMD /app/naisd --fasit-url=$fasit_url --cluster-subdomain=$cluster_subdomain --clustername=$clustername --istio-enabled=$istio_enabled --authentication-enabled=$authentication_enabled --logtostderr=true
+CMD /app/naisd --fasit-url=$fasit_url --cluster-subdomain=$cluster_subdomain --clustername=$clustername --istio-enabled=$istio_enabled --authentication-enabled=$authentication_enabled --logtostderr=true --kafka.tls.enabled=true --kafka.enabled=$kafka_enabled --kafka.brokers=$kafka_brokers --kafka.topic=$kafka_topic

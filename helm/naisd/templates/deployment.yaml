@@ -60,6 +60,12 @@ spec:
             value: "{{ .Values.authenticationEnabled }}"
           - name: istio_enabled
             value: "{{ .Values.istioEnabled }}"
+          - name: kafka_enabled
+            value: "{{ .Values.KafkaEnabled }}"
+          - name: kafka_brokers
+            value: "{{ .Values.KafkaBrokers }}"
+          - name: kafka_topic
+            value: "{{ .Values.KafkaTopic }}"
           - name: NAISD_VAULT_ADDR
             value: "{{ .Values.vaultAddr }}"
           - name: NAISD_VAULT_INIT_CONTAINER_IMAGE

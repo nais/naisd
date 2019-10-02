@@ -7,6 +7,7 @@ import (
 	"github.com/nais/naisd/api/app"
 	"github.com/nais/naisd/api/naisrequest"
 	ver "github.com/nais/naisd/api/version"
+	"github.com/nais/naisd/pkg/event"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"goji.io"
@@ -19,6 +20,8 @@ import (
 	"os"
 )
 
+type DeploymentEventHandler func(deployment.Event)
+
 type Api struct {
 	Clientset              kubernetes.Interface
 	FasitURL               string
@@ -27,6 +30,7 @@ type Api struct {
 	IstioEnabled           bool
 	AuthenticationEnabled  bool
 	DeploymentStatusViewer DeploymentStatusViewer
+	DeploymentEventHandler DeploymentEventHandler
 }
 
 var (
@@ -92,7 +96,7 @@ func (api Api) Handler() http.Handler {
 	return mux
 }
 
-func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName string, istioEnabled bool, authenticationEnabled bool, d DeploymentStatusViewer) Api {
+func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName string, istioEnabled bool, authenticationEnabled bool, d DeploymentStatusViewer, deploymentEventHandler DeploymentEventHandler) Api {
 	return Api{
 		Clientset:              clientset,
 		FasitURL:               fasitUrl,
@@ -101,6 +105,7 @@ func NewApi(clientset kubernetes.Interface, fasitUrl, clusterDomain, clusterName
 		IstioEnabled:           istioEnabled,
 		AuthenticationEnabled:  authenticationEnabled,
 		DeploymentStatusViewer: d,
+		DeploymentEventHandler: deploymentEventHandler,
 	}
 }
 func authenticate(username, password string) *appError {
@@ -208,8 +213,9 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 
 	NotifySensuAboutDeploy(spec, &deploymentRequest, &api.ClusterName)
 
-	// TODO: send deployment event on Kafka
-	_ = NewDeploymentEvent(deploymentRequest, manifest, api.ClusterName)
+	// Send deployment event on Kafka topic
+	deploymentEvent := NewDeploymentEvent(deploymentRequest, manifest, api.ClusterName)
+	api.DeploymentEventHandler(deploymentEvent)
 
 	w.WriteHeader(200)
 	w.Write(createResponse(deploymentResult, warnings))

@@ -77,7 +77,7 @@ func main() {
 
 	clientSet := newClientSet(*kubeconfig)
 	deploymentStatusViewer := api.NewDeploymentStatusViewer(clientSet)
-	naisd := api.NewApi(
+	naisd := api.NewAPI(
 		clientSet,
 		*fasitUrl,
 		*clusterSubdomain,

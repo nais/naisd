@@ -96,8 +96,8 @@ func (api Api) Handler() http.Handler {
 	return mux
 }
 
-// NewApi returns a new nais daemon.
-func NewApi(clientset kubernetes.Interface, fasitURL, clusterDomain, clusterName string, istioEnabled bool, authenticationEnabled bool, d DeploymentStatusViewer, deploymentEventHandler deploymentEventHandler) Api {
+// NewAPI returns a new nais daemon.
+func NewAPI(clientset kubernetes.Interface, fasitURL, clusterDomain, clusterName string, istioEnabled bool, authenticationEnabled bool, d DeploymentStatusViewer, deploymentEventHandler deploymentEventHandler) Api {
 	return Api{
 		Clientset:              clientset,
 		FasitURL:               fasitURL,

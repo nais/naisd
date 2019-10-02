@@ -104,7 +104,7 @@ func TestNewDeploymentEvent(t *testing.T) {
 		assert.Equal(t, deployment.System_naisd, event.GetSource())
 		assert.Equal(t, "A123456", event.GetDeployer().GetIdent())
 		assert.Equal(t, "myteam", event.GetTeam())
-		assert.Equal(t, deployment.RolloutStatus_unknown, event.GetRolloutStatus())
+		assert.Equal(t, deployment.RolloutStatus_complete, event.GetRolloutStatus())
 		assert.Equal(t, deployment.Environment_development, event.GetEnvironment())
 		assert.Equal(t, "mynamespace", event.GetNamespace())
 		assert.Equal(t, "test-cluster", event.GetCluster())

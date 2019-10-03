@@ -49,6 +49,8 @@ spec:
         envFrom:
         - secretRef:
             name: {{ template "naisd.fullname" . }}
+        - secretRef:
+            name: naisd-kafka
         env:
           - name: fasit_url
             value: "{{ .Values.fasitUrl }}"

@@ -28,4 +28,4 @@ KafkaBrokers: localhost:9092
 KafkaTopic: deployment-events
 KafkaSaslUsername: ""
 KafkaSaslPassword: ""
-version: 343.0.0
+version: 344.0.0

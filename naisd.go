@@ -72,7 +72,7 @@ func main() {
 			log.Fatalf("unable to setup kafka: %s", err)
 		}
 		go kafkaClient.ProducerLoop()
-		deploymentEventHandler = kafka.Send
+		deploymentEventHandler = kafkaClient.Send
 	}
 
 	clientSet := newClientSet(*kubeconfig)

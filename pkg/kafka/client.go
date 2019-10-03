@@ -3,6 +3,7 @@ package kafka
 import (
 	"crypto/tls"
 	"fmt"
+	deployment "github.com/nais/naisd/pkg/event"
 
 	"github.com/Shopify/sarama"
 )
@@ -12,6 +13,7 @@ type Client struct {
 	RecvQ         chan sarama.ConsumerMessage
 	Producer      sarama.SyncProducer
 	ProducerTopic string
+	SendQueue     chan deployment.Event
 }
 
 func tlsConfig(t TLS) *tls.Config {
@@ -41,6 +43,8 @@ func NewClient(cfg *Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while setting up Kafka producer: %s", err)
 	}
+
+	client.SendQueue = make(chan deployment.Event, 4096)
 
 	client.ProducerTopic = cfg.Topic
 

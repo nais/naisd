@@ -10,19 +10,14 @@ import (
 	"github.com/nais/naisd/pkg/event"
 )
 
-var (
-	// Events - send deployment events here to dispatch them to Kafka.
-	Events = make(chan deployment.Event, 4096)
-)
-
 // Send sends a message to Kafka
-func Send(event deployment.Event) {
-	Events <- event
+func (client *Client) Send(event deployment.Event) {
+	client.SendQueue <- event
 }
 
 // ProducerLoop sends messages from the event queue in perpetuity
 func (client *Client) ProducerLoop() {
-	for message := range Events {
+	for message := range client.SendQueue {
 		if err := client.send(message); err != nil {
 			glog.Errorf("while sending deployment event to kafka: %s", err)
 		}

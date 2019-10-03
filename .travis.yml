@@ -22,6 +22,7 @@ script:
 - echo "<html><body><pre>$(cat index.yaml)</pre></body></html>" > index.html
 - git add --all
 - git commit -m "auto-update by travis [skip ci]"
+- git pull --rebase=true
 - git push https://$GH_TOKEN@github.com/nais/charts
 - cd ..
 deploy:

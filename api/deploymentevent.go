@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/nais/naisd/api/naisrequest"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"strings"
@@ -13,7 +14,7 @@ import (
 
 // NewDeploymentEvent creates a new deployment event based on a naisd deployment request along with its manifest and cluster name.
 func NewDeploymentEvent(request naisrequest.Deploy, manifest NaisManifest, clusterName string) deployment.Event {
-	image := ContainerImage(manifest.Image)
+	image := ContainerImage(fmt.Sprintf("%s:%s", manifest.Image, request.Version))
 	ts := convertTimestamp(time.Now())
 	id := uuid.NewUUID()
 

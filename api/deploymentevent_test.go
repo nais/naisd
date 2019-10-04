@@ -93,7 +93,7 @@ func TestNewDeploymentEvent(t *testing.T) {
 
 	manifest := api.NaisManifest{
 		Team:  "myteam",
-		Image: "image:version",
+		Image: "org/image",
 	}
 
 	t.Run("Event defaults are picked up from Application correctly", func(t *testing.T) {
@@ -109,13 +109,13 @@ func TestNewDeploymentEvent(t *testing.T) {
 		assert.Equal(t, "mynamespace", event.GetNamespace())
 		assert.Equal(t, "test-cluster", event.GetCluster())
 		assert.Equal(t, "myapplication", event.GetApplication())
-		assert.Equal(t, "version", event.GetVersion())
+		assert.Equal(t, deploymentRequest.Version, event.GetVersion())
 
 		image := event.GetImage()
 		assert.NotEmpty(t, image)
 		assert.Equal(t, deployment.ContainerImage{
-			Name: "docker.io/library/image",
-			Tag:  "version",
+			Name: "docker.io/org/image",
+			Tag:  deploymentRequest.Version,
 		}, *image)
 
 		assert.True(t, event.GetTimestampAsTime().Unix() > 0)

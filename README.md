@@ -17,7 +17,8 @@ k8s in-cluster daemon with API for performing NAIS-operations
 
 ## nais cli
 
-The `nais` cli will help you in validating your `nais.yaml`, uploading it to Nexus and deploying your application. Very useful for your CI/CD servers.
+The `nais` cli will help you in validating your `nais.yaml`, uploading it to Nexus and deploying your application.
+Very useful for your CI/CD servers.
 
 
 ### Basic Usage

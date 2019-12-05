@@ -154,6 +154,8 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 		deploymentRequest.Namespace = "default"
 	}
 
+	deploymentRequest.ClusterName = api.ClusterName
+
 	if err != nil {
 		return &appError{err, "unable to unmarshal deployment request", http.StatusBadRequest}
 	}

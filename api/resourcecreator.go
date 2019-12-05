@@ -532,6 +532,12 @@ func createDefaultEnvironmentVariables(request *naisrequest.Deploy) []k8score.En
 		}, k8score.EnvVar{
 			Name:  "NAIS_APP_NAME",
 			Value: request.Application,
+		}, k8score.EnvVar{
+			Name:  "NAIS_APP_IMAGE",
+			Value: request.Version,
+		}, k8score.EnvVar{
+			Name:  "NAIS_CLUSTER_NAME",
+			Value: request.ClusterName,
 		})
 
 	return envVars

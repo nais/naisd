@@ -19,6 +19,7 @@ type Deploy struct {
 	OnBehalfOf       string `json:"onbehalfof,omitempty"`
 	Namespace        string `json:"namespace,omitempty"`
 	Environment      string `json:"environment,omitempty"`
+	ClusterName      string
 }
 
 func (r Deploy) Validate() []error {

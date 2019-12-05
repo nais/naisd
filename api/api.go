@@ -147,10 +147,6 @@ func (api Api) deploy(w http.ResponseWriter, r *http.Request) *appError {
 	// Warn about deprecated fields in deploymentRequest and set default env if not set
 	warnings := ensurePropertyCompatibility(&deploymentRequest)
 	if len(deploymentRequest.Namespace) == 0 {
-		deploymentRequest.Namespace = "app"
-	}
-
-	if len(deploymentRequest.Namespace) == 0 {
 		deploymentRequest.Namespace = "default"
 	}
 
